@@ -1,0 +1,4 @@
+-r requirements.txt
+# Optional: install PaddlePaddle engine appropriate for CPU/GPU first per official docs
+paddleocr>=3,<4
+faster-whisper>=1.1

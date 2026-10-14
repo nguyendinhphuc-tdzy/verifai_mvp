@@ -1,0 +1,154 @@
+# VerifAI MVP v2.0 — VLM + Evidence Normalization + Visual Consistency
+
+**Working local web application** upgraded from v1.0. Frontend: standalone `static/index.html`; backend: FastAPI + SQLite + OpenCV; VLM: **Qwen3-VL-4B-Instruct via local Ollama** (optional); OCR/ASR remain optional.
+
+> Scope: evidence-first **review assistance**, not a deepfake detector, not automatic legal compliance, not a production service. A VLM assertion is an unverified candidate until a human confirms it. No product-reference image is stored, so precise visual SKU matching is not implemented.
+
+## 1. Upgrade an existing v1 installation (preserve your data)
+
+1. **Stop** your running v1 server. Back up the entire `data/` directory, especially `data/verifai.sqlite3`.
+2. Unzip v2 into a new directory (`verifai_mvp`). If you want your old jobs and products, **copy your existing `data/` directory into this new directory** before starting. Do not overwrite the backup.
+3. Create/activate a virtual environment (or reuse v1's venv if dependencies are compatible).
+4. `pip install -r requirements.txt`
+5. Start the backend. At startup it adds v2 columns to existing SQLite `evidence` and `findings` tables **without deleting v1 rows**. The migration is idempotent.
+6. Open existing jobs in the Review Queue; click **Re-analyze** to apply v2 modules to a previously uploaded video. **Re-analyze resets existing findings and the final reviewer decision**, while preserving the audit history, product, original video, and labels. Record the previous decision first if needed.
+
+**Python 3.10+** is recommended. `FFmpeg` on PATH is recommended. For initial testing, keep the web app local on `127.0.0.1`.
+
+## 2. Run base app (without a VLM)
+
+```bash
+python -m venv .venv
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Open http://127.0.0.1:8000. API docs: http://127.0.0.1:8000/docs.
+
+With VLM disabled, OpenCV temporal checks still run, and potential visual changes appear as **VIS-SCREEN** low-severity review prompts. This does **not** imply AI-generated defects.
+
+## 3. Enable a real local VLM (Qwen3-VL)
+
+Install [Ollama](https://ollama.com/download) and ensure its server is running. **Ollama 0.12.7 or newer** is required for Qwen3-VL. Download the model once:
+
+```bash
+ollama pull qwen3-vl:4b-instruct
+ollama list
+```
+
+If Ollama is not already running as a service, start it in a separate terminal with `ollama serve`.
+
+**Windows PowerShell**, from the `verifai_mvp` folder:
+
+```powershell
+$env:VLM_ENABLED="1"
+$env:VLM_MODEL="qwen3-vl:4b-instruct"
+$env:VLM_MAX_FRAMES="4"
+$env:VLM_MAX_PAIRS="2"
+uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**macOS/Linux**:
+
+```bash
+export VLM_ENABLED=1
+export VLM_MODEL=qwen3-vl:4b-instruct
+export VLM_MAX_FRAMES=4
+export VLM_MAX_PAIRS=2
+uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Test model connectivity:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+python scripts/check_vlm.py
+```
+
+`/api/health` should show `"vlm":{"enabled":true,"ready":true,...}`. `scripts/check_vlm.py` sends a generated **synthetic image** to Ollama and validates its response; it is a live smoke test, **not an accuracy benchmark**.
+
+The 4B quantized weights are about **3.3 GB** on disk, plus RAM/VRAM overhead. CPU inference may be slow; allow a few minutes per video, especially for multiple frame/pair requests. Use `VLM_MAX_FRAMES=2` and `VLM_MAX_PAIRS=1` on limited hardware. A local 8B model can be substituted after checking hardware.
+
+**VLM configuration** (environment variables):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `VLM_ENABLED` | `0` | Opt-in to VLM calls |
+| `VLM_MODEL` | `qwen3-vl:4b-instruct` | Ollama model tag |
+| `VLM_BASE_URL` | `http://127.0.0.1:11434` | Ollama root URL |
+| `VLM_TIMEOUT_SECONDS` | `120` | Timeout per VLM request |
+| `VLM_MAX_FRAMES` | `4` | Single-frame checks, capped at 8 |
+| `VLM_MAX_PAIRS` | `2` | Same-shot pair checks, capped at 6 |
+| `VLM_ALLOW_REMOTE` | `0` | Allow non-loopback Ollama only when explicitly `1` (privacy risk) |
+| `WHISPER_MODEL` | `tiny` | ASR model (if installed) |
+| `VERIFAI_DATA` | `./data` | Persistent storage root |
+
+**Privacy:** Default Ollama endpoint is localhost. Setting `VLM_ALLOW_REMOTE=1` may send image frames to another host. Do not use cloud/remote endpoints for sensitive videos without explicit authorization.
+
+## 4. OCR/ASR optional installation
+
+```bash
+# Install the compatible PaddlePaddle engine first, per official PaddleOCR docs
+pip install -r requirements-ai.txt
+```
+
+`requirements-ai.txt` installs PaddleOCR 3 and faster-whisper but does not bundle model weights. PaddleOCR and Whisper may download weights on first use. If you only need ASR, install `faster-whisper` separately.
+
+## 5. What the v2 pipeline actually does
+
+```text
+Video + Product Truth
+  -> OpenCV frame sampling (max 60 frames) + optional PaddleOCR + faster-whisper
+  -> Temporal signals: HSV histogram, frame pixel delta, pHash, ORB matches
+  -> Same-shot pair selection (avoid likely scene cuts)
+  -> Optional Ollama VLM: sampled single frames + up to 2 frame pairs
+  -> Pydantic JSON schema validation + evidence provenance
+  -> Evidence normalization (dedup adjacent repeated OCR/ASR, keep timestamps)
+  -> Deterministic price/restricted-claim rules + visual candidate flags
+  -> Findings linked to canonical evidence IDs
+  -> Human review + audit log + JSON evidence export
+```
+
+**Evidence Normalization:** Each canonical item has `kind`, `timestamp`, `end_timestamp`, `content`, `score`, `frame`, `frame2`, `source_model`, `fingerprint`, `metadata.sources` (original raw observations). It merges only repeated OCR/ASR from the same source within a 2.3-second gap; it **does not** merge different modalities or VLM assertions, avoiding false corroboration.
+
+**Visual Consistency Checking:** OpenCV compares consecutive sampled frames and classifies likely scene cuts vs same-shot candidates. The VLM compares selected same-shot pairs for apparent changes to product details. `VIS-01`/`VIS-02`/`VIS-03` are **review candidates**, not proven defects. Natural movement, transitions, lighting, occlusion and camera angles can cause false positives. Two sampled frames cannot establish the exact frame where a transient anomaly occurred.
+
+**VLM:** Uses `POST /api/chat` with base64-encoded local JPEG frames and a Pydantic-generated JSON Schema in `format`. Requests have `temperature=0`. Outputs are validated and stored with model + prompt versions; malformed output or unreachable Ollama produces `coverage.vlm=error`/`partial` rather than fabricated findings. `confidence` is **self-reported, not calibrated**. No automatic `Regenerate` from VLM-only flags.
+
+**Product truth:** Product name, SKU, brand, price, approved/restricted claims are *textual reference information*, **not an image of the actual product**. The system cannot reliably detect lookalike packaging or prove SKU mismatch from appearance alone. `SKU-01` is only a tentative visible-label contradiction.
+
+## 6. API endpoints added in v2
+
+- `GET /api/health`: module readiness, including VLM model availability.
+- `POST /api/jobs/{id}/reanalyze`: reprocess existing video with current module configuration; clears previous final reviewer decision, keeps audit history.
+- `GET /api/jobs/{id}/evidence/export`: download JSON of canonical evidence, findings, provenance, coverage, and model versions.
+- `GET /api/jobs/{id}`: backward-compatible v1 response, with new evidence metadata, `end_timestamp`, `frame2`, `fingerprint`, and linked finding IDs.
+
+## 7. Tests
+
+```bash
+pip install pytest httpx
+python -m pytest -q tests
+```
+
+Automated tests cover: v1 smoke flow; evidence dedup/provenance; scene-cut and temporal candidate signals; VLM schema and invalid JSON; security of remote model endpoint; SQLite v1->v2 migration; **end-to-end job with a mocked VLM** including linked findings, JSON export, re-analysis and audit log. They do **not** evaluate the accuracy or speed of the real Qwen3-VL model.
+
+## 8. Known limitations
+
+- Research MVP only: single user, local SQLite, in-process background threads, no authentication, roles, encryption, antivirus, retention, production queue, or distributed job management. Keep it on `127.0.0.1`.
+- Visual signals are screening heuristics, not robust object tracking, optical flow-based segmentation, product reference-image matching, deepfake detection, or frame-level truth labels.
+- A VLM can hallucinate; all findings require human review. OCR/ASR may miss text or transcribe incorrectly. Price rules can flag unrelated amounts.
+- No C2PA provenance verification, legal-compliance certification, online benchmark, or Ecomobi integration.
+- Pilot 15–20 videos is only for feasibility, not for estimating real-world precision/recall with confidence.
+
+For architecture details and upgrade checklist see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Open-source references
+
+- [Ollama](https://github.com/ollama/ollama), [Qwen3-VL](https://ollama.com/library/qwen3-vl:4b-instruct)
+- [FastAPI](https://github.com/fastapi/fastapi), [OpenCV](https://github.com/opencv/opencv)
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR), [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
+
+Review individual library/model licenses before commercial use.
