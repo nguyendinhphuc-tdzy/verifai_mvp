@@ -8,6 +8,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
 from verifai_core.vlm import OllamaVLM, VLMError, vlm_enabled, PROMPT_VERSION
@@ -18,7 +19,7 @@ UPLOAD = DATA/'uploads'; FRAMES=DATA/'frames'; DB=DATA/'verifai.sqlite3'
 MAX_UPLOAD=int(os.environ.get('MAX_VIDEO_MB','150'))*1024*1024
 MAX_DURATION=int(os.environ.get('MAX_VIDEO_SECONDS','180'))
 for p in (DATA,UPLOAD,FRAMES): p.mkdir(parents=True,exist_ok=True)
-app=FastAPI(title='VerifAI MVP API',version='2.0.0')
+app=FastAPI(title='VerifAI MVP API',version='2.1.0')
 app.mount('/static',StaticFiles(directory=str(BASE/'static')),name='static')
 
 def utc(): return datetime.now(timezone.utc).isoformat(timespec='seconds')
@@ -54,6 +55,7 @@ def init():
             for name, ddl in additions.items():
                 if name not in existing:
                     c.execute(f'ALTER TABLE {table} ADD COLUMN {name} {ddl}')
+    ensure_dataset_schema(db)
 init()
 
 def audit(c,jid,actor,action,payload):c.execute('INSERT INTO audits(job_id,actor,action,payload,created_at) VALUES(?,?,?,?,?)',(jid,actor,action,json.dumps(payload,ensure_ascii=False),utc()))
@@ -85,7 +87,7 @@ def health():
         except VLMError as exc: status = {'ready': False, 'message': str(exc)}
     return {'ok':True,'ocr':_has_paddle(),'asr':_has_whisper(),
             'ffmpeg':bool(shutil.which('ffmpeg')),'database':'sqlite',
-            'mode':'local feasibility MVP', 'version':'2.0.0',
+            'mode':'local feasibility MVP', 'version':'2.1.0',
             'vlm':{'enabled':enabled,'model':os.environ.get('VLM_MODEL','qwen3-vl:4b-instruct'),**status}}
 @app.post('/api/products')
 def create_product(v:ProductIn):
@@ -337,9 +339,16 @@ def analyze(job_id):
         if cap is not None:cap.release()
 
 @app.post('/api/jobs')
-async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source_url:str=Form(''),rights:str=Form('unknown')):
+async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source_url:str=Form(''),rights:str=Form('unknown'),case_code:str=Form('')):
     with db() as c:
         if not c.execute('SELECT 1 FROM products WHERE id=?',(product_id,)).fetchone():raise HTTPException(404,'Product not found')
+    case_code=case_code.strip().upper()
+    if case_code:
+        with db() as c:
+            case=c.execute('SELECT product_id FROM dataset_cases WHERE code=?',(case_code,)).fetchone()
+            if not case:raise HTTPException(404,'Dataset case not found')
+            if case['product_id'] and case['product_id']!=product_id:
+                raise HTTPException(409,'Dataset case liên kết Product Truth khác với sản phẩm đã chọn')
     ext=Path(file.filename or '').suffix.lower()
     if ext not in ('.mp4','.mov','.mkv','.webm'):raise HTTPException(400,'Chỉ nhận MP4/MOV/MKV/WEBM')
     jid=uuid.uuid4().hex[:12];stored=f'{jid}{ext}';target=UPLOAD/stored
@@ -352,7 +361,10 @@ async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source
             out.write(chunk)
     if not size:target.unlink(missing_ok=True);raise HTTPException(400,'Video rỗng')
     with db() as c:
-        c.execute('INSERT INTO jobs(id,filename,stored_name,product_id,status,source_url,rights,created_at,details) VALUES(?,?,?,?,?,?,?,?,?)',(jid,Path(file.filename).name,stored,product_id,'queued',source_url[:500],rights[:100],utc(),'{}'))
+        c.execute('INSERT INTO jobs(id,filename,stored_name,product_id,status,source_url,rights,created_at,details,case_code) VALUES(?,?,?,?,?,?,?,?,?,?)',(jid,Path(file.filename).name,stored,product_id,'queued',source_url[:500],rights[:100],utc(),'{}',case_code or None))
+        if case_code:
+            c.execute('UPDATE dataset_cases SET product_id=COALESCE(product_id,?),updated_at=? WHERE code=?',
+                      (product_id,utc(),case_code))
         audit(c,jid,'system','uploaded',{'size_bytes':size,'sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'source_url':source_url,'rights':rights})
     threading.Thread(target=analyze,args=(jid,),daemon=True).start()
     return {'id':jid,'status':'queued'}
@@ -479,3 +491,7 @@ def metrics():
                 'visual_candidate_jobs':visual_candidate_jobs,
                 'canonical_evidence':canonical_evidence,'raw_evidence':raw_evidence,
                 'note':'Precision/Recall chỉ tính high-severity rule flags với nhãn video-level; VLM medium candidates KHÔNG nằm trong các chỉ số này. Chưa có benchmark VLM theo loại lỗi.'}
+
+
+# Additive, backwards-compatible Sprint-2 evaluation dataset routes.
+install_dataset_routes(app,db,utc)

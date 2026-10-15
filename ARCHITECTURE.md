@@ -1,4 +1,4 @@
-# VerifAI v2 — Solution Architecture & BA Acceptance Criteria
+# VerifAI v2.1 — Solution Architecture & BA Acceptance Criteria
 
 ## A. Logical layers (11-layer architecture mapping)
 
@@ -16,7 +16,7 @@
 | 10. Persistence & audit | SQLite, frame files, audit log, JSON export | Local prototype |
 | 11. Evaluation / monitoring | Basic precision/recall on labels + coverage | Feasibility only |
 
-The mapping describes implemented logical responsibilities, **not a deployment with 11 separate microservices**. For a 15–20 video pilot, a modular monolith is deliberate to reduce overhead.
+The mapping describes implemented logical responsibilities, **not a deployment with 11 separate microservices**. For the official 80-case evaluation workbook, a modular monolith remains deliberate: these cases are not equivalent to 80 actual analyzed video files.
 
 ## B. Processing sequence
 
@@ -55,3 +55,14 @@ The mapping describes implemented logical responsibilities, **not a deployment w
 ## E. Data migration contract
 
 v2 adds only nullable/defaulted columns to `evidence` and `findings`. `products`, `jobs`, `labels`, `audits` are unchanged. v1 jobs remain readable. Old evidence has empty `metadata` and no end timestamp; API falls back to the original timestamp. Re-analysis replaces per-job findings/evidence and resets reviewer decision, while audit log remains append-only.
+
+## E. v2.1 Dataset-driven evaluation extension
+
+- `verifai_core/dataset.py` imports eight official Sprint-2 sheets with 80 cases and preserves product reference vs video-source provenance.
+- `dataset_cases` contains planned expected vs observed scenario values, original/manual ground-truth origin and verified (independently agreed) ground truth.
+- `dataset_simulated` preserves Sheet 5–6 simulated predictions but they cannot affect actual KPI calculation.
+- `dataset_rules` contains 10 policy references for **manual verification**, not automatically executable legal findings.
+- `dataset_annotations` contains independent human labels; any conflict excludes the sample until resolved.
+- A job's optional `case_code` attaches actual analyzed video to the planned evaluation case.
+- `/api/dataset/summary` computes actual precision/recall/F1 only with completed real jobs, perception coverage and at least two independent agreeing annotations.
+- No automatic crawling/downloading; public price references, variants and SKU require verification before use as hard product truth.

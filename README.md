@@ -1,4 +1,4 @@
-# VerifAI MVP v2.0 — VLM + Evidence Normalization + Visual Consistency
+# VerifAI MVP v2.1 — 80-case Dataset Workspace + VLM / Evidence / Visual
 
 **Working local web application** upgraded from v1.0. Frontend: standalone `static/index.html`; backend: FastAPI + SQLite + OpenCV; VLM: **Qwen3-VL-4B-Instruct via local Ollama** (optional); OCR/ASR remain optional.
 
@@ -141,7 +141,7 @@ Automated tests cover: v1 smoke flow; evidence dedup/provenance; scene-cut and t
 - Visual signals are screening heuristics, not robust object tracking, optical flow-based segmentation, product reference-image matching, deepfake detection, or frame-level truth labels.
 - A VLM can hallucinate; all findings require human review. OCR/ASR may miss text or transcribe incorrectly. Price rules can flag unrelated amounts.
 - No C2PA provenance verification, legal-compliance certification, online benchmark, or Ecomobi integration.
-- Pilot 15–20 videos is only for feasibility, not for estimating real-world precision/recall with confidence.
+- Official workbook v2.1 contains 80 evaluation case records (6 original / 44 error scenarios / 30 public sources), not necessarily 80 available or analyzed video files. Actual precision/recall remains exploratory.
 
 For architecture details and upgrade checklist see [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -152,3 +152,45 @@ For architecture details and upgrade checklist see [ARCHITECTURE.md](ARCHITECTUR
 - [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR), [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
 
 Review individual library/model licenses before commercial use.
+
+## v2.1 — Sprint-2 Dataset Workspace (80 official evaluation cases)
+
+The latest Sprint-2 workbook defines **80 evaluation cases**: `VID_GOC01–06`
+(6 originals), `VID_LOI01–44` (44 controlled-error scenarios) and `PUB001–030`
+(30 public examples). These are **case records, not proof that 80 actual video
+files have been downloaded or run through VerifAI**.
+
+1. Run the existing app (after backing up `data/`) with `python -m uvicorn backend:app --reload`.
+2. Open **Dataset (80) → Import workbook**, select `Sprint 2 - Thu thập & tạo dữ liệu thật.xlsx`.
+3. The importer creates 6 sample Product Truth records. Public cases with no
+   verified SKU are kept unlinked. Review prices/variants/claims before using
+   them as hard rules; product info and legal references are not auto-verified.
+4. Select a case, optionally link the correct Product Truth, and choose
+   **Upload video cho case**. A corresponding **real video file** is required
+   to produce an actual result.
+5. Add at least **two independent agreeing annotations** under Dataset. Ground
+   truth from one workbook reviewer or a controlled *script plan* is not treated
+   as verified real-video ground truth.
+6. Open Evaluation: the **Official evaluation — Actual runs only** panel has
+   no metrics until both real-video results and independently verified labels
+   exist. Metrics are based on the latest completed run per case with perception
+   coverage; coverage-only and weak visual heuristics are excluded.
+
+### Isolation and scope rules
+
+- The Sheet 5/6 `VerifAI báo` fields are **simulated baseline predictions**:
+  stored in `dataset_simulated`, never mixed with actual `jobs`/model metrics.
+- Sheet 7 policy rules are imported as **unverified references**, not activated
+  as executable law/compliance judgments.
+- Re-imports are idempotent for cases, predictions, rules and sample products.
+  Existing reviewed case/product links and annotation records are preserved.
+- No automatic video download or scraping. The public links are metadata only.
+- This remains a **localhost research prototype without authentication**; do
+  not expose it publicly or upload private/customer/children data without proper safeguards.
+- Running `python -m pytest -q` includes the new v2.1 importer regression tests.
+
+New API endpoints: `POST /api/dataset/import`, `GET /api/dataset/cases`,
+`GET /api/dataset/summary`, `GET /api/dataset/policies`,
+`POST /api/dataset/cases/{code}/link`,
+`POST /api/dataset/cases/{code}/annotations`. `POST /api/jobs` accepts optional
+`case_code` form data so video jobs can be linked to evaluation cases.
