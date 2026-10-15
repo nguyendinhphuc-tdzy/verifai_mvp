@@ -1,4 +1,7 @@
 -r requirements.txt
-# Optional: install PaddlePaddle engine appropriate for CPU/GPU first per official docs
-paddleocr>=3,<4
-faster-whisper>=1.1
+# CPU-first validated version set for Python 3.11 on Windows x64.
+# Install separately: python -m pip install -r requirements-ai.txt
+# PaddlePaddle is the OCR inference runtime, not included by paddleocr itself.
+paddlepaddle==3.2.0
+paddleocr==3.7.0
+faster-whisper==1.2.1
