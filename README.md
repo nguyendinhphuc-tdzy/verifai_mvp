@@ -87,14 +87,57 @@ The 4B quantized weights are about **3.3 GB** on disk, plus RAM/VRAM overhead. C
 
 **Privacy:** Default Ollama endpoint is localhost. Setting `VLM_ALLOW_REMOTE=1` may send image frames to another host. Do not use cloud/remote endpoints for sensitive videos without explicit authorization.
 
-## 4. OCR/ASR optional installation
+## 4. Enable OCR + ASR on Windows (Python 3.11, CPU first)
 
-```bash
-# Install the compatible PaddlePaddle engine first, per official PaddleOCR docs
-pip install -r requirements-ai.txt
+The base install `requirements.txt` intentionally has **no heavy OCR/ASR engines**.
+Install the AI extras separately in the **same Python environment** used by
+Uvicorn. These versions were selected for Windows x64 / Python 3.11 compatibility
+(PaddlePaddle 3.2.0, PaddleOCR 3.7.0, faster-whisper 1.2.1); they are not claims
+of benchmark accuracy. GPU deployments need a separate CUDA-specific setup.
+
+```powershell
+cd C:\Users\PC\Documents\verifai_mvp
+# If using a venv, activate it first: .\.venv\Scripts\Activate.ps1
+python --version
+python -m pip install --upgrade pip
+python -m pip install -r requirements-ai.txt
+python -m pip check
+python scripts/check_perception.py
 ```
 
-`requirements-ai.txt` installs PaddleOCR 3 and faster-whisper but does not bundle model weights. PaddleOCR and Whisper may download weights on first use. If you only need ASR, install `faster-whisper` separately.
+OCR uses PP-OCRv5 configured for Vietnamese (`OCR_LANG=vi`) and PaddlePaddle
+CPU inference. ASR uses faster-whisper with Vietnamese (`WHISPER_LANGUAGE=vi`),
+`WHISPER_MODEL=base`, CPU/INT8 by default. For potentially better transcription
+at a higher memory/latency cost, set `$env:WHISPER_MODEL="small"` before
+starting Uvicorn. `WHISPER_MODEL=tiny` is faster but less reliable.
+
+First live inference can download pretrained OCR and ASR models and may be slow.
+This is a deliberate local runtime choice, not automatic at installation time:
+
+```powershell
+python scripts/check_perception.py --live --video "C:\path\to\your\video.mp4"
+python -m uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
+Invoke-RestMethod http://127.0.0.1:8000/api/health | ConvertTo-Json -Depth 5
+```
+
+Check `ocr:true`, `asr:true` in health and **`coverage.ocr:ok` /
+`coverage.asr:ok`** in a *new or re-analyzed* video job. Health booleans
+confirm package presence only; they do not prove the native engine loads,
+that model weights exist, or that recognition is accurate. If `coverage` is
+`error: ...`, check the server traceback and run the live diagnostic above.
+An `ok` status with zero recognized lines may mean no readable text or speech.
+Re-analysis resets current findings and reviewer decision (preserves audit).
+
+`ffmpeg` on PATH is optional for faster-whisper audio decoding (PyAV bundles
+its own FFmpeg libraries), but is recommended for video conversion/troubleshooting.
+
+**VLM is separate**: Python dependencies do not install the Ollama executable
+or Qwen3-VL model. See section 3 to install Ollama, `ollama pull`, and set
+`VLM_ENABLED=1` in the terminal running the backend.
+
+References: [PaddleOCR installation](https://www.paddleocr.ai/main/en/version3.x/installation.html),
+[PaddleOCR multilingual OCR](https://www.paddleocr.ai/main/en/version3.x/pipeline_usage/OCR.html),
+[faster-whisper](https://github.com/SYSTRAN/faster-whisper).
 
 ## 5. What the v2 pipeline actually does
 
