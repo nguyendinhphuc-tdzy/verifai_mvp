@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
+from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
 from verifai_core.vlm import OllamaVLM, VLMError, vlm_enabled, PROMPT_VERSION
@@ -98,44 +99,21 @@ def create_product(v:ProductIn):
 def products():
     with db() as c:return [product_dict(r) for r in c.execute('SELECT * FROM products ORDER BY created_at DESC')]
 
-_ocr=None;_whisper=None;_model_lock=threading.Lock()
+# Separate, lazy-loaded OCR and ASR engines. Do not download models at startup.
+_ocr_service = OCRService()
+_asr_service = ASRService()
+
 def _has_paddle():
-    try: import importlib.util;return importlib.util.find_spec('paddleocr') is not None
-    except Exception:return False
+    return ocr_installed()
+
 def _has_whisper():
-    try: import importlib.util;return importlib.util.find_spec('faster_whisper') is not None
-    except Exception:return False
+    return asr_installed()
 
 def frame_ocr(frame):
-    global _ocr
-    if not _has_paddle():return [],'not_installed'
-    try:
-        import cv2
-        from paddleocr import PaddleOCR
-        with _model_lock:
-            if _ocr is None:_ocr=PaddleOCR(use_doc_orientation_classify=False,use_doc_unwarping=False,use_textline_orientation=False)
-            result=_ocr.predict(frame)
-        lines=[]
-        for item in result:
-            r=item.json if hasattr(item,'json') else item
-            if callable(r):r=r()
-            if isinstance(r,dict):
-                r=r.get('res',r)
-                for txt,score in zip(r.get('rec_texts',[]),r.get('rec_scores',[])):
-                    if str(txt).strip():lines.append((str(txt),float(score)))
-        return lines,'ok'
-    except Exception as e:return [],f'error: {str(e)[:180]}'
+    return _ocr_service.extract(frame)
 
 def transcribe(path):
-    global _whisper
-    if not _has_whisper():return [],'not_installed'
-    try:
-        from faster_whisper import WhisperModel
-        with _model_lock:
-            if _whisper is None:_whisper=WhisperModel(os.environ.get('WHISPER_MODEL','tiny'),device='cpu',compute_type='int8')
-            segments,_=_whisper.transcribe(str(path),beam_size=2,vad_filter=True,language='vi')
-            return [{'at':round(float(s.start),2),'text':s.text.strip(),'score':None} for s in segments if s.text.strip()],'ok'
-    except Exception as e:return [],f'error: {str(e)[:180]}'
+    return _asr_service.extract(path)
 
 def normalize(t):
     import unicodedata
