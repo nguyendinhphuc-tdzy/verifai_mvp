@@ -142,11 +142,12 @@ function openTab(id,{skipHistory=false}={}){
  });
  $('currentSectionLabel').textContent=tabNames[id];
  if(!skipHistory&&location.hash!=='#'+id)history.pushState({tab:id},'',location.pathname+location.search+'#'+id);
- window.scrollTo({top:0,behavior:'instant'});
+ window.scrollTo({top:0,behavior:'auto'});
  if(id==='queue')renderQueue();
 }
 document.querySelectorAll('.nav button[data-target]').forEach(x=>x.onclick=()=>openTab(x.dataset.target));
 window.addEventListener('popstate',()=>openTab(location.hash.slice(1)||'queue',{skipHistory:true}));
+window.addEventListener('hashchange',()=>openTab(location.hash.slice(1)||'queue',{skipHistory:true}));
 openTab(tabNames[location.hash.slice(1)]?location.hash.slice(1):'queue',{skipHistory:true});
 async function refreshAll(){try{[jobs,products]=await Promise.all([api('/api/jobs'),api('/api/products')]);renderProducts();renderQueue();renderOverview();const m=await api('/api/metrics');$('stat-total').textContent=m.total;$('stat-done').textContent=m.completed;$('stat-reviewed').textContent=m.reviewed;$('stat-labels').textContent=m.evaluated;function fmt(n){return n===null?'—':(n*100).toFixed(1)+'%'}$('metricCards').innerHTML=[['Precision',fmt(m.precision)],['Recall',fmt(m.recall)],['FP / FN',m.fp+' / '+m.fn],['Evaluated',m.evaluated+' / '+m.completed],['VLM analyzed',m.vlm_jobs??0],['VLM candidates',m.vlm_flagged_jobs??0],['Visual candidates',m.visual_candidate_jobs??0],['Canonical evidence',m.canonical_evidence??0]].map(([a,b])=>`<div class="stat"><small>${a}</small><strong>${b}</strong></div>`).join('')}catch(e){toast('Không kết nối API: '+e.message)}}
 const statusText={queued:'Trong hàng đợi',processing:'Đang phân tích',completed:'Đã phân tích',failed:'Lỗi xử lý'};
