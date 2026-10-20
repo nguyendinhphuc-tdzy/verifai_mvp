@@ -131,17 +131,68 @@ const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,
 function toast(msg){let el=document.createElement('div');el.className='toast';el.textContent=msg;$('toasts').append(el);setTimeout(()=>el.remove(),3800)}
 async function api(url,opt){const res=await fetch(url,opt);let d=await res.json().catch(()=>({}));if(!res.ok)throw Error(typeof d.detail==='string'?d.detail:res.status+' Request failed');return d}
 const post=(url,obj)=>api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
-function openTab(id){document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.target===id));window.scrollTo({top:0,behavior:'smooth'});if(id==='queue')renderQueue()}
-document.querySelectorAll('.nav button').forEach(x=>x.onclick=()=>openTab(x.dataset.target));
+const tabNames={queue:'Hàng đợi duyệt',analyze:'Phân tích video',overview:'Tổng quan',products:'Sản phẩm tham chiếu',dataset:'Bộ kiểm thử',evaluation:'Đánh giá thực tế'};
+function openTab(id,{skipHistory=false}={}){
+ if(!tabNames[id])return;
+ document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===id));
+ document.querySelectorAll('.nav button[data-target]').forEach(x=>{
+  const active=x.dataset.target===id;
+  x.classList.toggle('active',active);
+  if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current');
+ });
+ $('currentSectionLabel').textContent=tabNames[id];
+ if(!skipHistory&&location.hash!=='#'+id)history.pushState({tab:id},'',location.pathname+location.search+'#'+id);
+ window.scrollTo({top:0,behavior:'instant'});
+ if(id==='queue')renderQueue();
+}
+document.querySelectorAll('.nav button[data-target]').forEach(x=>x.onclick=()=>openTab(x.dataset.target));
+window.addEventListener('popstate',()=>openTab(location.hash.slice(1)||'queue',{skipHistory:true}));
+openTab(tabNames[location.hash.slice(1)]?location.hash.slice(1):'queue',{skipHistory:true});
 async function refreshAll(){try{[jobs,products]=await Promise.all([api('/api/jobs'),api('/api/products')]);renderProducts();renderQueue();renderOverview();const m=await api('/api/metrics');$('stat-total').textContent=m.total;$('stat-done').textContent=m.completed;$('stat-reviewed').textContent=m.reviewed;$('stat-labels').textContent=m.evaluated;function fmt(n){return n===null?'—':(n*100).toFixed(1)+'%'}$('metricCards').innerHTML=[['Precision',fmt(m.precision)],['Recall',fmt(m.recall)],['FP / FN',m.fp+' / '+m.fn],['Evaluated',m.evaluated+' / '+m.completed],['VLM analyzed',m.vlm_jobs??0],['VLM candidates',m.vlm_flagged_jobs??0],['Visual candidates',m.visual_candidate_jobs??0],['Canonical evidence',m.canonical_evidence??0]].map(([a,b])=>`<div class="stat"><small>${a}</small><strong>${b}</strong></div>`).join('')}catch(e){toast('Không kết nối API: '+e.message)}}
-function tableData(data){if(!data.length)return '<div class="empty"><div class="emoji">▣</div>Chưa có video. Hãy tạo product truth rồi upload video.</div>';return `<table><thead><tr><th>Video</th><th>Product</th><th>Trạng thái</th><th>AI verdict</th><th>Reviewer</th><th></th></tr></thead><tbody>${data.map(j=>`<tr><td><b class="truncate" style="display:block">${esc(j.filename)}</b><small class="muted">${esc(j.created_at?.slice(0,16).replace('T',' '))}</small></td><td><b>${esc(j.sku)}</b><br><small class="muted">${esc(j.product_name)}</small></td><td><span class="pill ${esc(j.status)}">${esc(j.status)}</span></td><td><span class="pill ${esc(j.decision)}">${esc(j.decision||'—')}</span></td><td>${esc(j.review_decision||'Chưa review')}</td><td><button class="mini" onclick="showJob('${j.id}')">Chi tiết →</button></td></tr>`).join('')}</tbody></table>`}
+const statusText={queued:'Trong hàng đợi',processing:'Đang phân tích',completed:'Đã phân tích',failed:'Lỗi xử lý'};
+const decisionText={Pass:'Chấp thuận',Regenerate:'Yêu cầu sửa','Needs Review':'Cần kiểm tra'};
+function tableData(data){
+ if(!data.length)return '<div class="work-empty"><h3>Chưa có video phù hợp</h3><p>Bạn có thể thử đổi bộ lọc hoặc bắt đầu phân tích một video.</p><button class="button secondary" onclick="openTab(\'analyze\')">+ Phân tích video</button></div>';
+ return `<table><thead><tr><th>Video</th><th>Sản phẩm</th><th>Tiến độ</th><th>Quyết định</th><th></th></tr></thead><tbody>${data.map(j=>`<tr><td><b class="truncate" style="display:block">${esc(j.filename)}</b><small class="muted">${esc(j.created_at?.slice(0,16).replace('T',' '))}</small></td><td><b>${esc(j.sku)}</b><br><small class="muted">${esc(j.product_name)}</small></td><td><span class="pill ${esc(j.status)}">${esc(statusText[j.status]||j.status)}</span></td><td><span class="pill ${esc(j.review_decision||j.decision||'')}">${esc(j.review_decision?decisionText[j.review_decision]||j.review_decision:'Chưa duyệt')}</span></td><td><button type="button" class="mini" onclick="showJob('${esc(j.id)}')">Mở →</button></td></tr>`).join('')}</tbody></table>`;
+}
 function renderOverview(){$('overviewJobs').innerHTML=tableData(jobs.slice(0,6))}
-function renderQueue(){let q=$('queueSearch').value.toLowerCase();$('queueTable').innerHTML=tableData(jobs.filter(j=>(j.filename+' '+j.sku+' '+j.product_name).toLowerCase().includes(q)))}
+function renderQueue(){
+ const q=$('queueSearch').value.trim().toLowerCase();
+ const mode=$('queueStatus').value;
+ const filtered=jobs.filter(j=>{
+  const hit=[j.filename,j.sku,j.product_name,j.case_code].join(' ').toLowerCase().includes(q);
+  if(!hit)return false;
+  if(mode==='all')return true;
+  if(mode==='pending')return !j.review_decision && j.status!=='failed';
+  if(mode==='processing')return j.status==='queued'||j.status==='processing';
+  if(mode==='reviewed')return Boolean(j.review_decision);
+  if(mode==='failed')return j.status==='failed';
+  return true;
+ });
+ $('queueCount').textContent=filtered.length+' video';
+ $('queueTable').innerHTML=tableData(filtered);
+}
 function renderProducts(){$('uploadProduct').innerHTML='<option value="">Chọn sản phẩm tham chiếu</option>'+products.map(p=>`<option value="${p.id}">${esc(p.sku)} — ${esc(p.name)}</option>`).join('');$('productsList').innerHTML=products.length?products.map(p=>`<div class="finding"><div class="row space"><b>${esc(p.name)}</b><span class="pill">${esc(p.sku)}</span></div><div class="muted">${esc(p.brand)} · ${p.price===null?'Chưa nhập giá':p.price.toLocaleString('vi-VN')+' ₫'}</div><small class="muted">${p.claims.length} approved claims · ${p.banned.length} restricted phrases</small></div>`).join(''):'<div class="empty">Chưa có product truth nào.</div>'}
 $('productForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await post('/api/products',{sku:f.get('sku'),name:f.get('name'),brand:f.get('brand'),price:f.get('price')===''?null:Number(f.get('price')),claims:String(f.get('claims')).split('\n').map(x=>x.trim()).filter(Boolean),banned:String(f.get('banned')).split('\n').map(x=>x.trim()).filter(Boolean)});e.target.reset();toast('Đã lưu product truth');await refreshAll()}catch(err){toast(err.message)}};
 $('videoFile').onchange=e=>{$('fileLabel').textContent=e.target.files?.[0]?.name||'Chọn hoặc kéo thả video vào đây'};['dragenter','dragover'].forEach(ev=>$('dropzone').addEventListener(ev,e=>{e.preventDefault();$('dropzone').classList.add('drag')}));['dragleave','drop'].forEach(ev=>$('dropzone').addEventListener(ev,e=>{e.preventDefault();$('dropzone').classList.remove('drag')}));$('dropzone').addEventListener('drop',e=>{let files=e.dataTransfer.files;if(files?.length){$('videoFile').files=files;$('fileLabel').textContent=files[0].name}});
 $('uploadForm').onsubmit=async e=>{e.preventDefault();const file=$('videoFile').files[0],pid=$('uploadProduct').value;if(!file||!pid)return toast('Cần chọn video và product truth');if(file.size>150*1024*1024)return toast('Video quá lớn');const form=new FormData();form.append('file',file);form.append('product_id',pid);form.append('case_code',$('uploadCase').value);form.append('source_url',$('sourceUrl').value);form.append('rights',$('rights').value);$('uploadBtn').disabled=true;$('uploadProgress').classList.remove('hidden');try{const j=await api('/api/jobs',{method:'POST',body:form});toast('Đã tạo analysis job');$('uploadForm').reset();$('analysisAdvanced').open=false;$('fileLabel').textContent='Chọn hoặc kéo thả video vào đây';await refreshAll();openTab('queue');await showJob(j.id)}catch(err){toast('Upload thất bại: '+err.message)}finally{$('uploadBtn').disabled=false;$('uploadProgress').classList.add('hidden')}};
-async function showJob(jid){openTab('queue');selected=jid;if(poll)clearInterval(poll);await loadJob(jid);poll=setInterval(async()=>{if(selected!==jid)return clearInterval(poll);try{const d=await api('/api/jobs/'+jid);if(d.status==='completed'||d.status==='failed'){clearInterval(poll);await loadJob(jid);await refreshAll()}}catch(e){clearInterval(poll)}},2500)}
+async function showJob(jid){
+ const changed=selected!==jid;
+ openTab('queue');selected=jid;
+ if(changed){currentJob=null;$('reviewNote').value='';$('reviewer').value='';$('reviewEvidenceDetails').open=false;}
+ if(poll)clearInterval(poll);
+ try{await loadJob(jid);if(changed)requestAnimationFrame(()=>$('jobDetail').scrollIntoView({behavior:'smooth',block:'start'}))}
+ catch(err){toast('Không mở được video: '+err.message);return}
+ poll=setInterval(async()=>{
+  if(selected!==jid)return clearInterval(poll);
+  try{
+   const d=await api('/api/jobs/'+jid);
+   if(d.status==='completed'||d.status==='failed'){
+    clearInterval(poll);await loadJob(jid);await refreshAll();
+   }
+  }catch(e){clearInterval(poll)}
+ },2500);
+}
 async function loadJob(jid){
  const d=await api('/api/jobs/'+jid);currentJob=d;
  $('jobDetail').classList.remove('hidden');$('jobTitle').textContent=d.filename;
@@ -169,12 +220,39 @@ function renderEvidence(){
   return `<div class="evidence-card" id="evidence-${Number(e.id)}"><div class="row space"><span><span class="pill">${esc(e.kind)}</span> <b>#${Number(e.id)}</b></span><button class="mini" onclick="seek(${t1})">▶ ${rangeStart.toFixed(1)}${rangeEnd>rangeStart?'–'+rangeEnd.toFixed(1):''}s</button></div><p>${esc(e.content)}</p><div class="meta">${esc(e.source_model||'unknown')} · ${sources.length} raw source(s)${e.score!==null&&e.score!==undefined?' · score '+Math.round(e.score*100)+'%':''} · ${esc(e.fingerprint||'legacy')}</div>${thumb||thumb2?`<div class="imgs">${thumb}${thumb2}</div>`:''}</div>`;
  }).join(''):'<div class="empty">Không có evidence thuộc bộ lọc này.</div>';
 }
-function jumpEvidence(id){$('evidenceFilter').value='all';renderEvidence();const el=$('evidence-'+id);if(el){el.classList.add('highlight');el.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>el.classList.remove('highlight'),2500)}}
+function jumpEvidence(id){
+ $('reviewEvidenceDetails').open=true;
+ $('evidenceFilter').value='all';renderEvidence();
+ requestAnimationFrame(()=>{
+  const el=$('evidence-'+id);
+  if(el){el.classList.add('highlight');el.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>el.classList.remove('highlight'),2000)}
+ });
+}
 function exportEvidence(){if(selected)window.open(`/api/jobs/${selected}/evidence/export`,'_blank')}
 async function reanalyzeSelected(){if(!selected)return;if(!confirm('Chạy lại phân tích? Các findings và quyết định reviewer trước đó sẽ được reset (audit log vẫn giữ).'))return;try{await api(`/api/jobs/${selected}/reanalyze`,{method:'POST'});toast('Đã yêu cầu chạy lại với VLM hiện tại');await showJob(selected)}catch(e){toast(e.message)}}
 function seek(t){let v=$('player');v.currentTime=t;v.play().catch(()=>{});v.scrollIntoView({behavior:'smooth',block:'center'})}
-async function flag(id,state){const reviewer=$('reviewer').value.trim()||'Reviewer';try{await api(`/api/jobs/${selected}/findings/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({state,reviewer})});await loadJob(selected);toast('Đã cập nhật flag')}catch(e){toast(e.message)}}
-async function submitReview(decision){if(!selected)return;const reviewer=$('reviewer').value.trim();if(!reviewer)return toast('Nhập tên reviewer trước khi duyệt');try{await post(`/api/jobs/${selected}/review`,{decision,reviewer,note:$('reviewNote').value});toast('Đã lưu quyết định của reviewer');await loadJob(selected);await refreshAll()}catch(e){toast(e.message)}}
+async function flag(id,state){
+ const reviewer=$('reviewer').value.trim();
+ if(!reviewer)return toast('Vui lòng nhập tên người duyệt trước khi xác nhận cảnh báo');
+ try{
+  await api(`/api/jobs/${selected}/findings/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({state,reviewer})});
+  await loadJob(selected);toast('Đã cập nhật cảnh báo');
+ }catch(e){toast(e.message)}
+}
+async function submitReview(decision){
+ if(!selected||!currentJob)return;
+ const reviewer=$('reviewer').value.trim();
+ if(!reviewer)return toast('Vui lòng nhập tên người duyệt trước khi lưu quyết định');
+ if(currentJob.status!=='completed')return toast('Video chưa được phân tích xong');
+ if(decision==='Pass'){
+  const c=currentJob.details?.coverage||{};
+  const incomplete=['ocr','asr','vlm'].filter(x=>c[x]!=='ok');
+  const pending=currentJob.findings.filter(f=>f.flag_review==='unreviewed').length;
+  if((incomplete.length||pending)&&!confirm('Có '+pending+' cảnh báo chưa xác minh và '+incomplete.length+' nguồn AI chưa đầy đủ. Bạn đã tự kiểm tra video và vẫn muốn chấp thuận?'))return;
+ }
+ try{await post(`/api/jobs/${selected}/review`,{decision,reviewer,note:$('reviewNote').value});toast('Đã lưu quyết định');await loadJob(selected);await refreshAll()}
+ catch(e){toast(e.message)}
+}
 async function addLabel(){if(!selected)return;const annotator=$('reviewer').value.trim();if(!annotator)return toast('Nhập tên annotator');try{await post(`/api/jobs/${selected}/labels`,{annotator,label:$('truthLabel').value});toast('Đã lưu ground truth label');await loadJob(selected);await refreshAll()}catch(e){toast(e.message)}}
 api('/api/health').then(h=>{$('health').textContent=`OCR ${h.ocr?'ready':'optional'} · ASR ${h.asr?'ready':'optional'} · VLM ${h.vlm?.ready?'ready':h.vlm?.enabled?'unavailable':'disabled'} · ${h.vlm?.model||''}`}).catch(()=>{$('health').textContent='Backend chưa kết nối'});refreshAll();
 
