@@ -140,3 +140,19 @@ def test_real_video_benchmark_contract_with_mock_inference(monkeypatch,tmp_path)
     assert result['ocr'][0]['samples']==3
     assert result['asr'][1]['segments']==1
     assert all(x['status']=='ok' for x in result['ocr']+result['asr'])
+
+
+def test_manual_reanalysis_resets_recovery_budget(monkeypatch,tmp_path):
+    backend=_setup(monkeypatch,tmp_path)
+    jid=_db_job(backend,tmp_path,'failed')
+    started=[]
+    monkeypatch.setattr(backend,'_start_job',started.append)
+    with backend.db() as conn:
+        conn.execute('UPDATE jobs SET recovery_attempts=2 WHERE id=?',(jid,))
+    client=TestClient(backend.app)
+    result=client.post('/api/jobs/'+jid+'/reanalyze')
+    assert result.status_code==200,result.text
+    assert started==[jid]
+    with backend.db() as conn:
+        j=conn.execute('SELECT status,recovery_attempts FROM jobs WHERE id=?',(jid,)).fetchone()
+        assert (j['status'],j['recovery_attempts'])==('queued',0)
