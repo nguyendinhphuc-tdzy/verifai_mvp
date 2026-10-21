@@ -268,3 +268,9 @@ Price assessments are stored in canonical evidence metadata and exported as JSON
 
 Read [Price Verification A1](docs/PRICE_VERIFICATION_A1.md) for formats,
 examples, tests, limitations and safe re-analysis guidance.
+
+## Sprint A2 — Product Truth & Claim Verification (v3-alpha2)
+
+Reference products now support source URL/note, explicitly unverified/reviewed status, a revision counter, audit snapshots, and a revision-checked edit route. Restricted phrase detection distinguishes assertions from explicit negation and uncertain quotations, with all outcomes retained in evidence metadata. An asserted candidate is medium-severity and **requires human verification**, never automatic rejection. Old products/dataset importer remain compatible.
+
+See [Product Truth & Claim Verification A2](docs/PRODUCT_TRUTH_CLAIMS_A2.md) for API, UI, tests, audit implications, and limitations.
