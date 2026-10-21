@@ -104,7 +104,12 @@
         <div class="field"><label for="newPrice">Giá tham chiếu (VNĐ)</label><input id="newPrice" name="price" type="number" min="0" placeholder="149000"></div>
         <div class="field"><label for="newClaims">Approved claims (mỗi dòng một claim)</label><textarea id="newClaims" name="claims" placeholder="Thông tin được phép sử dụng"></textarea></div>
         <div class="field"><label for="newBanned">Cụm từ hạn chế (mỗi dòng một cụm)</label><textarea id="newBanned" name="banned" placeholder="Nội dung cần cảnh báo"></textarea></div>
-        <button class="button" type="submit">Lưu sản phẩm</button>
+        <details class="analysis-optional"><summary>Nguồn tham chiếu &amp; xác minh</summary><div class="optional-body">
+          <div class="field"><label for="productReferenceUrl">URL nguồn (nếu có)</label><input id="productReferenceUrl" name="reference_url" type="url" placeholder="https://..."></div>
+          <div class="field"><label for="productReferenceNote">Ghi chú nguồn</label><textarea id="productReferenceNote" name="reference_note" placeholder="Nhãn sản phẩm, tài liệu xác minh, ngày đối chiếu..."></textarea></div>
+          <div class="field"><label for="productReferenceStatus">Trạng thái tham chiếu</label><select id="productReferenceStatus" name="reference_status"><option value="unverified">Chưa xem xét</option><option value="reviewed">Đã xem xét thủ công (không đồng nghĩa chứng nhận)</option></select></div>
+        </div></details>
+        <div class="row"><button class="button" id="productSaveButton" type="submit">Lưu sản phẩm</button><button class="button ghost hidden" type="button" id="productCancelButton" onclick="cancelProductEdit()">Hủy chỉnh sửa</button></div>
       </form>
     </div></details>
   </section>
@@ -174,8 +179,57 @@ function renderQueue(){
  $('queueCount').textContent=filtered.length+' video';
  $('queueTable').innerHTML=tableData(filtered);
 }
-function renderProducts(){$('uploadProduct').innerHTML='<option value="">Chọn sản phẩm tham chiếu</option>'+products.map(p=>`<option value="${p.id}">${esc(p.sku)} — ${esc(p.name)}</option>`).join('');$('productsList').innerHTML=products.length?products.map(p=>`<div class="finding"><div class="row space"><b>${esc(p.name)}</b><span class="pill">${esc(p.sku)}</span></div><div class="muted">${esc(p.brand)} · ${p.price===null?'Chưa nhập giá':p.price.toLocaleString('vi-VN')+' ₫'}</div><small class="muted">${p.claims.length} approved claims · ${p.banned.length} restricted phrases</small></div>`).join(''):'<div class="empty">Chưa có product truth nào.</div>'}
-$('productForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await post('/api/products',{sku:f.get('sku'),name:f.get('name'),brand:f.get('brand'),price:f.get('price')===''?null:Number(f.get('price')),claims:String(f.get('claims')).split('\n').map(x=>x.trim()).filter(Boolean),banned:String(f.get('banned')).split('\n').map(x=>x.trim()).filter(Boolean)});e.target.reset();toast('Đã lưu product truth');await refreshAll()}catch(err){toast(err.message)}};
+let editingProductId=null;
+function renderProducts(){
+ $('uploadProduct').innerHTML='<option value="">Chọn sản phẩm tham chiếu</option>'+
+  products.map(p=>`<option value="${esc(p.id)}">${esc(p.sku)} — ${esc(p.name)}</option>`).join('');
+ $('productsList').innerHTML=products.length?products.map(p=>`
+ <div class="finding"><div class="row space"><div style="min-width:0"><b>${esc(p.name)}</b><div class="muted">${esc(p.brand)} · ${p.price===null?'Chưa nhập giá':p.price.toLocaleString('vi-VN')+' ₫'}</div>
+ <small class="muted">${p.claims.length} claims được phép · ${p.banned.length} cụm hạn chế · ${p.reference_status==='reviewed'?'Đã xem xét nguồn':'Chưa xem xét nguồn'}</small></div>
+ <div class="row"><span class="pill">${esc(p.sku)}</span><button class="mini" type="button" onclick="startProductEdit('${esc(p.id)}')">Chỉnh sửa</button></div></div></div>`).join(''):'<div class="empty">Chưa có sản phẩm tham chiếu nào.</div>';
+}
+function startProductEdit(id){
+ const p=products.find(item=>item.id===id);if(!p)return;
+ editingProductId=id;const form=$('productForm');
+ form.elements.sku.value=p.sku;form.elements.name.value=p.name;form.elements.brand.value=p.brand;
+ form.elements.price.value=p.price===null?'':p.price;
+ form.elements.claims.value=p.claims.join('\n');form.elements.banned.value=p.banned.join('\n');
+ form.elements.reference_url.value=p.reference_url||'';
+ form.elements.reference_note.value=p.reference_note||'';
+ form.elements.reference_status.value=p.reference_status||'unverified';
+ $('newProductDetails').open=true;
+ $('productSaveButton').textContent='Lưu thay đổi';
+ $('productCancelButton').classList.remove('hidden');
+ requestAnimationFrame(()=>form.elements.sku.focus());
+}
+function cancelProductEdit(){
+ editingProductId=null;$('productForm').reset();
+ $('productSaveButton').textContent='Lưu sản phẩm';
+ $('productCancelButton').classList.add('hidden');
+ $('newProductDetails').open=false;
+}
+$('productForm').onsubmit=async e=>{
+ e.preventDefault();const form=e.target,f=new FormData(form);
+ const payload={sku:String(f.get('sku')),name:String(f.get('name')),brand:String(f.get('brand')),
+ price:f.get('price')===''?null:Number(f.get('price')),
+ claims:String(f.get('claims')).split('\n').map(x=>x.trim()).filter(Boolean),
+ banned:String(f.get('banned')).split('\n').map(x=>x.trim()).filter(Boolean),
+ reference_url:String(f.get('reference_url')||''),reference_note:String(f.get('reference_note')||''),
+ reference_status:String(f.get('reference_status')||'unverified')};
+ const p=editingProductId?products.find(item=>item.id===editingProductId):null;
+ if(editingProductId&&!p)return toast('Sản phẩm không còn trong danh sách; hãy tải lại');
+ const button=$('productSaveButton');button.disabled=true;
+ try{
+  if(p){
+   await api('/api/products/'+encodeURIComponent(p.id),{method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({...payload,expected_revision:p.revision})});
+  }else await post('/api/products',payload);
+  toast(p?'Đã lưu phiên bản Product Truth mới':'Đã tạo Product Truth');
+  cancelProductEdit();await refreshAll();
+ }catch(err){toast('Không lưu được: '+err.message)}
+ finally{button.disabled=false}
+};
 $('videoFile').onchange=e=>{$('fileLabel').textContent=e.target.files?.[0]?.name||'Chọn hoặc kéo thả video vào đây'};['dragenter','dragover'].forEach(ev=>$('dropzone').addEventListener(ev,e=>{e.preventDefault();$('dropzone').classList.add('drag')}));['dragleave','drop'].forEach(ev=>$('dropzone').addEventListener(ev,e=>{e.preventDefault();$('dropzone').classList.remove('drag')}));$('dropzone').addEventListener('drop',e=>{let files=e.dataTransfer.files;if(files?.length){$('videoFile').files=files;$('fileLabel').textContent=files[0].name}});
 $('uploadForm').onsubmit=async e=>{e.preventDefault();const file=$('videoFile').files[0],pid=$('uploadProduct').value;if(!file||!pid)return toast('Cần chọn video và product truth');if(file.size>150*1024*1024)return toast('Video quá lớn');const form=new FormData();form.append('file',file);form.append('product_id',pid);form.append('case_code',$('uploadCase').value);form.append('source_url',$('sourceUrl').value);form.append('rights',$('rights').value);$('uploadBtn').disabled=true;$('uploadProgress').classList.remove('hidden');try{const j=await api('/api/jobs',{method:'POST',body:form});toast('Đã tạo analysis job');$('uploadForm').reset();$('analysisAdvanced').open=false;$('fileLabel').textContent='Chọn hoặc kéo thả video vào đây';await refreshAll();openTab('queue');await showJob(j.id)}catch(err){toast('Upload thất bại: '+err.message)}finally{$('uploadBtn').disabled=false;$('uploadProgress').classList.add('hidden')}};
 const progressNames={sampling:'Đang đọc khung hình',ocr:'Đang nhận diện chữ (OCR)',asr:'Đang nhận diện lời nói (ASR)',visual:'Đang kiểm tra hình ảnh',vlm:'Đang phân tích VLM',finalizing:'Đang tổng hợp kết quả',recovered:'Đang phục hồi job'};
@@ -221,7 +275,13 @@ async function loadJob(jid){
  renderEvidence();
  const incompleteCoverage=d.status==='completed'&&['ocr','asr','vlm'].some(k=>c[k]!=='ok');
  const caution=incompleteCoverage?'<p class="notice" role="note">Một số nguồn kiểm tra chưa sẵn sàng. Hãy xem lại video thủ công trước khi ra quyết định.</p>':'';
- $('findings').innerHTML=caution+(d.status!=='completed'?'<div class="empty">'+esc(progressText(d))+'</div>':d.findings.length?d.findings.map(f=>`<div class="finding"><header><span><span class="pill ${esc(f.severity)}">${esc(f.severity)}</span> <b>${esc(findingNames[f.code]||f.code)}</b></span><button class="mini" onclick="seek(${Number(f.timestamp)})">▶ ${Number(f.timestamp).toFixed(1)}s</button></header><p>${esc(f.detail)}</p><div class="row"><span class="footnote">${esc(f.source||'rule')}${f.confidence!==null&&f.confidence!==undefined?' · confidence (uncalibrated) '+Math.round(f.confidence*100)+'%':''}</span>${f.evidence_id?`<button class="mini" onclick="jumpEvidence(${Number(f.evidence_id)})">↗ Evidence #${Number(f.evidence_id)}</button>`:''}</div><div class="row" style="margin-top:9px"><button class="mini" onclick="flag(${f.id},'confirmed')">✓ Confirm</button><button class="mini" onclick="flag(${f.id},'rejected')">✕ Reject</button><span class="footnote">${esc(f.flag_review)}</span></div></div>`).join(''):'<div class="notice">Không có cảnh báo trên những module đã chạy; các nhóm lỗi chưa được kiểm tra vẫn yêu cầu reviewer.</div>');
+ const truth=d.details?.product_truth_snapshot||{};
+ const truthStale=d.status==='completed'&&truth.revision&&d.product?.revision&&truth.revision!==d.product.revision;
+ const truthAlert=d.status!=='completed'?'':truthStale
+  ?'<p class="notice">Product Truth đã được cập nhật sau lần phân tích này. Chạy phân tích lại để sử dụng dữ liệu mới, và lưu lại quyết định trước đó nếu cần.</p>'
+  :truth.reference_status!=='reviewed'
+   ?'<p class="notice">Nguồn Product Truth chưa được xem xét; reviewer cần xác minh tham chiếu trước khi chấp thuận.</p>':'';
+ $('findings').innerHTML=truthAlert+caution+(d.status!=='completed'?'<div class="empty">'+esc(progressText(d))+'</div>':d.findings.length?d.findings.map(f=>`<div class="finding"><header><span><span class="pill ${esc(f.severity)}">${esc(f.severity)}</span> <b>${esc(findingNames[f.code]||f.code)}</b></span><button class="mini" onclick="seek(${Number(f.timestamp)})">▶ ${Number(f.timestamp).toFixed(1)}s</button></header><p>${esc(f.detail)}</p><div class="row"><span class="footnote">${esc(f.source||'rule')}${f.confidence!==null&&f.confidence!==undefined?' · confidence (uncalibrated) '+Math.round(f.confidence*100)+'%':''}</span>${f.evidence_id?`<button class="mini" onclick="jumpEvidence(${Number(f.evidence_id)})">↗ Evidence #${Number(f.evidence_id)}</button>`:''}</div><div class="row" style="margin-top:9px"><button class="mini" onclick="flag(${f.id},'confirmed')">✓ Confirm</button><button class="mini" onclick="flag(${f.id},'rejected')">✕ Reject</button><span class="footnote">${esc(f.flag_review)}</span></div></div>`).join(''):'<div class="notice">Không có cảnh báo trên những module đã chạy; các nhóm lỗi chưa được kiểm tra vẫn yêu cầu reviewer.</div>');
  $('audits').innerHTML=d.audits.map(a=>`<div>${esc(a.created_at.slice(11,19))} · ${esc(a.actor)} · ${esc(a.action)}</div>`).join('')||'Chưa có log';
  if(d.reviewer)$('reviewer').value=d.reviewer;if(d.review_note)$('reviewNote').value=d.review_note;
 }
@@ -265,7 +325,10 @@ async function submitReview(decision){
   const c=currentJob.details?.coverage||{};
   const incomplete=['ocr','asr','vlm'].filter(x=>c[x]!=='ok');
   const pending=currentJob.findings.filter(f=>f.flag_review==='unreviewed').length;
-  if((incomplete.length||pending)&&!confirm('Có '+pending+' cảnh báo chưa xác minh và '+incomplete.length+' nguồn AI chưa đầy đủ. Bạn đã tự kiểm tra video và vẫn muốn chấp thuận?'))return;
+  const truth=currentJob.details?.product_truth_snapshot||{};
+  const refIssue=truth.reference_status!=='reviewed'||
+   (truth.revision&&truth.revision!==currentJob.product?.revision);
+  if((incomplete.length||pending||refIssue)&&!confirm('Có '+pending+' cảnh báo chưa xác minh, '+incomplete.length+' nguồn AI chưa đầy đủ và '+(refIssue?'Product Truth cần xem lại.':'Product Truth đã được xem xét.')+' Bạn vẫn muốn chấp thuận sau khi tự kiểm tra?'))return;
  }
  try{await post(`/api/jobs/${selected}/review`,{decision,reviewer,note:$('reviewNote').value});toast('Đã lưu quyết định');await loadJob(selected);await refreshAll()}
  catch(e){toast(e.message)}
