@@ -55,6 +55,11 @@
         </div>
         <div class="panel">
           <div class="review-subhead"><h3>Cảnh báo cần xác minh</h3><button type="button" class="mini" onclick="reanalyzeSelected()" title="Chạy lại sẽ đặt lại cảnh báo và quyết định reviewer đã có">↻ Phân tích lại</button></div>
+          <div id="verificationSummary" class="notice" role="status" aria-live="polite"></div>
+          <details id="verificationDetails" class="detail-disclosure">
+            <summary>Giải thích kết quả kiểm tra <span id="verificationCount" class="footnote"></span></summary>
+            <div id="verificationChecks" class="disclosure-body"></div>
+          </details>
           <div id="findings" aria-label="Các cảnh báo AI"></div>
           <div class="review-decision">
             <h3>Quyết định kiểm duyệt</h3>
@@ -262,6 +267,56 @@ async function showJob(jid){
   }catch(e){clearInterval(poll)}
  },2500);
 }
+const verificationStatusNames={
+ REVIEW_REQUIRED:'Có dấu hiệu cần xác minh',
+ INSUFFICIENT_EVIDENCE:'Chưa đủ cơ sở để kết luận',
+ NO_ISSUES_OBSERVED:'Chưa phát hiện cảnh báo trong phạm vi đã kiểm tra'
+};
+const verificationCheckNames={CONFLICT:'Tín hiệu khác nhau',CANDIDATE:'Cần xác minh',CONSISTENT:'Quan sát phù hợp',INSUFFICIENT_EVIDENCE:'Chưa đủ dữ liệu'};
+const verificationReasonNames={
+ multiple_observed_prices:'Có nhiều mức giá được nhận diện; có thể do khuyến mãi, biến thể hoặc nhầm sản phẩm',
+ independent_sources_agree_on_price_candidate:'OCR và ASR cùng ghi nhận mức giá cần kiểm tra (không chứng minh mức giá đó sai)',
+ single_source_price_candidate:'Chỉ có một loại nguồn ghi nhận giá khác tham chiếu',
+ reference_price_observed:'Giá nhận diện khớp giá tham chiếu đã nhập',
+ price_mentions_without_comparable_current_price:'Chưa xác định được giá bán hiện tại đủ rõ',
+ mixed_assertion_and_negation:'Cùng một claim xuất hiện trong cả câu khẳng định và câu phủ định',
+ independent_sources_repeat_restricted_claim:'OCR và ASR cùng ghi nhận cụm claim hạn chế',
+ restricted_claim_asserted:'Cụm claim hạn chế xuất hiện như một lời khẳng định',
+ non_asserted_claim_context:'Claim được nhắc đến trong ngữ cảnh phủ định hoặc chưa rõ',
+ vlm_visual_hypothesis:'Cảnh báo hình ảnh do VLM đề xuất, cần xem frame để kiểm tra',
+ temporal_heuristic_only:'Chỉ có tín hiệu biến động khung hình từ heuristic',
+ other_findings_require_review:'Còn cảnh báo khác cần được xem xét'
+};
+function renderVerification(d){
+ const report=d.details?.verification||null;
+ const ready=d.status==='completed';
+ $('verificationDetails').classList.toggle('hidden',!ready||!report?.checks?.length);
+ if(!ready){
+  $('verificationSummary').textContent=progressText(d)||'Đang chờ phân tích';
+  $('verificationChecks').textContent='';
+  return;
+ }
+ if(!report){
+  $('verificationSummary').textContent='Job cũ chưa có kết quả Verification Engine v3. Phân tích lại để tạo báo cáo mới.';
+  $('verificationChecks').textContent='';
+  return;
+ }
+ const counts=(Number(report.conflict_count)||0)+' nhóm tín hiệu khác nhau · '+(Number(report.candidate_count)||0)+' nhóm cảnh báo';
+ $('verificationSummary').textContent=(verificationStatusNames[report.status]||report.status)+
+  '. '+counts+'. Đây là kết quả hỗ trợ; reviewer vẫn phải kiểm tra và quyết định.';
+ $('verificationCount').textContent=(report.checks?.length||0)+' nhóm';
+ $('verificationChecks').innerHTML=(report.checks||[]).map(check=>{
+  const category={price:'Giá',claim:'Claim',visual:'Hình ảnh',other:'Khác'}[check.category]||check.category;
+  const values=check.category==='price'?(check.values||[]).map(v=>Number(v).toLocaleString('vi-VN')+' ₫').join(', '):(check.values||[]).join(', ');
+  const named=verificationReasonNames[check.reason]||check.reason;
+  const detail=[check.phrase,values].filter(Boolean).map(esc).join(' · ');
+  const sources=(check.modalities||[]).map(x=>String(x).toUpperCase()).join(' + ');
+  const ids=(check.evidence_ids||[]).filter(id=>Number.isSafeInteger(Number(id))&&Number(id)>0).slice(0,12);
+  return `<div class="finding"><header><b>${esc(category)} · ${esc(verificationCheckNames[check.status]||check.status)}</b></header><p>${esc(named)}</p>${detail?`<p class="footnote">${detail}</p>`:''}
+  <div class="row"><small class="muted">${esc(sources||'Chưa có nguồn gắn trực tiếp')}</small>
+  ${ids.map(id=>`<button type="button" class="mini" onclick="jumpEvidence(${Number(id)})">↗ Evidence #${Number(id)}</button>`).join('')}</div></div>`;
+ }).join('');
+}
 async function loadJob(jid){
  const d=await api('/api/jobs/'+jid);currentJob=d;
  $('jobDetail').classList.remove('hidden');$('jobTitle').textContent=d.filename;
@@ -269,6 +324,7 @@ async function loadJob(jid){
  $('jobMeta').textContent=`${d.product.sku} · ${d.product.name} · ${d.details.duration||'—'}s · Job ${d.id}`;
  if($('player').dataset.job!==jid){$('player').src='/api/jobs/'+jid+'/video';$('player').dataset.job=jid}
  const c=d.details.coverage||{},n=d.details.normalization||{},v=d.details.visual||{},vlm=d.details.vlm||{},t=d.details.timings||{};
+ renderVerification(d);
  $('coverage').innerHTML=d.status==='failed'?`<b>Lỗi:</b> ${esc(d.details.error)}`:d.status!=='completed'?esc(progressText(d)):`<b>Pipeline coverage</b><div class="coverage-row"><span class="pill">OCR: ${esc(c.ocr||'—')}</span><span class="pill">ASR: ${esc(c.asr||'—')}</span><span class="pill">VLM: ${esc(c.vlm||'—')}</span><span class="pill">Visual: ${esc(c.visual||'—')}</span></div><div class="footnote" style="margin-top:8px">${n.raw_count??'—'} raw → ${n.canonical_count??'—'} canonical (${n.merged_count??0} merged) · ${v.same_shot_pairs??0} same-shot pairs · ${v.change_candidates??0} temporal candidates · ${vlm.calls_succeeded??0} VLM calls · ${esc(d.details.elapsed_seconds)}s</div><div class="footnote" style="margin-top:7px">Sampling: ${t.sampling_seconds??'—'}s · OCR: ${t.ocr_seconds??'—'}s (${t.ocr_frames??'—'} frames) · ASR: ${t.asr_seconds??'—'}s · VLM: ${t.vlm_seconds??'—'}s</div>${vlm.errors?.length?`<div class="footnote" style="color:#ae6621;margin-top:6px">VLM errors: ${esc(vlm.errors.join(' | '))}</div>`:''}<div class="footnote" style="margin-top:5px">VLM là cảnh báo cần xác minh, confidence chưa hiệu chuẩn. Không có ảnh SKU reference. C2PA chưa tích hợp.</div>`;
  const frames=d.details.frame_timeline||d.evidence.filter(e=>e.frame).map(e=>({frame:e.frame,at:e.timestamp}));
  $('frames').innerHTML=frames.filter((e,i,a)=>a.findIndex(x=>x.frame===e.frame)===i).slice(0,20).map(e=>`<img loading="lazy" src="/api/jobs/${jid}/frames/${esc(e.frame)}" title="${e.at}s" onclick="seek(${Number(e.at)})">`).join('');
@@ -325,10 +381,11 @@ async function submitReview(decision){
   const c=currentJob.details?.coverage||{};
   const incomplete=['ocr','asr','vlm'].filter(x=>c[x]!=='ok');
   const pending=currentJob.findings.filter(f=>f.flag_review==='unreviewed').length;
+  const reconciliationIssue=currentJob.details?.verification?.status!=='NO_ISSUES_OBSERVED';
   const truth=currentJob.details?.product_truth_snapshot||{};
   const refIssue=truth.reference_status!=='reviewed'||
    (truth.revision&&truth.revision!==currentJob.product?.revision);
-  if((incomplete.length||pending||refIssue)&&!confirm('Có '+pending+' cảnh báo chưa xác minh, '+incomplete.length+' nguồn AI chưa đầy đủ và '+(refIssue?'Product Truth cần xem lại.':'Product Truth đã được xem xét.')+' Bạn vẫn muốn chấp thuận sau khi tự kiểm tra?'))return;
+  if((incomplete.length||pending||refIssue||reconciliationIssue)&&!confirm('Có '+pending+' cảnh báo chưa xác minh, '+incomplete.length+' nguồn AI chưa đầy đủ và '+(refIssue?'Product Truth cần xem lại.':'Product Truth đã được xem xét.')+(reconciliationIssue?' Kết quả Verification Engine còn cần kiểm tra.':'')+' Bạn vẫn muốn chấp thuận sau khi tự kiểm tra?'))return;
  }
  try{await post(`/api/jobs/${selected}/review`,{decision,reviewer,note:$('reviewNote').value});toast('Đã lưu quyết định');await loadJob(selected);await refreshAll()}
  catch(e){toast(e.message)}
