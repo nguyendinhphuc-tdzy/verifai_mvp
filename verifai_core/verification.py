@@ -113,6 +113,13 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
         checks.append(_summary('price', 'INSUFFICIENT_EVIDENCE',
                                'price_mentions_without_comparable_current_price',
                                price_observations))
+    if decisive:
+        # A matching on-screen list price does not resolve a separate
+        # promotional/ambiguous price elsewhere in the same video.
+        unresolved = [v for v in price_observations if v not in decisive]
+        if unresolved:
+            checks.append(_summary('price', 'INSUFFICIENT_EVIDENCE',
+                                   'additional_unresolved_price_mentions', unresolved))
 
     for key in sorted(claim_groups):
         group = claim_groups[key]
