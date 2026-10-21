@@ -440,7 +440,7 @@ def reanalyze(jid: str):
         if not j: raise HTTPException(404,'Job not found')
         if j['status'] in ('queued','processing'): raise HTTPException(409,'Job is already running')
         if not (UPLOAD/j['stored_name']).is_file(): raise HTTPException(404,'Uploaded video missing')
-        c.execute('UPDATE jobs SET status=?,review_decision=NULL,reviewer=NULL,review_note=NULL WHERE id=?',('queued',jid))
+        c.execute('UPDATE jobs SET status=?,review_decision=NULL,reviewer=NULL,review_note=NULL,recovery_attempts=0 WHERE id=?',('queued',jid))
         audit(c,jid,'system','reanalyze_requested',{'previous_status':j['status'],
               'previous_review_cleared':True,'vlm_enabled':vlm_enabled()})
     _start_job(jid)
