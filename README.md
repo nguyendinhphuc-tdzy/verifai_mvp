@@ -237,3 +237,22 @@ New API endpoints: `POST /api/dataset/import`, `GET /api/dataset/cases`,
 `POST /api/dataset/cases/{code}/link`,
 `POST /api/dataset/cases/{code}/annotations`. `POST /api/jobs` accepts optional
 `case_code` form data so video jobs can be linked to evaluation cases.
+
+
+## OCR/ASR performance and interrupted-job recovery
+
+For real-video cold/warm CPU benchmarking and automatic recovery after
+Uvicorn restarts, see [Job Recovery & Benchmark](docs/JOB_RECOVERY_BENCHMARK.md).
+
+Run `python scripts/benchmark_perception.py --video "C:\\path\\to\\video.mp4" --ocr-frames 12 --output benchmark.json`
+on Windows after installing the AI dependencies. The tool reads video locally,
+does not upload the file, and reports separate OCR and ASR times.
+`OCR_MAX_FRAMES` defaults to 12 to avoid running expensive OCR on all sampled
+visual frames (up to 60). This trades off speed against coverage.
+`MAX_CONCURRENT_JOBS` defaults to 1 for local CPU operation.
+
+In-process worker threads can still hang in native inference; no reliable
+in-place cancellation is provided. Stop and restart the **single-worker**
+Uvicorn process to recover interrupted jobs; after repeated interruptions,
+affected jobs are marked failed for manual intervention. Public production
+hosting still requires external durable queues and authentication.
