@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 
-def test_end_to_end(tmp_path, monkeypatch):
+def test_end_to_end(tmp_path, monkeypatch, stub_perception):
     import backend
     monkeypatch.setenv('VLM_ENABLED','0')
     monkeypatch.setattr(backend,'DATA',tmp_path)
