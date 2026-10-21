@@ -4,14 +4,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import contextmanager, asynccontextmanager
 from typing import Optional
+from urllib.parse import urlparse
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
+from verifai_core.claims import CLAIM_RULE_VERSION, find_restricted_claims, validate_reference_claims
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
 from verifai_core.vlm import OllamaVLM, VLMError, vlm_enabled, PROMPT_VERSION
 
@@ -48,6 +50,20 @@ def init():
         CREATE TABLE IF NOT EXISTS findings(id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,code TEXT NOT NULL,severity TEXT NOT NULL,timestamp REAL NOT NULL,detail TEXT NOT NULL,evidence_id INTEGER,flag_review TEXT DEFAULT 'unreviewed');
         CREATE TABLE IF NOT EXISTS audits(id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,payload TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS labels(id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,annotator TEXT NOT NULL,label TEXT NOT NULL,notes TEXT,created_at TEXT NOT NULL);''')
+        c.executescript('''CREATE TABLE IF NOT EXISTS product_truth_meta(
+            product_id TEXT PRIMARY KEY,
+            reference_url TEXT NOT NULL DEFAULT '',
+            reference_note TEXT NOT NULL DEFAULT '',
+            reference_status TEXT NOT NULL DEFAULT 'unverified',
+            revision INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS product_truth_audits(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id TEXT NOT NULL,
+            event TEXT NOT NULL,
+            revision INTEGER NOT NULL,
+            snapshot TEXT NOT NULL,
+            created_at TEXT NOT NULL);''')
         # Non-destructive migration: old v1 databases retain all jobs/reviews/labels.
         migrations = {
             'jobs': {'recovery_attempts':'INTEGER NOT NULL DEFAULT 0'},
@@ -76,6 +92,12 @@ def product_dict(r):
     d=rowdict(r)
     if d:
         d['claims']=json.loads(d['claims']);d['banned']=json.loads(d['banned'])
+        with db() as c:
+            meta=c.execute('SELECT * FROM product_truth_meta WHERE product_id=?',(d['id'],)).fetchone()
+        d.update(dict(meta) if meta else {
+            'reference_url':'','reference_note':'','reference_status':'unverified',
+            'revision':1,'updated_at':d['created_at']})
+        d.pop('product_id',None)
     return d
 
 class ProductIn(BaseModel):
@@ -85,6 +107,41 @@ class ProductIn(BaseModel):
     price:Optional[int]=Field(default=None,ge=0)
     claims:list[str]=Field(default_factory=list)
     banned:list[str]=Field(default_factory=list)
+    reference_url:str=Field(default='',max_length=500)
+    reference_note:str=Field(default='',max_length=800)
+    reference_status:str=Field(default='unverified')
+
+    @model_validator(mode='after')
+    def validate_product_truth(self):
+        self.sku=self.sku.strip()
+        self.name=self.name.strip()
+        self.brand=self.brand.strip()
+        self.reference_url=self.reference_url.strip()
+        self.reference_note=self.reference_note.strip()
+        if not self.sku or not self.name:
+            raise ValueError('SKU và tên sản phẩm không được để trống')
+        if self.reference_status not in ('unverified','reviewed'):
+            raise ValueError('reference_status phải là unverified hoặc reviewed')
+        if self.reference_url:
+            u=urlparse(self.reference_url)
+            if u.scheme not in ('http','https') or not u.hostname or u.username or u.password:
+                raise ValueError('reference_url phải là URL http(s) hợp lệ không chứa credentials')
+        if self.reference_status=='reviewed' and not (self.reference_url or self.reference_note):
+            raise ValueError('Cần nguồn tham chiếu hoặc ghi chú kiểm tra trước khi đánh dấu đã xem xét')
+        self.claims,self.banned=validate_reference_claims(self.claims,self.banned)
+        return self
+
+class ProductUpdateIn(ProductIn):
+    expected_revision:int=Field(ge=1)
+
+def _assert_sku_available(conn, sku, skip_id=None):
+    for existing in conn.execute('SELECT id,sku FROM products'):
+        if existing['id']!=skip_id and existing['sku'].casefold()==sku.casefold():
+            raise HTTPException(409,'SKU đã tồn tại; hãy chỉnh sửa sản phẩm hiện có')
+
+def _product_snapshot(v):
+    return {key:getattr(v,key) for key in ('sku','name','brand','price','claims','banned',
+            'reference_url','reference_note','reference_status')}
 
 @app.get('/')
 def home():return FileResponse(BASE/'static'/'index.html')
@@ -101,12 +158,66 @@ def health():
             'vlm':{'enabled':enabled,'model':os.environ.get('VLM_MODEL','qwen3-vl:4b-instruct'),**status}}
 @app.post('/api/products')
 def create_product(v:ProductIn):
-    pid=uuid.uuid4().hex[:12]
-    with db() as c:c.execute('INSERT INTO products VALUES(?,?,?,?,?,?,?,?)',(pid,v.sku.strip(),v.name.strip(),v.brand.strip(),v.price,json.dumps(v.claims,ensure_ascii=False),json.dumps(v.banned,ensure_ascii=False),utc()))
-    return {'id':pid}
+    pid=uuid.uuid4().hex[:12];now=utc()
+    with db() as c:
+        _assert_sku_available(c,v.sku)
+        c.execute('''INSERT INTO products(id,sku,name,brand,price,claims,banned,created_at)
+                     VALUES(?,?,?,?,?,?,?,?)''',
+                  (pid,v.sku,v.name,v.brand,v.price,json.dumps(v.claims,ensure_ascii=False),
+                   json.dumps(v.banned,ensure_ascii=False),now))
+        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at)
+                     VALUES(?,?,?,?,?,?)''',
+                  (pid,v.reference_url,v.reference_note,v.reference_status,1,now))
+        c.execute('''INSERT INTO product_truth_audits(product_id,event,revision,snapshot,created_at)
+                     VALUES(?,?,?,?,?)''',
+                  (pid,'created',1,json.dumps(_product_snapshot(v),ensure_ascii=False),now))
+    return {'id':pid,'revision':1}
+
 @app.get('/api/products')
 def products():
-    with db() as c:return [product_dict(r) for r in c.execute('SELECT * FROM products ORDER BY created_at DESC')]
+    with db() as c:
+        rows=c.execute('SELECT * FROM products ORDER BY created_at DESC').fetchall()
+    return [product_dict(r) for r in rows]
+
+@app.get('/api/products/{pid}')
+def get_product(pid:str):
+    with db() as c:r=c.execute('SELECT * FROM products WHERE id=?',(pid,)).fetchone()
+    if not r:raise HTTPException(404,'Product not found')
+    return product_dict(r)
+
+@app.put('/api/products/{pid}')
+def update_product(pid:str,v:ProductUpdateIn):
+    with db() as c:
+        existing=c.execute('SELECT id FROM products WHERE id=?',(pid,)).fetchone()
+        if not existing:raise HTTPException(404,'Product not found')
+        meta=c.execute('SELECT revision FROM product_truth_meta WHERE product_id=?',(pid,)).fetchone()
+        revision=int(meta['revision']) if meta else 1
+        if v.expected_revision!=revision:
+            raise HTTPException(409,'Product Truth đã được cập nhật; tải lại trước khi lưu')
+        _assert_sku_available(c,v.sku,pid)
+        new_revision=revision+1;now=utc()
+        c.execute('''UPDATE products SET sku=?,name=?,brand=?,price=?,claims=?,banned=? WHERE id=?''',
+                  (v.sku,v.name,v.brand,v.price,json.dumps(v.claims,ensure_ascii=False),
+                   json.dumps(v.banned,ensure_ascii=False),pid))
+        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at)
+                     VALUES(?,?,?,?,?,?) ON CONFLICT(product_id) DO UPDATE SET
+                     reference_url=excluded.reference_url, reference_note=excluded.reference_note,
+                     reference_status=excluded.reference_status,revision=excluded.revision,
+                     updated_at=excluded.updated_at''',
+                  (pid,v.reference_url,v.reference_note,v.reference_status,new_revision,now))
+        c.execute('''INSERT INTO product_truth_audits(product_id,event,revision,snapshot,created_at)
+                     VALUES(?,?,?,?,?)''',
+                  (pid,'updated',new_revision,json.dumps(_product_snapshot(v),ensure_ascii=False),now))
+    return {'id':pid,'revision':new_revision}
+
+@app.get('/api/products/{pid}/history')
+def product_history(pid:str):
+    with db() as c:
+        if not c.execute('SELECT 1 FROM products WHERE id=?',(pid,)).fetchone():
+            raise HTTPException(404,'Product not found')
+        return [dict(row) for row in c.execute(
+            'SELECT revision,event,snapshot,created_at FROM product_truth_audits WHERE product_id=? ORDER BY revision',
+            (pid,))]
 
 # Separate, lazy-loaded OCR and ASR engines. Do not download models at startup.
 _ocr_service = OCRService()
@@ -304,11 +415,23 @@ def _analyze_job(job_id):
         for n,e in enumerate(normalized):
             if e.kind not in ('ocr','asr'): continue
             tx=normalize(e.content)
-            # Reference matches are exact text rules; ASR/OCR can still be wrong.
-            for banned in p['banned']:
-                if banned.strip() and normalize(banned) in tx:
-                    flag('CLAIM-01','high',e.timestamp,f'Cụm từ cần kiểm tra: “{banned}”',
-                         source='rule',confidence=e.score,meta={'canonical_index':n})
+            claim_mentions=find_restricted_claims(e.content,p['banned'])
+            if claim_mentions:
+                e.metadata['claim_v3']={'version':CLAIM_RULE_VERSION,
+                                        'product_truth_revision':p.get('revision',1),
+                                        'reference_status':p.get('reference_status','unverified'),
+                                        'mentions':[m.to_dict() for m in claim_mentions]}
+            for claim in claim_mentions:
+                if claim.state!='asserted':
+                    continue
+                flag('CLAIM-01','medium',e.timestamp,
+                     f'Có cụm claim hạn chế “{claim.phrase}” trong nội dung; '
+                     'reviewer cần xác minh ngữ cảnh và nguồn Product Truth.',
+                     source='claim_rule_v3',confidence=e.score,
+                     meta={'canonical_index':n,'claim_assessment':claim.to_dict(),
+                           'claim_rule_version':CLAIM_RULE_VERSION,
+                           'product_truth_revision':p.get('revision',1),
+                           'reference_status':p.get('reference_status','unverified')})
             price_check = assess_price(e.content, p['price'])
             if price_check.mentions:
                 e.metadata['price_v3'] = price_check.to_dict()
@@ -325,7 +448,11 @@ def _analyze_job(job_id):
         timings['total_seconds']=round(time.monotonic()-t0,3)
         details={'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
                  'coverage':coverage,'elapsed_seconds':round(time.monotonic()-t0,2),
-                 'rule_version':'rules-0.3','price_parser_version':PRICE_PARSER_VERSION,'normalization_version':'evidence-2.0',
+                 'rule_version':'rules-0.4','price_parser_version':PRICE_PARSER_VERSION,
+                 'claim_rule_version':CLAIM_RULE_VERSION,
+                 'product_truth_snapshot':{key:p.get(key) for key in
+                     ('sku','name','brand','price','claims','banned','reference_url',
+                      'reference_note','reference_status','revision')},'normalization_version':'evidence-2.0',
                  'frame_timeline':[{'at':f['at'],'frame':f['frame'],'blur':f['blur']} for f in sampled],
                  'normalization':{'raw_count':len(raw),'canonical_count':len(normalized),
                                   'merged_count':len(raw)-len(normalized)},
