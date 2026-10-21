@@ -160,6 +160,7 @@ def health():
 def create_product(v:ProductIn):
     pid=uuid.uuid4().hex[:12];now=utc()
     with db() as c:
+        c.execute('BEGIN IMMEDIATE')
         _assert_sku_available(c,v.sku)
         c.execute('''INSERT INTO products(id,sku,name,brand,price,claims,banned,created_at)
                      VALUES(?,?,?,?,?,?,?,?)''',
@@ -188,6 +189,7 @@ def get_product(pid:str):
 @app.put('/api/products/{pid}')
 def update_product(pid:str,v:ProductUpdateIn):
     with db() as c:
+        c.execute('BEGIN IMMEDIATE')
         existing=c.execute('SELECT id FROM products WHERE id=?',(pid,)).fetchone()
         if not existing:raise HTTPException(404,'Product not found')
         meta=c.execute('SELECT revision FROM product_truth_meta WHERE product_id=?',(pid,)).fetchone()
