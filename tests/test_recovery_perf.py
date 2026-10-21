@@ -105,3 +105,38 @@ def test_real_video_pipeline_records_stage_timing(monkeypatch,tmp_path,stub_perc
     for stage in ('ocr_seconds','asr_seconds','sampling_seconds','visual_seconds','vlm_seconds','total_seconds'):
         assert stage in timing and timing[stage]>=0
     assert job['details']['coverage']['vlm']=='disabled'
+
+
+def test_lifespan_recovers_before_serving_requests(monkeypatch,tmp_path):
+    backend=_setup(monkeypatch,tmp_path)
+    jid=_db_job(backend,tmp_path,'processing')
+    started=[]
+    monkeypatch.setattr(backend,'_start_job',started.append)
+    with TestClient(backend.app) as client:
+        assert client.get('/api/health').status_code==200
+        assert started==[jid]
+        state=client.get('/api/jobs/'+jid).json()
+        assert state['status']=='queued'
+
+
+def test_real_video_benchmark_contract_with_mock_inference(monkeypatch,tmp_path):
+    from scripts import benchmark_perception as bench
+    video=tmp_path/'clip.mp4'
+    writer=cv2.VideoWriter(str(video),cv2.VideoWriter_fourcc(*'mp4v'),5,(128,80))
+    assert writer.isOpened()
+    for _ in range(12):
+        writer.write(np.full((80,128,3),127,dtype=np.uint8))
+    writer.release()
+    class FakeOCR:
+        def extract(self,frame):
+            return [('test',0.9)],'ok'
+    class FakeASR:
+        def extract(self,path):
+            return [{'at':0,'text':'test','score':None}],'ok'
+    monkeypatch.setattr(bench,'OCRService',FakeOCR)
+    monkeypatch.setattr(bench,'ASRService',FakeASR)
+    result=bench.run(video,ocr_frames=3,warm_runs=1)
+    assert len(result['ocr'])==2 and len(result['asr'])==2
+    assert result['ocr'][0]['samples']==3
+    assert result['asr'][1]['segments']==1
+    assert all(x['status']=='ok' for x in result['ocr']+result['asr'])
