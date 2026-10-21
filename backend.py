@@ -14,6 +14,7 @@ from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_i
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
 from verifai_core.claims import CLAIM_RULE_VERSION, find_restricted_claims, validate_reference_claims
+from verifai_core.verification import build_verification_report, attach_evidence_ids, VERIFICATION_VERSION
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
 from verifai_core.vlm import OllamaVLM, VLMError, vlm_enabled, PROMPT_VERSION
 
@@ -446,9 +447,13 @@ def _analyze_job(job_id):
                            'price_parser_version':PRICE_PARSER_VERSION})
         if not any(e.kind in ('ocr','asr','vlm_observation','vlm_issue') for e in normalized):
             flag('EVIDENCE-LOW','medium',0,'Chưa có bằng chứng nội dung từ OCR/ASR/VLM; cần reviewer kiểm tra.')
+        # A3 aggregates the existing A1/A2/VLM evidence without changing the
+        # candidate findings or the human's final decision.
+        verification=build_verification_report(normalized,findings,coverage,p,raw_map)
         decision='Regenerate' if any(f['severity']=='high' for f in findings) else 'Needs Review'
         timings['total_seconds']=round(time.monotonic()-t0,3)
-        details={'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
+        details={'verification_version':VERIFICATION_VERSION,
+                 'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
                  'coverage':coverage,'elapsed_seconds':round(time.monotonic()-t0,2),
                  'rule_version':'rules-0.4','price_parser_version':PRICE_PARSER_VERSION,
                  'claim_rule_version':CLAIM_RULE_VERSION,
@@ -480,11 +485,14 @@ def _analyze_job(job_id):
                              VALUES(?,?,?,?,?,?,?,?,?,?)""",
                           (job_id,f['code'],f['severity'],f['at'],f['detail'],eid,f['source'],f['confidence'],
                            json.dumps(refs),json.dumps(f['metadata'],ensure_ascii=False)))
+            details['verification']=attach_evidence_ids(verification,ids)
             c.execute('UPDATE jobs SET status=?,decision=?,finished_at=?,details=? WHERE id=?',
                       ('completed',decision,utc(),json.dumps(details,ensure_ascii=False),job_id))
             audit(c,job_id,'system','analysis_completed',{'decision':decision,'coverage':coverage,
                   'finding_count':len(findings),'canonical_evidence_count':len(normalized),
-                  'vlm_calls_succeeded':vlm_calls})
+                  'vlm_calls_succeeded':vlm_calls,
+                  'verification_status':verification['status'],
+                  'verification_conflicts':verification['conflict_count']})
     except Exception as exc:
         with db() as c:
             c.execute('UPDATE jobs SET status=?,details=?,finished_at=? WHERE id=?',
@@ -591,6 +599,17 @@ def get_job(jid:str):
         d['audits']=[dict(r) for r in c.execute('SELECT * FROM audits WHERE job_id=? ORDER BY id DESC',(jid,))]
         d['labels']=[dict(r) for r in c.execute('SELECT * FROM labels WHERE job_id=? ORDER BY id DESC',(jid,))]
         return d
+@app.get('/api/jobs/{jid}/verification')
+def get_verification(jid: str):
+    with db() as c:
+        j=c.execute('SELECT status,details FROM jobs WHERE id=?',(jid,)).fetchone()
+    if not j:raise HTTPException(404,'Job not found')
+    if j['status']!='completed':raise HTTPException(409,'Job not completed')
+    details=json.loads(j['details'] or '{}')
+    if 'verification' not in details:
+        raise HTTPException(404,'Verification not available for this analysis; re-analyze to calculate')
+    return details['verification']
+
 @app.get('/api/jobs/{jid}/evidence/export')
 def export_evidence(jid: str):
     from fastapi.responses import JSONResponse
