@@ -154,3 +154,10 @@ def test_id_binding_only_from_inserted_canonical_evidence():
 def test_no_bad_indices_in_id_linking():
     r=report([price('MISMATCH',99000)])
     assert attach_evidence_ids(r,[])['checks'][0]['evidence_ids']==[]
+
+
+def test_promotion_still_inconclusive_even_when_list_price_matches():
+    r=report([price('MATCH',149000),price('INSUFFICIENT_EVIDENCE',99000,kind='asr')])
+    assert r['status']=='INSUFFICIENT_EVIDENCE'
+    assert [c['status'] for c in r['checks']]==['CONSISTENT','INSUFFICIENT_EVIDENCE']
+    assert r['checks'][1]['reason']=='additional_unresolved_price_mentions'
