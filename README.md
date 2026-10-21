@@ -274,3 +274,21 @@ examples, tests, limitations and safe re-analysis guidance.
 Reference products now support source URL/note, explicitly unverified/reviewed status, a revision counter, audit snapshots, and a revision-checked edit route. Restricted phrase detection distinguishes assertions from explicit negation and uncertain quotations, with all outcomes retained in evidence metadata. An asserted candidate is medium-severity and **requires human verification**, never automatic rejection. Old products/dataset importer remain compatible.
 
 See [Product Truth & Claim Verification A2](docs/PRODUCT_TRUTH_CLAIMS_A2.md) for API, UI, tests, audit implications, and limitations.
+
+## Sprint A3 — Cross-modal Verification Engine
+
+The review workspace now shows a concise, evidence-linked case-level verification
+result, built from existing A1 price and A2 claim metadata plus conservative VLM
+and visual findings. It classifies observations as candidates, differing signals,
+consistent signals or insufficient evidence. The overall report status is
+`REVIEW_REQUIRED`, `INSUFFICIENT_EVIDENCE` or `NO_ISSUES_OBSERVED`.
+**None of these is an automated approval/rejection.** Repeated frames within
+one modality are not counted as independent corroboration.
+
+Reports are stored at `GET /api/jobs/{id}` → `details.verification`, and can
+be read directly at `GET /api/jobs/{id}/verification`. Both reports and
+canonical evidence links are included in the JSON evidence export. Old jobs
+remain readable; only a deliberate Re-analyze creates an A3 report for them.
+
+See [Verification Engine A3](docs/VERIFICATION_ENGINE_A3.md) for the exact
+status semantics, data contract, tests and known limitations.
