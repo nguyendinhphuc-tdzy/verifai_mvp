@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.evidence import RawEvidence, normalize_evidence
+from verifai_core.price import assess_price, PRICE_PARSER_VERSION
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
 from verifai_core.vlm import OllamaVLM, VLMError, vlm_enabled, PROMPT_VERSION
 
@@ -127,16 +128,6 @@ def normalize(t):
     import unicodedata
     t=unicodedata.normalize('NFKC',str(t)).lower()
     return re.sub(r'\s+',' ',t).strip()
-
-def numeric_prices(s):
-    vals=[]
-    for m in re.finditer(r'(?<!\d)(\d{1,3}(?:[.,]\d{3})+|\d{4,9})\s*(?:đ|₫|vnd|vnđ|đồng)?',s,re.I):
-        raw=m.group(1)
-        try:
-            n=int(re.sub(r'[.,]','',raw))
-            if 1000<=n<=100000000:vals.append((n,m.group(0)))
-        except ValueError:pass
-    return vals
 
 def analyze(job_id):
     # A bounded local worker pool prevents multiple videos simultaneously loading
@@ -318,18 +309,23 @@ def _analyze_job(job_id):
                 if banned.strip() and normalize(banned) in tx:
                     flag('CLAIM-01','high',e.timestamp,f'Cụm từ cần kiểm tra: “{banned}”',
                          source='rule',confidence=e.score,meta={'canonical_index':n})
-            for price,price_text in numeric_prices(tx):
-                if p['price'] is not None and price!=p['price']:
-                    flag('PRICE-01','high',e.timestamp,
-                         f'Giá quan sát {price_text} khác giá tham chiếu {p["price"]:,} ₫ (cần reviewer xác nhận ngữ cảnh).',
-                         source='rule',confidence=e.score,meta={'canonical_index':n})
+            price_check = assess_price(e.content, p['price'])
+            if price_check.mentions:
+                e.metadata['price_v3'] = price_check.to_dict()
+            if price_check.status == 'MISMATCH':
+                flag('PRICE-01','medium',e.timestamp,
+                     f'Giá quan sát {price_check.compared_vnd:,} ₫ khác giá tham chiếu '
+                     f'{p["price"]:,} ₫; cần kiểm tra sản phẩm, giá khuyến mãi và bối cảnh.',
+                     source='price_rule_v3',confidence=e.score,
+                     meta={'canonical_index':n,'price_assessment':price_check.to_dict(),
+                           'price_parser_version':PRICE_PARSER_VERSION})
         if not any(e.kind in ('ocr','asr','vlm_observation','vlm_issue') for e in normalized):
             flag('EVIDENCE-LOW','medium',0,'Chưa có bằng chứng nội dung từ OCR/ASR/VLM; cần reviewer kiểm tra.')
         decision='Regenerate' if any(f['severity']=='high' for f in findings) else 'Needs Review'
         timings['total_seconds']=round(time.monotonic()-t0,3)
         details={'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
                  'coverage':coverage,'elapsed_seconds':round(time.monotonic()-t0,2),
-                 'rule_version':'rules-0.2','normalization_version':'evidence-2.0',
+                 'rule_version':'rules-0.3','price_parser_version':PRICE_PARSER_VERSION,'normalization_version':'evidence-2.0',
                  'frame_timeline':[{'at':f['at'],'frame':f['frame'],'blur':f['blur']} for f in sampled],
                  'normalization':{'raw_count':len(raw),'canonical_count':len(normalized),
                                   'merged_count':len(raw)-len(normalized)},
