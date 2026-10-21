@@ -275,7 +275,13 @@ async function loadJob(jid){
  renderEvidence();
  const incompleteCoverage=d.status==='completed'&&['ocr','asr','vlm'].some(k=>c[k]!=='ok');
  const caution=incompleteCoverage?'<p class="notice" role="note">Một số nguồn kiểm tra chưa sẵn sàng. Hãy xem lại video thủ công trước khi ra quyết định.</p>':'';
- $('findings').innerHTML=caution+(d.status!=='completed'?'<div class="empty">'+esc(progressText(d))+'</div>':d.findings.length?d.findings.map(f=>`<div class="finding"><header><span><span class="pill ${esc(f.severity)}">${esc(f.severity)}</span> <b>${esc(findingNames[f.code]||f.code)}</b></span><button class="mini" onclick="seek(${Number(f.timestamp)})">▶ ${Number(f.timestamp).toFixed(1)}s</button></header><p>${esc(f.detail)}</p><div class="row"><span class="footnote">${esc(f.source||'rule')}${f.confidence!==null&&f.confidence!==undefined?' · confidence (uncalibrated) '+Math.round(f.confidence*100)+'%':''}</span>${f.evidence_id?`<button class="mini" onclick="jumpEvidence(${Number(f.evidence_id)})">↗ Evidence #${Number(f.evidence_id)}</button>`:''}</div><div class="row" style="margin-top:9px"><button class="mini" onclick="flag(${f.id},'confirmed')">✓ Confirm</button><button class="mini" onclick="flag(${f.id},'rejected')">✕ Reject</button><span class="footnote">${esc(f.flag_review)}</span></div></div>`).join(''):'<div class="notice">Không có cảnh báo trên những module đã chạy; các nhóm lỗi chưa được kiểm tra vẫn yêu cầu reviewer.</div>');
+ const truth=d.details?.product_truth_snapshot||{};
+ const truthStale=d.status==='completed'&&truth.revision&&d.product?.revision&&truth.revision!==d.product.revision;
+ const truthAlert=d.status!=='completed'?'':truthStale
+  ?'<p class="notice">Product Truth đã được cập nhật sau lần phân tích này. Chạy phân tích lại để sử dụng dữ liệu mới, và lưu lại quyết định trước đó nếu cần.</p>'
+  :truth.reference_status!=='reviewed'
+   ?'<p class="notice">Nguồn Product Truth chưa được xem xét; reviewer cần xác minh tham chiếu trước khi chấp thuận.</p>':'';
+ $('findings').innerHTML=truthAlert+caution+(d.status!=='completed'?'<div class="empty">'+esc(progressText(d))+'</div>':d.findings.length?d.findings.map(f=>`<div class="finding"><header><span><span class="pill ${esc(f.severity)}">${esc(f.severity)}</span> <b>${esc(findingNames[f.code]||f.code)}</b></span><button class="mini" onclick="seek(${Number(f.timestamp)})">▶ ${Number(f.timestamp).toFixed(1)}s</button></header><p>${esc(f.detail)}</p><div class="row"><span class="footnote">${esc(f.source||'rule')}${f.confidence!==null&&f.confidence!==undefined?' · confidence (uncalibrated) '+Math.round(f.confidence*100)+'%':''}</span>${f.evidence_id?`<button class="mini" onclick="jumpEvidence(${Number(f.evidence_id)})">↗ Evidence #${Number(f.evidence_id)}</button>`:''}</div><div class="row" style="margin-top:9px"><button class="mini" onclick="flag(${f.id},'confirmed')">✓ Confirm</button><button class="mini" onclick="flag(${f.id},'rejected')">✕ Reject</button><span class="footnote">${esc(f.flag_review)}</span></div></div>`).join(''):'<div class="notice">Không có cảnh báo trên những module đã chạy; các nhóm lỗi chưa được kiểm tra vẫn yêu cầu reviewer.</div>');
  $('audits').innerHTML=d.audits.map(a=>`<div>${esc(a.created_at.slice(11,19))} · ${esc(a.actor)} · ${esc(a.action)}</div>`).join('')||'Chưa có log';
  if(d.reviewer)$('reviewer').value=d.reviewer;if(d.review_note)$('reviewNote').value=d.review_note;
 }
@@ -319,7 +325,10 @@ async function submitReview(decision){
   const c=currentJob.details?.coverage||{};
   const incomplete=['ocr','asr','vlm'].filter(x=>c[x]!=='ok');
   const pending=currentJob.findings.filter(f=>f.flag_review==='unreviewed').length;
-  if((incomplete.length||pending)&&!confirm('Có '+pending+' cảnh báo chưa xác minh và '+incomplete.length+' nguồn AI chưa đầy đủ. Bạn đã tự kiểm tra video và vẫn muốn chấp thuận?'))return;
+  const truth=currentJob.details?.product_truth_snapshot||{};
+  const refIssue=truth.reference_status!=='reviewed'||
+   (truth.revision&&truth.revision!==currentJob.product?.revision);
+  if((incomplete.length||pending||refIssue)&&!confirm('Có '+pending+' cảnh báo chưa xác minh, '+incomplete.length+' nguồn AI chưa đầy đủ và '+(refIssue?'Product Truth cần xem lại.':'Product Truth đã được xem xét.')+' Bạn vẫn muốn chấp thuận sau khi tự kiểm tra?'))return;
  }
  try{await post(`/api/jobs/${selected}/review`,{decision,reviewer,note:$('reviewNote').value});toast('Đã lưu quyết định');await loadJob(selected);await refreshAll()}
  catch(e){toast(e.message)}
