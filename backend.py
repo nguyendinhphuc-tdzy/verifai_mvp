@@ -2,7 +2,7 @@
 import json, os, re, sqlite3, threading, time, uuid, hashlib, subprocess, shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from contextlib import contextmanager
+from contextlib import contextmanager, asynccontextmanager
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
@@ -19,8 +19,15 @@ DATA = Path(os.environ.get('VERIFAI_DATA', str(BASE/'data'))).resolve()
 UPLOAD = DATA/'uploads'; FRAMES=DATA/'frames'; DB=DATA/'verifai.sqlite3'
 MAX_UPLOAD=int(os.environ.get('MAX_VIDEO_MB','150'))*1024*1024
 MAX_DURATION=int(os.environ.get('MAX_VIDEO_SECONDS','180'))
+OCR_MAX_FRAMES=max(0,min(60,int(os.environ.get('OCR_MAX_FRAMES','12'))))
+_ANALYSIS_SLOTS=threading.BoundedSemaphore(max(1,min(2,int(os.environ.get('MAX_CONCURRENT_JOBS','1')))))
 for p in (DATA,UPLOAD,FRAMES): p.mkdir(parents=True,exist_ok=True)
-app=FastAPI(title='VerifAI MVP API',version='2.1.0')
+@asynccontextmanager
+async def app_lifespan(_app):
+    recover_interrupted_jobs()
+    yield
+
+app=FastAPI(title='VerifAI MVP API',version='2.1.0',lifespan=app_lifespan)
 app.mount('/static',StaticFiles(directory=str(BASE/'static')),name='static')
 
 def utc(): return datetime.now(timezone.utc).isoformat(timespec='seconds')
@@ -42,6 +49,7 @@ def init():
         CREATE TABLE IF NOT EXISTS labels(id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,annotator TEXT NOT NULL,label TEXT NOT NULL,notes TEXT,created_at TEXT NOT NULL);''')
         # Non-destructive migration: old v1 databases retain all jobs/reviews/labels.
         migrations = {
+            'jobs': {'recovery_attempts':'INTEGER NOT NULL DEFAULT 0'},
             'evidence': {
                 'end_timestamp': 'REAL', 'frame2': 'TEXT', 'source_model': 'TEXT',
                 'fingerprint': 'TEXT', 'metadata': "TEXT NOT NULL DEFAULT '{}'"
@@ -131,7 +139,19 @@ def numeric_prices(s):
     return vals
 
 def analyze(job_id):
-    """Asynchronous local prototype pipeline: perception -> normalization -> rules -> review."""
+    # A bounded local worker pool prevents multiple videos simultaneously loading
+    # expensive inference engines on a single CPU workstation.
+    with _ANALYSIS_SLOTS:
+        return _analyze_job(job_id)
+
+def _set_progress(job_id, stage, **data):
+    details={'progress':{'stage':stage,'updated_at':utc(),**data}}
+    with db() as c:
+        c.execute('UPDATE jobs SET details=? WHERE id=? AND status=?',
+                  (json.dumps(details,ensure_ascii=False),job_id,'processing'))
+
+def _analyze_job(job_id):
+    """One local job; only an atomically claimed queued job may run."""
     import cv2
     t0=time.monotonic(); cap=None
     with db() as c:
@@ -139,13 +159,17 @@ def analyze(job_id):
         if not j: return
         p=product_dict(c.execute('SELECT * FROM products WHERE id=?',(j['product_id'],)).fetchone())
         if not p: return
-        c.execute('UPDATE jobs SET status=?,decision=NULL,finished_at=NULL WHERE id=?',('processing',job_id))
+        # Claim exactly once. Duplicate startup/retry threads cannot run together.
+        claim=c.execute('UPDATE jobs SET status=?,decision=NULL,finished_at=NULL WHERE id=? AND status=?',
+                        ('processing',job_id,'queued'))
+        if claim.rowcount!=1:return
         c.execute('DELETE FROM findings WHERE job_id=?',(job_id,))
         c.execute('DELETE FROM evidence WHERE job_id=?',(job_id,))
     path=UPLOAD/j['stored_name']
     coverage={'ocr':'not_installed','asr':'not_installed','visual':'heuristic_screening',
               'c2pa':'not_implemented','vlm':'disabled' if not vlm_enabled() else 'pending'}
     raw=[]; findings=[]; sampled=[]; vlm_calls=0; vlm_errors=[]
+    timings={}; ocr_calls=0
 
     def evidence(kind, at, text, score=None, frame=None, frame2=None, source='unknown', meta=None):
         uid=f'ev-{len(raw)}'
@@ -165,6 +189,8 @@ def analyze(job_id):
         if duration>MAX_DURATION: raise RuntimeError(f'Video vượt giới hạn {MAX_DURATION} giây.')
         interval=max(1,int(fps*max(2, duration/60)))
         processed=0;idx=0; frame_dir=FRAMES/job_id;frame_dir.mkdir(parents=True,exist_ok=True)
+        _set_progress(job_id,'sampling',sampled_frames=0)
+        stage_start=time.monotonic()
         while processed<60:
             ok,frame=cap.read()
             if not ok: break
@@ -177,18 +203,38 @@ def analyze(job_id):
                 gray=cv2.cvtColor(small,cv2.COLOR_BGR2GRAY)
                 blur=float(cv2.Laplacian(gray,cv2.CV_64F).var())
                 sampled.append({'at':at,'frame':frame_name,'image':small,'blur':round(blur,1)})
-                ocr,ocr_status=frame_ocr(small)
-                if ocr_status=='ok' or coverage['ocr']!='ok': coverage['ocr']=ocr_status
-                for text,score in ocr:
-                    evidence('ocr',at,text,score,frame_name,source='paddleocr',meta={'confidence_kind':'ocr_engine'})
                 processed+=1
             idx+=1
         cap.release();cap=None
+        timings['sampling_seconds']=round(time.monotonic()-stage_start,3)
+        # Video frame sampling and OCR frame selection have different purposes:
+        # visual signals may need up to 60 frames, but OCR only needs a smaller
+        # representative subset (default 12) to keep CPU latency bounded.
+        chosen=evenly_spaced(sampled,min(OCR_MAX_FRAMES,len(sampled)))
+        _set_progress(job_id,'ocr',done=0,total=len(chosen))
+        stage_start=time.monotonic()
+        if not chosen: coverage['ocr']='skipped'
+        for n,frame in enumerate(chosen,1):
+            ocr,ocr_status=frame_ocr(frame['image'])
+            if ocr_status=='ok' or coverage['ocr']!='ok':coverage['ocr']=ocr_status
+            for text,score in ocr:
+                evidence('ocr',frame['at'],text,score,frame['frame'],source='paddleocr',meta={'confidence_kind':'ocr_engine'})
+            ocr_calls+=1
+            if n==len(chosen) or n%2==0:
+                _set_progress(job_id,'ocr',done=n,total=len(chosen))
+        timings['ocr_seconds']=round(time.monotonic()-stage_start,3)
+        timings['ocr_frames']=ocr_calls
+        timings['ocr_avg_seconds_per_frame']=round(timings['ocr_seconds']/ocr_calls,3) if ocr_calls else None
+        _set_progress(job_id,'asr')
+        stage_start=time.monotonic()
         speeches,coverage['asr']=transcribe(path)
+        timings['asr_seconds']=round(time.monotonic()-stage_start,3)
         for seg in speeches:
             evidence('asr',seg['at'],seg['text'],seg.get('score'),source='faster-whisper',
                      meta={'confidence_kind':'not_provided'})
 
+        _set_progress(job_id,'visual')
+        stage_start=time.monotonic()
         signals=visual_pairs(sampled)
         candidates=[v for v in signals if v.candidate]
         for pair in evenly_spaced(candidates,3):
@@ -204,6 +250,9 @@ def analyze(job_id):
             flag('VIS-06','low',blurry[0]['at'],
                  'Nhiều frame có độ nét thấp (heuristic), không đồng nghĩa lỗi tạo sinh.',source='visual_heuristic')
 
+        timings['visual_seconds']=round(time.monotonic()-stage_start,3)
+        _set_progress(job_id,'vlm')
+        stage_start=time.monotonic()
         if vlm_enabled():
             try:
                 client=OllamaVLM()
@@ -256,6 +305,8 @@ def analyze(job_id):
         else:
             coverage['vlm']='disabled'
 
+        timings['vlm_seconds']=round(time.monotonic()-stage_start,3)
+        _set_progress(job_id,'finalizing')
         normalized,raw_map=normalize_evidence(raw)
         if coverage['ocr']!='ok' and coverage['asr']!='ok':
             flag('COVERAGE','medium',0,'OCR/ASR chưa khả dụng; không thể xác nhận lời nói/chữ trong video.')
@@ -275,7 +326,8 @@ def analyze(job_id):
         if not any(e.kind in ('ocr','asr','vlm_observation','vlm_issue') for e in normalized):
             flag('EVIDENCE-LOW','medium',0,'Chưa có bằng chứng nội dung từ OCR/ASR/VLM; cần reviewer kiểm tra.')
         decision='Regenerate' if any(f['severity']=='high' for f in findings) else 'Needs Review'
-        details={'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
+        timings['total_seconds']=round(time.monotonic()-t0,3)
+        details={'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
                  'coverage':coverage,'elapsed_seconds':round(time.monotonic()-t0,2),
                  'rule_version':'rules-0.2','normalization_version':'evidence-2.0',
                  'frame_timeline':[{'at':f['at'],'frame':f['frame'],'blur':f['blur']} for f in sampled],
@@ -316,6 +368,39 @@ def analyze(job_id):
     finally:
         if cap is not None:cap.release()
 
+# A restart ends Python worker threads but does not change SQLite status.
+# Recover only on application startup, when the prior single-worker server has
+# already exited. Never start duplicate analysis while the server is running.
+def _start_job(jid):
+    threading.Thread(target=analyze,args=(jid,),name=f'VerifAI-{jid}',daemon=True).start()
+
+def recover_interrupted_jobs():
+    resumed=[]
+    with db() as c:
+        items=c.execute("SELECT id,status,stored_name,recovery_attempts FROM jobs WHERE status IN ('queued','processing')").fetchall()
+        for job in items:
+            jid=job['id']
+            source=(UPLOAD/job['stored_name']).resolve()
+            # No recovery for missing / malformed storage paths.
+            valid=source.parent==UPLOAD.resolve() and source.is_file()
+            attempts=int(job['recovery_attempts'] or 0)
+            if not valid or (job['status']=='processing' and attempts>=2):
+                message=('Video gốc không còn trên ổ đĩa.' if not valid else
+                         'Job bị gián đoạn nhiều lần; vui lòng kiểm tra và phân tích lại thủ công.')
+                c.execute('UPDATE jobs SET status=?,details=?,finished_at=? WHERE id=?',
+                          ('failed',json.dumps({'error':message},ensure_ascii=False),utc(),jid))
+                audit(c,jid,'system','recovery_failed',{'reason':message,'attempts':attempts})
+                continue
+            if job['status']=='processing':
+                attempts+=1
+                c.execute('UPDATE jobs SET status=?,recovery_attempts=?,details=? WHERE id=?',
+                          ('queued',attempts,json.dumps({'progress':{'stage':'recovered','updated_at':utc()}},ensure_ascii=False),jid))
+                audit(c,jid,'system','job_recovered',{'attempt':attempts})
+            resumed.append(jid)
+    for jid in resumed:
+        _start_job(jid)
+    return resumed
+
 @app.post('/api/jobs')
 async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source_url:str=Form(''),rights:str=Form('unknown'),case_code:str=Form('')):
     with db() as c:
@@ -344,7 +429,7 @@ async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source
             c.execute('UPDATE dataset_cases SET product_id=COALESCE(product_id,?),updated_at=? WHERE code=?',
                       (product_id,utc(),case_code))
         audit(c,jid,'system','uploaded',{'size_bytes':size,'sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'source_url':source_url,'rights':rights})
-    threading.Thread(target=analyze,args=(jid,),daemon=True).start()
+    _start_job(jid)
     return {'id':jid,'status':'queued'}
 
 @app.post('/api/jobs/{jid}/reanalyze')
@@ -358,7 +443,7 @@ def reanalyze(jid: str):
         c.execute('UPDATE jobs SET status=?,review_decision=NULL,reviewer=NULL,review_note=NULL WHERE id=?',('queued',jid))
         audit(c,jid,'system','reanalyze_requested',{'previous_status':j['status'],
               'previous_review_cleared':True,'vlm_enabled':vlm_enabled()})
-    threading.Thread(target=analyze,args=(jid,),daemon=True).start()
+    _start_job(jid)
     return {'id':jid,'status':'queued'}
 
 @app.get('/api/jobs')
