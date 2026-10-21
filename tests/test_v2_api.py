@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from verifai_core.vlm import VLMResult
 
 
-def test_vlm_end_to_end_with_mock(tmp_path,monkeypatch):
+def test_vlm_end_to_end_with_mock(tmp_path,monkeypatch,stub_perception):
     import backend
     monkeypatch.setenv('VLM_ENABLED','1')
     monkeypatch.setenv('VLM_MAX_FRAMES','2')
@@ -80,7 +80,7 @@ def test_vlm_end_to_end_with_mock(tmp_path,monkeypatch):
     assert any(a['action']=='reanalyze_requested' for a in rerun_job['audits'])
 
 
-def test_unavailable_vlm_degrades_to_review_without_fake_issues(tmp_path,monkeypatch):
+def test_unavailable_vlm_degrades_to_review_without_fake_issues(tmp_path,monkeypatch,stub_perception):
     import backend
     monkeypatch.setenv('VLM_ENABLED','1')
     monkeypatch.setattr(backend,'DATA',tmp_path)
