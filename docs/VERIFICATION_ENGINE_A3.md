@@ -20,7 +20,7 @@ Every status includes `requires_human_review=true`, `is_final_decision=false`. N
 
 ## Reconciliation rules
 
-1. **Price:** Read `evidence.metadata.price_v3` and group **comparable** current-price observations. A1 `MATCH` and `MISMATCH` observations with different amounts create `CONFLICT: multiple_observed_prices`. Identical mismatches across OCR and ASR become a `CANDIDATE` with two observed modalities. Repeated OCR frames alone remain one modality.
+1. **Price:** Read `evidence.metadata.price_v3` and group **comparable** current-price observations. A1 `MATCH` and `MISMATCH` observations with different amounts create `CONFLICT: multiple_observed_prices`. Identical mismatches across OCR and ASR become a `CANDIDATE` with two observed modalities. Repeated OCR frames alone remain one modality. A separate promotion or unattributed price remains `INSUFFICIENT_EVIDENCE` even when another observed list price matches the reference.
 2. **Claim:** Read `evidence.metadata.claim_v3.mentions` and group by exact case-insensitive claim phrase. Asserted + negated contexts create `CONFLICT: mixed_assertion_and_negation`. Repeated asserted phrases make a `CANDIDATE`; negated/uncertain-only contexts remain `INSUFFICIENT_EVIDENCE`. This is *not* natural-language entailment or semantic equivalence.
 3. **Visual:** Existing VLM issue findings remain `CANDIDATE` linked to VLM evidence. OpenCV temporal `VIS-SCREEN` alone is insufficient visual proof; it never becomes independent VLM confirmation.
 4. **Coverage/reference:** Missing `ocr/asr/vlm=ok`, Product Truth not marked `reviewed`, an `EVIDENCE-LOW/COVERAGE/VIS-06` finding or ambiguous sub-check prevents a no-issues conclusion unless a stronger review candidate already exists.
