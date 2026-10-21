@@ -256,3 +256,15 @@ in-place cancellation is provided. Stop and restart the **single-worker**
 Uvicorn process to recover interrupted jobs; after repeated interruptions,
 affected jobs are marked failed for manual intervention. Public production
 hosting still requires external durable queues and authentication.
+
+## Sprint A1 — Price Parser v3
+
+Vietnamese price extraction/verification now uses a conservative structured
+parser instead of matching every four-digit number. It recognizes VND shorthand,
+separates current/original/promotional amounts, and distinguishes `MATCH`,
+`MISMATCH` and `INSUFFICIENT_EVIDENCE`. A detected mismatch is a
+**reviewer-only medium-severity PRICE-01 candidate**, not automatic Regenerate.
+Price assessments are stored in canonical evidence metadata and exported as JSON.
+
+Read [Price Verification A1](docs/PRICE_VERIFICATION_A1.md) for formats,
+examples, tests, limitations and safe re-analysis guidance.
