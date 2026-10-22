@@ -292,3 +292,11 @@ remain readable; only a deliberate Re-analyze creates an A3 report for them.
 
 See [Verification Engine A3](docs/VERIFICATION_ENGINE_A3.md) for the exact
 status semantics, data contract, tests and known limitations.
+
+## Sprint B1 — Multimodal Evidence Reliability
+
+The video sampler now targets 1-second spacing on shorter clips (maximum 60 sampled frames). OCR frame selection is configurable via OCR_SAMPLING_MODE=hybrid (default, temporally distributed anchors plus changed frames) or uniform (original evenly spaced behavior). OCR still receives at most OCR_MAX_FRAMES=12 selected frames by default. Selection is heuristic; real-video recall must be tested.
+
+OCR coverage now distinguishes ok, partial, error, not_installed and skipped across **every attempted OCR frame**. A completed job records frame counts, empty successful frames and ASR segment counts under details.perception_quality. Whisper end times are retained in canonical evidence; no ASR confidence values are invented.
+
+See [Multimodal Reliability B1](docs/MULTIMODAL_RELIABILITY_B1.md) for PowerShell commands, Windows QA and limitations. The changes do not alter login/RBAC or database schema.
