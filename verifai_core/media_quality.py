@@ -67,6 +67,8 @@ def select_ocr_frames(frames: list[dict], limit: int, mode: str = 'hybrid') -> l
         delta = float(np.mean(cv2.absdiff(thumbnails[i], thumbnails[i-1]))) / 255.0
         if delta >= .045:
             novelty.append((delta, float(frames[i].get('blur', 0)), i))
+    if not novelty:
+        return [frames[i] for i in _spread_indices(n,limit)]
     for _, _, i in sorted(novelty, key=lambda p: (-p[0], -p[1], p[2])):
         if len(chosen) >= limit:
             break
