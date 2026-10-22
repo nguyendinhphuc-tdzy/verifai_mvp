@@ -6,6 +6,7 @@ coverage status so the reviewer never mistakes missing analysis for a clean vide
 from __future__ import annotations
 
 import importlib.util
+import math
 import os
 import threading
 from pathlib import Path
@@ -79,6 +80,35 @@ class OCRService:
             return [], f'error: {str(exc)[:180]}'
 
 
+def unpack_asr_segments(segments: Any) -> list[dict]:
+    """Clean Whisper timestamps/text without changing established evidence keys.
+
+    Include 'end' only if supplied and valid so older adapters stay compatible.
+    Report empty-but-successful transcriptions as no segments, not fake speech.
+    """
+    lines = []
+    for segment in segments:
+        raw_text = getattr(segment, 'text', '')
+        text = ' '.join(str(raw_text or '').split())[:1500]
+        if not text:
+            continue
+        try:
+            start = float(getattr(segment, 'start'))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if not math.isfinite(start) or start < 0:
+            continue
+        data = {'at': round(start, 2), 'text': text, 'score': None}
+        try:
+            end = float(getattr(segment, 'end'))
+        except (TypeError, ValueError, AttributeError):
+            end = None
+        if end is not None and math.isfinite(end) and end >= start:
+            data['end'] = round(end, 2)
+        lines.append(data)
+    return lines
+
+
 class ASRService:
     def __init__(self):
         self.model = None
@@ -105,11 +135,7 @@ class ASRService:
                     language=os.environ.get('WHISPER_LANGUAGE', 'vi'),
                 )
                 # The iterator performs inference: consume it under the lock.
-                lines = [
-                    {'at': round(float(segment.start), 2),
-                     'text': str(segment.text).strip(), 'score': None}
-                    for segment in segments if str(segment.text).strip()
-                ]
+                lines = unpack_asr_segments(segments)
             return lines, 'ok'
         except Exception as exc:  # missing weights/codec/runtime
             return [], f'error: {str(exc)[:180]}'
