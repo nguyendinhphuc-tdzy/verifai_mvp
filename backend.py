@@ -16,6 +16,9 @@ from verifai_core.price import assess_price, PRICE_PARSER_VERSION
 from verifai_core.claims import CLAIM_RULE_VERSION, find_restricted_claims, validate_reference_claims
 from verifai_core.verification import build_verification_report, attach_evidence_ids, VERIFICATION_VERSION
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
+from verifai_core.media_quality import (
+    video_stride, select_ocr_frames, OCRCoverage, SAMPLING_VERSION,
+)
 from verifai_core.vlm import OllamaVLM, VLMError, vlm_enabled, PROMPT_VERSION
 
 BASE = Path(__file__).resolve().parent
@@ -24,6 +27,7 @@ UPLOAD = DATA/'uploads'; FRAMES=DATA/'frames'; DB=DATA/'verifai.sqlite3'
 MAX_UPLOAD=int(os.environ.get('MAX_VIDEO_MB','150'))*1024*1024
 MAX_DURATION=int(os.environ.get('MAX_VIDEO_SECONDS','180'))
 OCR_MAX_FRAMES=max(0,min(60,int(os.environ.get('OCR_MAX_FRAMES','12'))))
+OCR_SAMPLING_MODE=os.environ.get('OCR_SAMPLING_MODE','hybrid').strip().lower()
 _ANALYSIS_SLOTS=threading.BoundedSemaphore(max(1,min(2,int(os.environ.get('MAX_CONCURRENT_JOBS','1')))))
 for p in (DATA,UPLOAD,FRAMES): p.mkdir(parents=True,exist_ok=True)
 @asynccontextmanager
@@ -274,7 +278,7 @@ def _analyze_job(job_id):
     coverage={'ocr':'not_installed','asr':'not_installed','visual':'heuristic_screening',
               'c2pa':'not_implemented','vlm':'disabled' if not vlm_enabled() else 'pending'}
     raw=[]; findings=[]; sampled=[]; vlm_calls=0; vlm_errors=[]
-    timings={}; ocr_calls=0
+    timings={}; ocr_calls=0; ocr_health=OCRCoverage()
 
     def evidence(kind, at, text, score=None, frame=None, frame2=None, source='unknown', meta=None):
         uid=f'ev-{len(raw)}'
@@ -292,7 +296,7 @@ def _analyze_job(job_id):
         fps=fps if 0<fps<240 else 25
         total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)); duration=total/fps if total else 0
         if duration>MAX_DURATION: raise RuntimeError(f'Video vượt giới hạn {MAX_DURATION} giây.')
-        interval=max(1,int(fps*max(2, duration/60)))
+        interval=video_stride(fps,duration,max_frames=60)
         processed=0;idx=0; frame_dir=FRAMES/job_id;frame_dir.mkdir(parents=True,exist_ok=True)
         _set_progress(job_id,'sampling',sampled_frames=0)
         stage_start=time.monotonic()
@@ -315,18 +319,22 @@ def _analyze_job(job_id):
         # Video frame sampling and OCR frame selection have different purposes:
         # visual signals may need up to 60 frames, but OCR only needs a smaller
         # representative subset (default 12) to keep CPU latency bounded.
-        chosen=evenly_spaced(sampled,min(OCR_MAX_FRAMES,len(sampled)))
+        chosen=select_ocr_frames(sampled,min(OCR_MAX_FRAMES,len(sampled)),mode=OCR_SAMPLING_MODE)
         _set_progress(job_id,'ocr',done=0,total=len(chosen))
         stage_start=time.monotonic()
-        if not chosen: coverage['ocr']='skipped'
         for n,frame in enumerate(chosen,1):
             ocr,ocr_status=frame_ocr(frame['image'])
-            if ocr_status=='ok' or coverage['ocr']!='ok':coverage['ocr']=ocr_status
-            for text,score in ocr:
-                evidence('ocr',frame['at'],text,score,frame['frame'],source='paddleocr',meta={'confidence_kind':'ocr_engine'})
+            ocr_health.observe(ocr_status,len(ocr))
+            # Never present text as verified output if an adapter returned an error.
+            if ocr_status=='ok':
+                for text,score in ocr:
+                    evidence('ocr',frame['at'],text,score,frame['frame'],source='paddleocr',
+                             meta={'confidence_kind':'ocr_engine','sampling_version':SAMPLING_VERSION})
             ocr_calls+=1
             if n==len(chosen) or n%2==0:
                 _set_progress(job_id,'ocr',done=n,total=len(chosen))
+        ocr_health_data=ocr_health.snapshot()
+        coverage['ocr']=ocr_health_data['status']
         timings['ocr_seconds']=round(time.monotonic()-stage_start,3)
         timings['ocr_frames']=ocr_calls
         timings['ocr_avg_seconds_per_frame']=round(timings['ocr_seconds']/ocr_calls,3) if ocr_calls else None
@@ -335,8 +343,11 @@ def _analyze_job(job_id):
         speeches,coverage['asr']=transcribe(path)
         timings['asr_seconds']=round(time.monotonic()-stage_start,3)
         for seg in speeches:
+            meta={'confidence_kind':'not_provided'}
+            if seg.get('end') is not None:
+                meta['segment_end_seconds']=seg['end']
             evidence('asr',seg['at'],seg['text'],seg.get('score'),source='faster-whisper',
-                     meta={'confidence_kind':'not_provided'})
+                     meta=meta)
 
         _set_progress(job_id,'visual')
         stage_start=time.monotonic()
@@ -455,6 +466,16 @@ def _analyze_job(job_id):
         details={'verification_version':VERIFICATION_VERSION,
                  'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
                  'coverage':coverage,'elapsed_seconds':round(time.monotonic()-t0,2),
+                 'perception_quality':{
+                     'sampling_version':SAMPLING_VERSION,
+                     'sampling_stride_frames':interval,
+                     'ocr_sampling_mode':OCR_SAMPLING_MODE,
+                     'ocr':ocr_health_data,
+                     'asr':{'status':coverage['asr'],
+                            'segments':len(speeches),
+                            'segments_with_end':sum(seg.get('end') is not None for seg in speeches),
+                            'speech_observed':bool(speeches)},
+                 },
                  'rule_version':'rules-0.4','price_parser_version':PRICE_PARSER_VERSION,
                  'claim_rule_version':CLAIM_RULE_VERSION,
                  'product_truth_snapshot':{key:p.get(key) for key in
