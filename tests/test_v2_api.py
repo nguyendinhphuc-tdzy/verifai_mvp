@@ -20,7 +20,7 @@ def test_vlm_end_to_end_with_mock(tmp_path,monkeypatch,stub_perception):
     backend.init()
 
     class MockVLM:
-        model='mock-qwen3-vl'
+        model='mock-gemini'
         def __init__(self):pass
         def check(self):return {'ready':True,'message':'ready'}
         def analyze(self,images,product,task):
@@ -31,7 +31,7 @@ def test_vlm_end_to_end_with_mock(tmp_path,monkeypatch,stub_perception):
             return VLMResult.model_validate({'summary':'Single frame checked',
                 'observations':[{'description':'A baby product in a box','category':'product',
                                  'confidence':0.8,'frame_index':0}], 'issues':[]})
-    monkeypatch.setattr(backend,'OllamaVLM',MockVLM)
+    monkeypatch.setattr(backend,'GeminiVLM',MockVLM)
     client=TestClient(backend.app)
     p=client.post('/api/products',json={'sku':'MB-01','name':'Baby item','brand':'Brand','price':100000,
                                         'claims':[],'banned':[]}).json()
