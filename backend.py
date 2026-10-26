@@ -16,7 +16,9 @@ from verifai_core.price import assess_price, PRICE_PARSER_VERSION
 from verifai_core.claims import CLAIM_RULE_VERSION, find_restricted_claims, validate_reference_claims
 from verifai_core.verification import build_verification_report, attach_evidence_ids, VERIFICATION_VERSION
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
-from verifai_core.vlm import OllamaVLM, VLMError, vlm_enabled, PROMPT_VERSION
+from verifai_core.vlm import VLMError, vlm_enabled, PROMPT_VERSION
+from verifai_core.gemini import GeminiVLM, DEFAULT_MODEL
+from verifai_core.evaluation import predicted_error, sufficient_coverage, independent_consensus, calculate_metrics
 
 BASE = Path(__file__).resolve().parent
 DATA = Path(os.environ.get('VERIFAI_DATA', str(BASE/'data'))).resolve()
@@ -151,12 +153,12 @@ def health():
     enabled = vlm_enabled()
     status = {'ready': False, 'message': 'VLM_ENABLED=0'}
     if enabled:
-        try: status = OllamaVLM().check()
+        try: status = GeminiVLM().check()
         except VLMError as exc: status = {'ready': False, 'message': str(exc)}
     return {'ok':True,'ocr':_has_paddle(),'asr':_has_whisper(),
             'ffmpeg':bool(shutil.which('ffmpeg')),'database':'sqlite',
             'mode':'local feasibility MVP', 'version':'2.1.0',
-            'vlm':{'enabled':enabled,'model':os.environ.get('VLM_MODEL','qwen3-vl:4b-instruct'),**status}}
+            'vlm':{'enabled':enabled,'model':os.environ.get('VLM_MODEL',DEFAULT_MODEL),**status}}
 @app.post('/api/products')
 def create_product(v:ProductIn):
     pid=uuid.uuid4().hex[:12];now=utc()
@@ -315,10 +317,10 @@ def _analyze_job(job_id):
         # Video frame sampling and OCR frame selection have different purposes:
         # visual signals may need up to 60 frames, but OCR only needs a smaller
         # representative subset (default 12) to keep CPU latency bounded.
-        chosen=evenly_spaced(sampled,min(OCR_MAX_FRAMES,len(sampled)))
+        chosen=evenly_spaced(sampled,min(OCR_MAX_FRAMES,len(sampled))) if os.getenv('OCR_ENABLED','1') == '1' else []
         _set_progress(job_id,'ocr',done=0,total=len(chosen))
         stage_start=time.monotonic()
-        if not chosen: coverage['ocr']='skipped'
+        if not chosen: coverage['ocr']='disabled' if os.getenv('OCR_ENABLED','1') != '1' else 'skipped'
         for n,frame in enumerate(chosen,1):
             ocr,ocr_status=frame_ocr(frame['image'])
             if ocr_status=='ok' or coverage['ocr']!='ok':coverage['ocr']=ocr_status
@@ -332,7 +334,7 @@ def _analyze_job(job_id):
         timings['ocr_avg_seconds_per_frame']=round(timings['ocr_seconds']/ocr_calls,3) if ocr_calls else None
         _set_progress(job_id,'asr')
         stage_start=time.monotonic()
-        speeches,coverage['asr']=transcribe(path)
+        speeches,coverage['asr']=transcribe(path) if os.getenv('ASR_ENABLED','1') == '1' else ([], 'disabled')
         timings['asr_seconds']=round(time.monotonic()-stage_start,3)
         for seg in speeches:
             evidence('asr',seg['at'],seg['text'],seg.get('score'),source='faster-whisper',
@@ -360,7 +362,7 @@ def _analyze_job(job_id):
         stage_start=time.monotonic()
         if vlm_enabled():
             try:
-                client=OllamaVLM()
+                client=GeminiVLM()
                 readiness=client.check()
                 if not readiness['ready']: raise VLMError(readiness['message'])
                 frame_limit=max(0,min(8,int(os.environ.get('VLM_MAX_FRAMES','4'))))
@@ -466,7 +468,7 @@ def _analyze_job(job_id):
                  'visual':{'pairs_checked':len(signals),'scene_cuts':sum(x.scene_cut for x in signals),
                            'same_shot_pairs':sum(x.likely_same_shot for x in signals),
                            'change_candidates':len(candidates)},
-                 'vlm':{'enabled':vlm_enabled(),'model':os.environ.get('VLM_MODEL','qwen3-vl:4b-instruct'),
+                 'vlm':{'enabled':vlm_enabled(),'model':os.environ.get('VLM_MODEL',DEFAULT_MODEL),
                         'calls_succeeded':vlm_calls,'errors':vlm_errors[:12],
                         'prompt_version':PROMPT_VERSION},
                  'limitations':'VLM findings chỉ là giả thuyết cần xác nhận; không có ảnh SKU tham chiếu, không chứng minh deepfake/AI artifact. Confidence VLM chưa hiệu chuẩn.'}
@@ -669,35 +671,28 @@ def label_job(jid:str,v:LabelIn):
     return {'ok':True}
 @app.get('/api/metrics')
 def metrics():
+    """Actual-only candidate metrics; same policy as /api/dataset/summary."""
     with db() as c:
-        jobs=[dict(r) for r in c.execute('SELECT id,status,decision,review_decision,details FROM jobs')]
-        total=len(jobs);done=sum(j['status']=='completed' for j in jobs);rev=sum(bool(j['review_decision']) for j in jobs)
-        samples=[]
-        for j in jobs:
-            labels=[r['label'] for r in c.execute('SELECT label FROM labels WHERE job_id=?',(j['id'],))]
-            if j['status']=='completed' and labels and len(set(labels))==1 and labels[0] in ('clean','error'):
-                # prediction positive if AI has high-severity content finding; exclude coverage warnings
-                pred=bool(c.execute("SELECT 1 FROM findings WHERE job_id=? AND severity='high' AND code!='COVERAGE'",(j['id'],)).fetchone())
-                samples.append((labels[0]=='error',pred))
-        tp=sum(g and p for g,p in samples);fp=sum(not g and p for g,p in samples);fn=sum(g and not p for g,p in samples)
-        vlm_jobs=0;vlm_flagged_jobs=0;visual_candidate_jobs=0;canonical_evidence=0;raw_evidence=0
-        for j in jobs:
-            if j['status']!='completed':continue
-            detail=json.loads(j['details'] or '{}')
-            if detail.get('coverage',{}).get('vlm') in ('ok','partial'):vlm_jobs+=1
-            if c.execute("SELECT 1 FROM findings WHERE job_id=? AND source='vlm'",(j['id'],)).fetchone():vlm_flagged_jobs+=1
-            if detail.get('visual',{}).get('change_candidates',0)>0:visual_candidate_jobs+=1
-            norm=detail.get('normalization',{})
-            canonical_evidence+=norm.get('canonical_count',0)
-            raw_evidence+=norm.get('raw_count',0)
-        return {'total':total,'completed':done,'reviewed':rev,'evaluated':len(samples),
-                'precision':round(tp/(tp+fp),3) if tp+fp else None,
-                'recall':round(tp/(tp+fn),3) if tp+fn else None,
-                'tp':tp,'fp':fp,'fn':fn,
-                'vlm_jobs':vlm_jobs,'vlm_flagged_jobs':vlm_flagged_jobs,
-                'visual_candidate_jobs':visual_candidate_jobs,
-                'canonical_evidence':canonical_evidence,'raw_evidence':raw_evidence,
-                'note':'Precision/Recall chỉ tính high-severity rule flags với nhãn video-level; VLM medium candidates KHÔNG nằm trong các chỉ số này. Chưa có benchmark VLM theo loại lỗi.'}
+        jobs=[dict(r) for r in c.execute('SELECT id,status,review_decision,details FROM jobs')]
+        completed=[j for j in jobs if j['status']=='completed']
+        evaluated=[]
+        coverage_excluded=0
+        for j in completed:
+            coverage=json.loads(j['details'] or '{}').get('coverage',{})
+            if not sufficient_coverage(coverage):
+                coverage_excluded+=1
+                continue
+            labels=[dict(r) for r in c.execute('SELECT annotator,label FROM labels WHERE job_id=?',(j['id'],))]
+            truth=independent_consensus(labels)
+            if truth is None:continue
+            findings=[dict(r) for r in c.execute('SELECT code,severity FROM findings WHERE job_id=?',(j['id'],))]
+            evaluated.append((truth=='error',predicted_error(findings)))
+        result=calculate_metrics(evaluated)
+        result.update({'total':len(jobs),'completed':len(completed),
+                       'reviewed':sum(bool(j['review_decision']) for j in jobs),
+                       'excluded_insufficient_coverage':coverage_excluded,
+                       'note':'Actual-only candidate detection; requires >=2 agreeing annotators and available OCR/ASR/VLM. Dataset endpoint adds case-link constraints.'})
+        return result
 
 
 # Additive, backwards-compatible Sprint-2 evaluation dataset routes.
