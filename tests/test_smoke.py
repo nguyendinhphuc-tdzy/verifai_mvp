@@ -39,5 +39,7 @@ def test_end_to_end(tmp_path, monkeypatch, stub_perception):
     assert j['details']['coverage']['vlm']=='disabled'
     assert client.post('/api/jobs/'+jid+'/review',json={'decision':'Pass','reviewer':'Test Reviewer'}).status_code==200
     assert client.post('/api/jobs/'+jid+'/labels',json={'annotator':'A','label':'clean'}).status_code==200
-    assert client.get('/api/metrics').status_code==200
+    metrics=client.get('/api/metrics').json()
+    assert metrics['evaluated']==0  # single label is insufficient for actual evaluation
+    assert metrics['prediction_policy']=='candidate-v1-2026-10'
     assert client.get('/').status_code==200
