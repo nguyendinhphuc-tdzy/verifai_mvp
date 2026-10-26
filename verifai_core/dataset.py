@@ -1,4 +1,3 @@
-from verifai_core.evaluation import calculate_metrics, predicted_error, sufficient_coverage, independent_consensus
 """Dataset-driven evaluation layer for the official Sprint-2 workbook.
 
 The workbook is an evaluation *plan*, not 80 observed model runs. Sheet 5/6
@@ -6,6 +5,7 @@ predictions are kept separately and NEVER used as actual model metrics.
 No xlsx data is sent to an external service; this import is local only.
 """
 from __future__ import annotations
+from verifai_core.evaluation import calculate_metrics, predicted_error, sufficient_coverage, independent_consensus
 
 from collections import Counter
 from datetime import datetime, timezone
