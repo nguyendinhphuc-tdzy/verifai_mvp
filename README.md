@@ -57,15 +57,17 @@ The schema of VLM findings and Human Review remains unchanged.
 |---|---|---|
 | `VLM_ENABLED` | `0` | Opt-in to VLM calls |
 | `VLM_MODEL` | `gemini-3.8-flash` | Gemini API model ID |
-| `VLM_BASE_URL` | Google API | Not applicable |
+| `GEMINI_API_KEY` | unset | Gemini API key, set in shell and never commit |
 | `VLM_TIMEOUT_SECONDS` | `120` | Timeout per VLM request |
 | `VLM_MAX_FRAMES` | `4` | Single-frame checks, capped at 8 |
 | `VLM_MAX_PAIRS` | `2` | Same-shot pair checks, capped at 6 |
-| `VLM_ALLOW_REMOTE` | `0` | Allow non-loopback Gemini only when explicitly `1` (privacy risk) |
+| `GEMINI_MAX_ATTEMPTS` | `3` | Retry budget for 429/503 responses |
+| `OCR_ENABLED` | `1` | Set to `0` to skip local OCR processing |
+| `ASR_ENABLED` | `1` | Set to `0` to skip local ASR processing |
 | `WHISPER_MODEL` | `tiny` | ASR model (if installed) |
 | `VERIFAI_DATA` | `./data` | Persistent storage root |
 
-**Privacy:** Default Ollama endpoint is localhost. Setting `VLM_ALLOW_REMOTE=1` may send image frames to another host. Do not use cloud/remote endpoints for sensitive videos without explicit authorization.
+**Privacy:** Gemini runs in Google's cloud, so selected image frames leave the local machine. Ensure processing rights and user consent before enabling it.
 
 ## 4. Enable OCR + ASR on Windows (Python 3.11, CPU first)
 
@@ -111,9 +113,7 @@ Re-analysis resets current findings and reviewer decision (preserves audit).
 `ffmpeg` on PATH is optional for faster-whisper audio decoding (PyAV bundles
 its own FFmpeg libraries), but is recommended for video conversion/troubleshooting.
 
-**VLM is separate**: Python dependencies do not install the Ollama executable
-or Gemini Flash model. See section 3 to install Ollama, `ollama pull`, and set
-`VLM_ENABLED=1` in the terminal running the backend.
+**VLM is API-based:** The Python SDK is installed by `requirements.txt`; no Ollama weights are required. Set `GEMINI_API_KEY` and `VLM_ENABLED=1` before starting the backend.
 
 References: [PaddleOCR installation](https://www.paddleocr.ai/main/en/version3.x/installation.html),
 [PaddleOCR multilingual OCR](https://www.paddleocr.ai/main/en/version3.x/pipeline_usage/OCR.html),
@@ -126,7 +126,7 @@ Video + Product Truth
   -> OpenCV frame sampling (max 60 frames) + optional PaddleOCR + faster-whisper
   -> Temporal signals: HSV histogram, frame pixel delta, pHash, ORB matches
   -> Same-shot pair selection (avoid likely scene cuts)
-  -> Optional Ollama VLM: sampled single frames + up to 2 frame pairs
+  -> Optional Gemini VLM: sampled single frames + up to 2 frame pairs
   -> Pydantic JSON schema validation + evidence provenance
   -> Evidence normalization (dedup adjacent repeated OCR/ASR, keep timestamps)
   -> Deterministic price/restricted-claim rules + visual candidate flags
@@ -138,7 +138,7 @@ Video + Product Truth
 
 **Visual Consistency Checking:** OpenCV compares consecutive sampled frames and classifies likely scene cuts vs same-shot candidates. The VLM compares selected same-shot pairs for apparent changes to product details. `VIS-01`/`VIS-02`/`VIS-03` are **review candidates**, not proven defects. Natural movement, transitions, lighting, occlusion and camera angles can cause false positives. Two sampled frames cannot establish the exact frame where a transient anomaly occurred.
 
-**VLM:** Uses `POST /api/chat` with base64-encoded local JPEG frames and a Pydantic-generated JSON Schema in `format`. Requests have `temperature=0`. Outputs are validated and stored with model + prompt versions; malformed output or unreachable Ollama produces `coverage.vlm=error`/`partial` rather than fabricated findings. `confidence` is **self-reported, not calibrated**. No automatic `Regenerate` from VLM-only flags.
+**VLM:** Uses Gemini `models.generate_content` with locally sampled JPEG frames and structured JSON response schema. Requests use `temperature=0`. Outputs are validated and stored with model + prompt versions; malformed output, rate limits or API failures produce `coverage.vlm=error`/`partial` rather than fabricated findings. `confidence` is **self-reported, not calibrated**. No automatic `Regenerate` from VLM-only flags.
 
 **Product truth:** Product name, SKU, brand, price, approved/restricted claims are *textual reference information*, **not an image of the actual product**. The system cannot reliably detect lookalike packaging or prove SKU mismatch from appearance alone. `SKU-01` is only a tentative visible-label contradiction.
 
@@ -156,7 +156,7 @@ pip install pytest httpx
 python -m pytest -q tests
 ```
 
-Automated tests cover: v1 smoke flow; evidence dedup/provenance; scene-cut and temporal candidate signals; VLM schema and invalid JSON; security of remote model endpoint; SQLite v1->v2 migration; **end-to-end job with a mocked VLM** including linked findings, JSON export, re-analysis and audit log. They do **not** evaluate the accuracy or speed of the real Qwen3-VL model.
+Automated tests cover: v1 smoke flow; evidence dedup/provenance; scene-cut and temporal candidate signals; VLM schema and invalid JSON; Gemini API adapter; SQLite v1->v2 migration; **end-to-end job with a mocked VLM** including linked findings, JSON export, re-analysis and audit log. They do **not** evaluate the accuracy or speed of the real Gemini model.
 
 ## 8. Known limitations
 
@@ -170,7 +170,7 @@ For architecture details and upgrade checklist see [ARCHITECTURE.md](ARCHITECTUR
 
 ## Open-source references
 
-- [Ollama](https://github.com/ollama/ollama), [Qwen3-VL](https://ollama.com/library/qwen3-vl:4b-instruct)
+- [Google Gemini API](https://ai.google.dev/gemini-api/docs/get-started)
 - [FastAPI](https://github.com/fastapi/fastapi), [OpenCV](https://github.com/opencv/opencv)
 - [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR), [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
 
