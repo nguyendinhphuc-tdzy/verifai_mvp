@@ -1,6 +1,6 @@
 # VerifAI MVP v2.1 — 80-case Dataset Workspace + VLM / Evidence / Visual
 
-**Working local web application** upgraded from v1.0. Frontend: standalone `static/index.html`; backend: FastAPI + SQLite + OpenCV; VLM: **Qwen3-VL-4B-Instruct via local Ollama** (optional); OCR/ASR remain optional.
+**Working local web application** upgraded from v1.0. Frontend: standalone `static/index.html`; backend: FastAPI + SQLite + OpenCV; VLM: **Gemini 3.8 Flash via Google API** (optional, cloud inference); OCR/ASR remain optional.
 
 > Scope: evidence-first **review assistance**, not a deepfake detector, not automatic legal compliance, not a production service. A VLM assertion is an unverified candidate until a human confirms it. No product-reference image is stored, so precise visual SKU matching is not implemented.
 
@@ -29,59 +29,39 @@ Open http://127.0.0.1:8000. API docs: http://127.0.0.1:8000/docs.
 
 With VLM disabled, OpenCV temporal checks still run, and potential visual changes appear as **VIS-SCREEN** low-severity review prompts. This does **not** imply AI-generated defects.
 
-## 3. Enable a real local VLM (Qwen3-VL)
+## 3. Enable Gemini Flash (cloud VLM)
 
-Install [Ollama](https://ollama.com/download) and ensure its server is running. **Ollama 0.12.7 or newer** is required for Qwen3-VL. Download the model once:
-
-```bash
-ollama pull qwen3-vl:4b-instruct
-ollama list
-```
-
-If Ollama is not already running as a service, start it in a separate terminal with `ollama serve`.
-
-**Windows PowerShell**, from the `verifai_mvp` folder:
+Video frames are sampled locally by OpenCV, then selected JPEG frames are sent to Gemini.
+**Privacy:** selected frames leave your device. Obtain permission and avoid transmitting personal/sensitive video without authorization.
+Do not commit your API key. Run in PowerShell:
 
 ```powershell
+$env:GEMINI_API_KEY=Read-Host "Gemini API key"
 $env:VLM_ENABLED="1"
-$env:VLM_MODEL="qwen3-vl:4b-instruct"
-$env:VLM_MAX_FRAMES="4"
-$env:VLM_MAX_PAIRS="2"
-uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
-```
-
-**macOS/Linux**:
-
-```bash
-export VLM_ENABLED=1
-export VLM_MODEL=qwen3-vl:4b-instruct
-export VLM_MAX_FRAMES=4
-export VLM_MAX_PAIRS=2
-uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
-```
-
-Test model connectivity:
-
-```bash
-curl http://127.0.0.1:8000/api/health
+$env:VLM_MODEL="gemini-3.8-flash"
+$env:OCR_ENABLED="0"
+$env:ASR_ENABLED="0"
+python -m pip install -r requirements.txt
 python scripts/check_vlm.py
+python -m uvicorn backend:app --host 127.0.0.1 --port 8000
 ```
 
-`/api/health` should show `"vlm":{"enabled":true,"ready":true,...}`. `scripts/check_vlm.py` sends a generated **synthetic image** to Ollama and validates its response; it is a live smoke test, **not an accuracy benchmark**.
-
-The 4B quantized weights are about **3.3 GB** on disk, plus RAM/VRAM overhead. CPU inference may be slow; allow a few minutes per video, especially for multiple frame/pair requests. Use `VLM_MAX_FRAMES=2` and `VLM_MAX_PAIRS=1` on limited hardware. A local 8B model can be substituted after checking hardware.
+Gemini is still billed/rate-limited according to your project and plan.
+The MVP sends selected JPEG frames, not the full video/audio. With local OCR/ASR disabled,
+spoken claims are not transcribed. A missing module is not proof that the video is clean.
+The schema of VLM findings and Human Review remains unchanged.
 
 **VLM configuration** (environment variables):
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `VLM_ENABLED` | `0` | Opt-in to VLM calls |
-| `VLM_MODEL` | `qwen3-vl:4b-instruct` | Ollama model tag |
-| `VLM_BASE_URL` | `http://127.0.0.1:11434` | Ollama root URL |
+| `VLM_MODEL` | `gemini-3.8-flash` | Gemini API model ID |
+| `VLM_BASE_URL` | Google API | Not applicable |
 | `VLM_TIMEOUT_SECONDS` | `120` | Timeout per VLM request |
 | `VLM_MAX_FRAMES` | `4` | Single-frame checks, capped at 8 |
 | `VLM_MAX_PAIRS` | `2` | Same-shot pair checks, capped at 6 |
-| `VLM_ALLOW_REMOTE` | `0` | Allow non-loopback Ollama only when explicitly `1` (privacy risk) |
+| `VLM_ALLOW_REMOTE` | `0` | Allow non-loopback Gemini only when explicitly `1` (privacy risk) |
 | `WHISPER_MODEL` | `tiny` | ASR model (if installed) |
 | `VERIFAI_DATA` | `./data` | Persistent storage root |
 
@@ -132,7 +112,7 @@ Re-analysis resets current findings and reviewer decision (preserves audit).
 its own FFmpeg libraries), but is recommended for video conversion/troubleshooting.
 
 **VLM is separate**: Python dependencies do not install the Ollama executable
-or Qwen3-VL model. See section 3 to install Ollama, `ollama pull`, and set
+or Gemini Flash model. See section 3 to install Ollama, `ollama pull`, and set
 `VLM_ENABLED=1` in the terminal running the backend.
 
 References: [PaddleOCR installation](https://www.paddleocr.ai/main/en/version3.x/installation.html),
