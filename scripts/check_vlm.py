@@ -1,20 +1,21 @@
-"""Live Ollama connectivity + schema smoke test on synthetic content. No quality claims."""
+"""Live Gemini connectivity + schema smoke test on synthetic content. No quality claims."""
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import sys
 import cv2
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from verifai_core.vlm import OllamaVLM, VLMError
+from verifai_core.vlm import VLMError
+from verifai_core.gemini import GeminiVLM
 
 
 def main():
     try:
-        client=OllamaVLM()
+        client=GeminiVLM()
         status=client.check()
-        print('Ollama status:',status)
+        print('Gemini status:',status)
         if not status['ready']:
-            print('Start Ollama and run: ollama pull',client.model)
+            print('Set GEMINI_API_KEY and install google-genai')
             return 1
         with TemporaryDirectory() as tmp:
             path=Path(tmp)/'synthetic.jpg'
