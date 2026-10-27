@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from verifai_core.vlm import VLMResult, VLMError, PROMPT_VERSION
 
 
-DEFAULT_MODEL = 'gemini-3.8-flash'
+DEFAULT_MODEL = 'gemini-3.5-flash-lite'
 
 
 def _prompt(product: dict, task: Literal['single', 'pair']) -> str:
@@ -73,7 +73,7 @@ class GeminiVLM:
             try:
                 from google import genai
                 from google.genai import types
-                seconds = max(10, min(600, int(os.getenv('VLM_TIMEOUT_SECONDS', '45'))))
+                seconds = max(10, min(600, int(os.getenv('VLM_TIMEOUT_SECONDS', '90'))))
                 options=types.HttpOptions(
                     timeout=seconds * 1000,
                     retry_options=types.HttpRetryOptions(attempts=1),
