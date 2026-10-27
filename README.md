@@ -278,3 +278,12 @@ remain readable; only a deliberate Re-analyze creates an A3 report for them.
 
 See [Verification Engine A3](docs/VERIFICATION_ENGINE_A3.md) for the exact
 status semantics, data contract, tests and known limitations.
+
+
+## Sprint B1 — Multimodal Evidence Reliability (merged with Gemini)
+
+The video sampler targets one frame/second on short clips, capped at 60 frames. OCR selection can use `OCR_SAMPLING_MODE=hybrid` (temporal anchors plus changed frames) or `uniform`. The OCR engine still analyzes up to `OCR_MAX_FRAMES=12` frames by default, unless `OCR_ENABLED=0` disables OCR entirely.
+
+The app reports OCR attempted/successful/failed/empty frame counts and ASR segment timing under `details.perception_quality`. ASR end timestamps are retained in evidence when valid. These counts are operational coverage, not proof of OCR or claim accuracy.
+
+See [Sprint B1 Reliability](docs/MULTIMODAL_RELIABILITY_B1.md) for technical details. **Cloud privacy change:** when `VLM_ENABLED=1`, the sampled JPEG images sent to Gemini leave the local machine. Explicit rights/consent remain required.
