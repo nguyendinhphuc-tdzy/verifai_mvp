@@ -22,8 +22,4 @@ jobs:
           python -m pip install -r requirements.txt
           python -m pip install pytest
       - name: Run offline regression suite
-        env:
-          VLM_ENABLED: '0'
-          OCR_ENABLED: '0'
-          ASR_ENABLED: '0'
         run: python -m pytest -q
