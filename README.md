@@ -344,3 +344,14 @@ The circuit state is local to the Python process; restarting resets it.
 If Gemini is not essential for a price/brand-rule evaluation, set
 `VLM_ENABLED=0` to test OCR/ASR independently. Do not interpret incomplete
 Gemini coverage as evidence of compliance.
+
+
+## Final validation handoff (October 2026)
+
+- Default Gemini model for new local configuration: `gemini-3.5-flash-lite`. Set `VLM_ENABLED=1`, provide `GEMINI_API_KEY` privately, then run `python scripts/check_vlm.py --text-only` and `python scripts/check_vlm.py`. Actual API availability and model quality must be verified independently.
+- Keep `OCR_ENABLED=1` and `ASR_ENABLED=1` for full local perception.
+- For real classification evaluation, use `data/ground_truth_verified.template.csv` and `scripts/evaluate_real_jobs.py`. It requires two agreeing independent annotations and a source reference for each included job.
+- Acceptance checklist and limitations: [Final validation protocol](docs/FINAL_VALIDATION_PROTOCOL.md).
+- [Final report draft](docs/FINAL_REPORT_DRAFT.md) and [demo shot list](docs/DEMO_SHOTLIST.md). Neither implies an actual benchmark or recording exists.
+- Local verification: `python -m pytest -q`, `python scripts/check_vlm.py`, then launch `python -m uvicorn backend:app --host 127.0.0.1 --port 8001` and inspect `http://127.0.0.1:8001/api/health`.
+
