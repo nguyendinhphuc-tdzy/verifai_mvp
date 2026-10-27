@@ -20,7 +20,8 @@ def test_price_v3_findings_and_evidence_are_persisted(tmp_path, monkeypatch):
     backend.FRAMES.mkdir()
     backend.init()
     monkeypatch.setattr(backend, 'frame_ocr', lambda frame: ([
-        ('Giá bán 99k', 0.95),
+        ('99.000dd', 0.95),
+        ('99.000đd', 0.93),
         ('Giá sale 99k, giá gốc 149k', 0.91),
         ('Năm sản xuất 2026', 0.89),
     ], 'ok'))
@@ -57,6 +58,14 @@ def test_price_v3_findings_and_evidence_are_persisted(tmp_path, monkeypatch):
     assert all(f['severity']=='medium' and f['source']=='price_rule_v3' for f in price_flags)
     assert all(f['evidence_id'] in {e['id'] for e in job['evidence']} for f in price_flags)
     assert all(f['metadata']['price_assessment']['status']=='MISMATCH' for f in price_flags)
+    # Real OCR variants from VID_LOI01: preserve the raw string and its
+    # timestamp while creating review-only candidate findings.
+    corrupted=[e for e in job['evidence']
+               if e['kind']=='ocr' and e['content'] in ('99.000dd','99.000đd')]
+    assert corrupted,job['evidence']
+    assert all(e['metadata']['price_v3']['status']=='MISMATCH' for e in corrupted)
+    assert any(f['evidence_id'] in {e['id'] for e in corrupted}
+               for f in price_flags)
     sale_evidence=[e for e in job['evidence'] if 'Giá sale' in e['content']]
     assert sale_evidence
     assert all(e['metadata']['price_v3']['status']=='INSUFFICIENT_EVIDENCE' for e in sale_evidence)
