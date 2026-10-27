@@ -11,13 +11,16 @@ from decimal import Decimal, InvalidOperation
 import re
 import unicodedata
 
-PRICE_PARSER_VERSION = 'price-v3.0-alpha1'
+PRICE_PARSER_VERSION = 'price-v3.0-alpha2'
 MIN_VND = 1_000
 MAX_VND = 100_000_000
 
 # Grouped whole amounts and local decimal multipliers (e.g. 1,2 triệu).
 _AMOUNT = r'(?:\d{1,3}(?:[., ]\d{3})+|\d+(?:[.,]\d+)?)'
-_UNIT = r'(?:triệu|trieu|nghìn|ngàn|nghin|ngan|đồng|dong|vnđ|vnd|tr|k|₫|đ)'
+# OCR frequently turns the đồng symbol into d, dd, or đd. These suffixes
+# are accepted only for thousands-grouped numbers (e.g. 99.000dd),
+# avoiding accidental interpretation of ungrouped product identifiers.
+_UNIT = r'(?:triệu|trieu|nghìn|ngàn|nghin|ngan|đồng|dong|vnđ|vnd|tr|k|₫|đd|dd|đ|d)'
 _TOKEN = re.compile(rf'(?<![\w])(?P<number>{_AMOUNT})\s*(?P<unit>{_UNIT})?(?![\w])', re.I | re.U)
 _ORIGINAL = re.compile(r'\b(?:giá\s+(?:gốc|cũ|niêm\s*yết|trước(?:\s*đây)?|ban\s*đầu)|giá\s+thị\s+trường|trước\s+khi\s+giảm)\b', re.I)
 _RANGE = re.compile(r'\b(?:giá\s+(?:từ|dao\s*động\s*từ)|chỉ\s+từ|từ|lên\s+đến|dưới|trên)\b', re.I)
@@ -123,6 +126,10 @@ def extract_prices(text: str) -> list[PriceMention]:
             if re.fullmatch(r'\d+(?:[.,]\d+)', num):
                 continue
         elif unit in ('k', 'triệu', 'trieu', 'tr', 'nghìn', 'ngàn', 'nghin', 'ngan') and _SOCIAL_UNIT.match(after):
+            continue
+        # Restrict OCR-only unit variants to grouped VND amounts. Never
+        # silently alter the original observed text or its character offsets.
+        if unit in ('d', 'dd', 'đd') and not re.fullmatch(r'\d{1,3}(?:[., ]\d{3})+', num):
             continue
         amount = _amount_value(num, unit)
         if amount is None:
