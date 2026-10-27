@@ -56,12 +56,13 @@ The schema of VLM findings and Human Review remains unchanged.
 | Variable | Default | Meaning |
 |---|---|---|
 | `VLM_ENABLED` | `0` | Opt-in to VLM calls |
+| `GEMINI_THINKING_LEVEL` | `low` | Gemini 3.8 Flash reasoning effort (low/medium/high; minimal unsupported) |
 | `VLM_MODEL` | `gemini-3.8-flash` | Gemini API model ID |
 | `GEMINI_API_KEY` | unset | Gemini API key, set in shell and never commit |
-| `VLM_TIMEOUT_SECONDS` | `120` | Timeout per VLM request |
+| `VLM_TIMEOUT_SECONDS` | `240` | Per-request timeout in seconds; Gemini calls may have server-side limits |
 | `VLM_MAX_FRAMES` | `4` | Single-frame checks, capped at 8 |
 | `VLM_MAX_PAIRS` | `2` | Same-shot pair checks, capped at 6 |
-| `GEMINI_MAX_ATTEMPTS` | `3` | Retry budget for 429/503 responses |
+| `GEMINI_MAX_ATTEMPTS` | `2` | Application-level attempts for 408/429/5xx, including 504; Google SDK can also retry |
 | `OCR_ENABLED` | `1` | Set to `0` to skip local OCR processing |
 | `ASR_ENABLED` | `1` | Set to `0` to skip local ASR processing |
 | `WHISPER_MODEL` | `tiny` | ASR model (if installed) |
