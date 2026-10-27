@@ -14,7 +14,7 @@ def _video(path):
     writer.release()
 
 
-def _run_case(tmp_path, monkeypatch, visible_text):
+def _run_case(tmp_path, monkeypatch, visible_text, category='visible_text')
     import backend
     monkeypatch.setenv('VLM_ENABLED','1')
     monkeypatch.setenv('OCR_ENABLED','0')
@@ -35,7 +35,7 @@ def _run_case(tmp_path, monkeypatch, visible_text):
             return VLMResult.model_validate({
                 'summary':'Observed text; reviewer must validate',
                 'observations':[{'description':visible_text,
-                                 'category':'visible_text',
+                                 'category':category,
                                  'confidence':0.97,'frame_index':0}],
                 'issues':[]})
     monkeypatch.setattr(backend,'GeminiVLM',MockGemini)
@@ -90,7 +90,5 @@ def test_promotional_gemini_price_does_not_raise_mismatch(tmp_path,monkeypatch):
 
 
 def test_non_text_gemini_observation_never_enters_price_rules(tmp_path,monkeypatch):
-    import backend
-    # Explicitly test metadata gate without calls to external services.
-    job=_run_case(tmp_path,monkeypatch,'Vỏ chai có mức giá 99.000đ')
-    assert all(f['source']!='price_rule_v3' for f in job['findings'])
+    job=_run_case(tmp_path,monkeypatch,'Vỏ chai có mức giá 99.000đ',category='product')
+    assert not [f for f in job['findings'] if f['code']=='PRICE-01']
