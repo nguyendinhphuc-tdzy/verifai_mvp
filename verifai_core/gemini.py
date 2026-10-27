@@ -72,9 +72,13 @@ class GeminiVLM:
                 raise VLMError('GEMINI_API_KEY chưa được thiết lập')
             try:
                 from google import genai
-                seconds = max(10, min(600, int(os.getenv('VLM_TIMEOUT_SECONDS', '240'))))
-                self._client = genai.Client(
-                    api_key=self._key, http_options={'timeout': seconds * 1000})
+                from google.genai import types
+                seconds = max(10, min(600, int(os.getenv('VLM_TIMEOUT_SECONDS', '45'))))
+                options=types.HttpOptions(
+                    timeout=seconds * 1000,
+                    retry_options=types.HttpRetryOptions(attempts=1),
+                )
+                self._client = genai.Client(api_key=self._key,http_options=options)
             except (ImportError, TypeError, ValueError) as exc:
                 raise VLMError(f'Không tạo được Gemini client: {str(exc)[:150]}') from exc
         return self._client
@@ -103,7 +107,7 @@ class GeminiVLM:
             raise VLMError(f'Không tạo được Gemini request: {str(exc)[:160]}') from exc
 
         client = self._get_client()
-        attempts = max(1, min(3, int(os.getenv('GEMINI_MAX_ATTEMPTS', '2'))))
+        attempts = max(1, min(3, int(os.getenv('GEMINI_MAX_ATTEMPTS', '1'))))
         for attempt in range(attempts):
             try:
                 response = client.models.generate_content(
