@@ -2,6 +2,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import sys
+import argparse
 import cv2
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -10,6 +11,10 @@ from verifai_core.gemini import GeminiVLM
 
 
 def main():
+    parser=argparse.ArgumentParser(description='Check Gemini API connectivity and vision schema')
+    parser.add_argument('--text-only',action='store_true',
+                        help='Send a tiny text prompt to diagnose server reachability')
+    args=parser.parse_args()
     try:
         client=GeminiVLM()
         status=client.check()
@@ -17,6 +22,17 @@ def main():
         if not status['ready']:
             print('Set GEMINI_API_KEY and install google-genai')
             return 1
+        if args.text_only:
+            from google.genai import types
+            response=client._get_client().models.generate_content(
+                model=client.model,
+                contents='Reply with exactly: OK',
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_level='low')))
+            if not (response.text or '').strip():
+                raise VLMError('Gemini returned an empty text response')
+            print('TEXT-ONLY GEMINI CHECK PASSED. Response:',response.text.strip()[:100])
+            return 0
         with TemporaryDirectory() as tmp:
             path=Path(tmp)/'synthetic.jpg'
             image=np.full((280,460,3),(238,238,238),dtype=np.uint8)
@@ -29,7 +45,7 @@ def main():
             print(result.model_dump_json(indent=2))
             print('LIVE MODEL SMOKE TEST PASSED. This is not an accuracy benchmark.')
         return 0
-    except (VLMError, OSError, ValueError) as exc:
+    except Exception as exc:
         print('LIVE MODEL SMOKE TEST FAILED:',exc)
         return 1
 
