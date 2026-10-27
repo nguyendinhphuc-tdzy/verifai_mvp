@@ -5,6 +5,11 @@ from verifai_core.price import PRICE_PARSER_VERSION, extract_prices, assess_pric
 
 @pytest.mark.parametrize(('phrase','amount'), [
     ('Giá 149.000đ', 149000),
+    ('99.000dd', 99000),
+    ('99.000đd', 99000),
+    ('99.000d', 99000),
+    ('45.000d', 45000),
+    ('89.000d', 89000),
     ('149,000 ₫', 149000),
     ('149000 vnd', 149000),
     ('149 000 đồng', 149000),
@@ -38,6 +43,9 @@ def test_price_formats(phrase, amount):
     'Năm 2026 giá sẽ thay đổi',
     '12/10/2026',
     '149.5 không phải số tiền',
+    'SKU A149000d',
+    'Mã lô 123456d',
+    '99.000ddSKU',
 ])
 def test_non_prices_not_extracted(text):
     assert extract_prices(text) == [], text
@@ -54,6 +62,10 @@ def test_promotion_and_original_roles():
 @pytest.mark.parametrize(('text','reference','expected_status','expected_reason'), [
     ('Giá bán 99k',149000,'MISMATCH','observed_price_differs_from_reference'),
     ('99.000đ',149000,'MISMATCH','observed_price_differs_from_reference'),
+    ('99.000dd',149000,'MISMATCH','observed_price_differs_from_reference'),
+    ('99.000đd',149000,'MISMATCH','observed_price_differs_from_reference'),
+    ('45.000d',45000,'MATCH','reference_price_matches'),
+    ('Giá khuyến mãi 99.000dd',149000,'INSUFFICIENT_EVIDENCE','promotion_requires_policy'),
     ('Giá bán 149k',149000,'MATCH','reference_price_matches'),
     ('149.000đ',149000,'MATCH','reference_price_matches'),
     ('Giá gốc 149k, giá sale 99k',149000,'INSUFFICIENT_EVIDENCE','promotion_requires_policy'),
