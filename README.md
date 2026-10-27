@@ -39,21 +39,26 @@ Do not commit your API key. Run in PowerShell:
 $env:GEMINI_API_KEY = [System.Net.NetworkCredential]::new('', (Read-Host -AsSecureString -Prompt 'Gemini API key')).Password
 $env:VLM_ENABLED="1"
 $env:VLM_MODEL="gemini-3.8-flash"
-$env:OCR_ENABLED="0"
-$env:ASR_ENABLED="0"
-python -m pip install -r requirements.txt
+$env:VLM_MAX_FRAMES="1"
+$env:VLM_MAX_PAIRS="1"
+$env:GEMINI_MAX_ATTEMPTS="1"
+$env:VLM_TIMEOUT_SECONDS="45"
+$env:VLM_TOTAL_BUDGET_SECONDS="120"
+$env:OCR_ENABLED="1"
+$env:ASR_ENABLED="1"
+$env:WHISPER_MODEL="tiny"
+python -m pip install -r requirements-ai.txt
 python scripts/check_vlm.py --text-only  # minimal API connectivity check
 python scripts/check_vlm.py              # full structured vision smoke test
-python -m uvicorn backend:app --host 127.0.0.1 --port 8000
+python -m uvicorn backend:app --host 127.0.0.1 --port 8001
 ```
 
 On Windows, `Read-Host -AsSecureString` masks the key while entering it. Do not paste keys into chat logs or commits. If a key was disclosed, rotate it in Google AI Studio.
 
-If an API call returns `504 DEADLINE_EXCEEDED`, the adapter runs bounded retries; you can set `VLM_TIMEOUT_SECONDS=240`, `GEMINI_THINKING_LEVEL=low`, and test `python scripts/check_vlm.py --text-only` first to isolate model/API issues. If text-only works but the vision smoke test fails, inspect the vision schema/request. The server can still be overloaded; do not claim a passed live test until it actually succeeds.
+If an API call returns `503 UNAVAILABLE` or `504 DEADLINE_EXCEEDED`, the production adapter now disables SDK's hidden HTTP retries and uses one application-level attempt by default. Default timeout is 45 seconds per call, and a soft 120-second budget prevents scheduling further calls; a single active SDK call cannot be interrupted by the soft budget. You can still test `python scripts/check_vlm.py --text-only` to isolate API issues. If text-only works but the vision smoke test fails, inspect the vision schema/request. The server can still be overloaded; do not claim a passed live test until it actually succeeds.
 
 Gemini is still billed/rate-limited according to your project and plan.
-The MVP sends selected JPEG frames, not the full video/audio. With local OCR/ASR disabled,
-spoken claims are not transcribed. A missing module is not proof that the video is clean.
+The MVP sends selected JPEG frames, not the full video/audio. OCR and ASR are enabled in the suggested Windows setup and **require** optional native dependencies and speech/OCR model weights. First install/model initialization can download large files and take time. Missing OCR/ASR or unverified Product Truth never counts as evidence of compliance.
 The schema of VLM findings and Human Review remains unchanged.
 
 **VLM configuration** (environment variables):
@@ -64,13 +69,15 @@ The schema of VLM findings and Human Review remains unchanged.
 | `GEMINI_THINKING_LEVEL` | `low` | Gemini 3.8 Flash reasoning effort (low/medium/high; minimal unsupported) |
 | `VLM_MODEL` | `gemini-3.8-flash` | Gemini API model ID |
 | `GEMINI_API_KEY` | unset | Gemini API key, set in shell and never commit |
-| `VLM_TIMEOUT_SECONDS` | `240` | Per-request timeout in seconds; Gemini calls may have server-side limits |
-| `VLM_MAX_FRAMES` | `4` | Single-frame checks, capped at 8 |
-| `VLM_MAX_PAIRS` | `2` | Same-shot pair checks, capped at 6 |
-| `GEMINI_MAX_ATTEMPTS` | `2` | Application-level attempts for 408/429/5xx, including 504; Google SDK can also retry |
+| `VLM_TIMEOUT_SECONDS` | `45` | Per-request SDK timeout in seconds; not a hard overall job deadline |
+| `VLM_MAX_FRAMES` | `1` | Single-frame checks, capped at 8 |
+| `VLM_MAX_PAIRS` | `1` | Same-shot pair checks, capped at 6 |
+| `GEMINI_MAX_ATTEMPTS` | `1` | Application-level attempts; SDK retries disabled by default |
+| `VLM_TOTAL_BUDGET_SECONDS` | `120` | Soft VLM budget; skip remaining calls once exceeded |
+| `VLM_STOP_AFTER_FAILURES` | `2` | Stop scheduling calls after consecutive API failures |
 | `OCR_ENABLED` | `1` | Set to `0` to skip local OCR processing |
 | `ASR_ENABLED` | `1` | Set to `0` to skip local ASR processing |
-| `WHISPER_MODEL` | `tiny` | ASR model (if installed) |
+| `WHISPER_MODEL` | `tiny` | CPU-friendly ASR model; first run may download weights |
 | `VERIFAI_DATA` | `./data` | Persistent storage root |
 
 **Privacy:** Gemini runs in Google's cloud, so selected image frames leave the local machine. Ensure processing rights and user consent before enabling it.
@@ -287,3 +294,11 @@ The video sampler targets one frame/second on short clips, capped at 60 frames. 
 The app reports OCR attempted/successful/failed/empty frame counts and ASR segment timing under `details.perception_quality`. ASR end timestamps are retained in evidence when valid. These counts are operational coverage, not proof of OCR or claim accuracy.
 
 See [Sprint B1 Reliability](docs/MULTIMODAL_RELIABILITY_B1.md) for technical details. **Cloud privacy change:** when `VLM_ENABLED=1`, the sampled JPEG images sent to Gemini leave the local machine. Explicit rights/consent remain required.
+
+### Fast demo + OCR/ASR verification (v2.2.1)
+
+The actual model run on `VID_LOI01` lasted >21 minutes: four of six Gemini calls failed with 503/504 even though OpenCV sampling took under two seconds. The pipeline now schedules a maximum of **one selected single-frame + one temporal frame-pair call** by default; you may increase this during coverage benchmarking. This does **not** guarantee a specific real response time. Progress exposes `vlm done/total` and attempted, successful and skipped call counts after completion.
+
+Visible text reported by Gemini as `vlm_observation` with `category=visible_text` and confidence ≥0.80 now enters the existing deterministic price/claim parsing rules. Example: candidate 99.000đ against 149.000đ creates a medium `PRICE-01` warning, source `price_rule_vlm`, linked to its frame and flagged as self-reported VLM evidence; it is **not** an automatic violation, and discounts / unreviewed Product Truth require human verification. Product, packaging and scene descriptions do not enter these text rules. OCR/ASR retain distinct independent provenance.
+
+On the current Windows workstation, enter `$env:OCR_ENABLED="1"` and `$env:ASR_ENABLED="1"` **in the shell where Uvicorn is started**; the `.env.example` file is an example, not automatically loaded. Install `requirements-ai.txt` in that Python environment, inspect `python scripts/check_perception.py`, and then restart Uvicorn. Existing processing jobs can be recovered at startup and may run before new uploads. Do not upload the same video repeatedly while the queue is blocked.
