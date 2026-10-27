@@ -379,8 +379,8 @@ def _analyze_job(job_id):
                 client=GeminiVLM()
                 readiness=client.check()
                 if not readiness['ready']: raise VLMError(readiness['message'])
-                frame_limit=max(0,min(8,int(os.environ.get('VLM_MAX_FRAMES','4'))))
-                pair_limit=max(0,min(6,int(os.environ.get('VLM_MAX_PAIRS','2'))))
+                frame_limit=max(0,min(8,int(os.environ.get('VLM_MAX_FRAMES','1'))))
+                pair_limit=max(0,min(6,int(os.environ.get('VLM_MAX_PAIRS','1'))))
                 frame_selection=evenly_spaced(sampled,frame_limit)
                 pair_selection=select_pairs(signals,pair_limit)
                 def collect(result, selected_frames, task):
@@ -406,20 +406,38 @@ def _analyze_job(job_id):
                         if issue.confidence>=0.70 and len(issue.visible_basis.strip())>=10:
                             flag(issue.code,'medium',anchor['at'],issue.description,uid,'vlm',issue.confidence,
                                  {'prompt_version':PROMPT_VERSION,'paired_timestamp':paired['at'] if paired else None})
-                for f in frame_selection:
-                    try:
-                        result=client.analyze([frame_dir/f['frame']],p,'single')
-                        vlm_calls+=1;collect(result,[f],'single')
-                    except (VLMError, OSError, ValueError, IndexError) as exc:
-                        vlm_errors.append(f'frame {f["at"]}: {str(exc)[:160]}')
+                requests=[('single',[f],f'frame {f["at"]}') for f in frame_selection]
                 lookup={f['frame']:f for f in sampled}
                 for pair in pair_selection:
                     try:
                         f1,f2=lookup[pair.frame],lookup[pair.frame2]
-                        result=client.analyze([frame_dir/f1['frame'],frame_dir/f2['frame']],p,'pair')
-                        vlm_calls+=1;collect(result,[f1,f2],'pair')
+                        requests.append(('pair',[f1,f2],f'pair {pair.at}-{pair.at2}'))
+                    except KeyError:
+                        vlm_errors.append(f'pair {pair.at}-{pair.at2}: missing sampled frame')
+                # Soft budget only prevents scheduling subsequent SDK calls.
+                budget=max(15,min(600,int(os.environ.get('VLM_TOTAL_BUDGET_SECONDS','120'))))
+                stop_failures=max(1,min(6,int(os.environ.get('VLM_STOP_AFTER_FAILURES','2'))))
+                failed_calls=0;attempted_calls=0;skipped_calls=0
+                for n,(task,frames,label) in enumerate(requests,1):
+                    elapsed=time.monotonic()-stage_start
+                    if elapsed>=budget or failed_calls>=stop_failures:
+                        skipped_calls=len(requests)-n+1
+                        vlm_errors.append('Bỏ qua các request VLM còn lại: vượt soft budget hoặc lỗi API liên tiếp.')
+                        break
+                    _set_progress(job_id,'vlm',done=n-1,total=len(requests),
+                                  current=label,failures=failed_calls,
+                                  elapsed_seconds=round(elapsed,1))
+                    attempted_calls+=1
+                    try:
+                        result=client.analyze([frame_dir/f['frame'] for f in frames],p,task)
+                        vlm_calls+=1;failed_calls=0
+                        collect(result,frames,task)
                     except (VLMError, OSError, ValueError, IndexError) as exc:
-                        vlm_errors.append(f'pair {pair.at}-{pair.at2}: {str(exc)[:160]}')
+                        failed_calls+=1
+                        vlm_errors.append(f'{label}: {str(exc)[:160]}')
+                    _set_progress(job_id,'vlm',done=n,total=len(requests),
+                                  current=label,failures=failed_calls,
+                                  elapsed_seconds=round(time.monotonic()-stage_start,1))
                 coverage['vlm']='ok' if vlm_calls and not vlm_errors else 'partial' if vlm_calls else 'error'
             except (VLMError, ValueError) as exc:
                 coverage['vlm']='error';vlm_errors.append(str(exc)[:180])
@@ -430,10 +448,14 @@ def _analyze_job(job_id):
         _set_progress(job_id,'finalizing')
         normalized,raw_map=normalize_evidence(raw)
         if coverage['ocr']!='ok' and coverage['asr']!='ok':
-            flag('COVERAGE','medium',0,'OCR/ASR chưa khả dụng; không thể xác nhận lời nói/chữ trong video.')
+            flag('COVERAGE','medium',0,'OCR/ASR chưa khả dụng; chữ do Gemini đọc chỉ là bằng chứng ứng viên, cần xác minh độc lập.')
         for n,e in enumerate(normalized):
-            if e.kind not in ('ocr','asr'): continue
-            tx=normalize(e.content)
+            # Only visual-text observations can enter price/claim reconciliation.
+            # Gemini self-reported confidence is NOT an accuracy calibration.
+            is_vlm_text=(e.kind=='vlm_observation'
+                         and e.metadata.get('category')=='visible_text'
+                         and e.score is not None and e.score>=0.80)
+            if e.kind not in ('ocr','asr') and not is_vlm_text: continue
             claim_mentions=find_restricted_claims(e.content,p['banned'])
             if claim_mentions:
                 e.metadata['claim_v3']={'version':CLAIM_RULE_VERSION,
@@ -446,11 +468,12 @@ def _analyze_job(job_id):
                 flag('CLAIM-01','medium',e.timestamp,
                      f'Có cụm claim hạn chế “{claim.phrase}” trong nội dung; '
                      'reviewer cần xác minh ngữ cảnh và nguồn Product Truth.',
-                     source='claim_rule_v3',confidence=e.score,
+                     source='claim_rule_vlm' if is_vlm_text else 'claim_rule_v3',confidence=e.score,
                      meta={'canonical_index':n,'claim_assessment':claim.to_dict(),
                            'claim_rule_version':CLAIM_RULE_VERSION,
                            'product_truth_revision':p.get('revision',1),
-                           'reference_status':p.get('reference_status','unverified')})
+                           'reference_status':p.get('reference_status','unverified'),
+                           'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
             price_check = assess_price(e.content, p['price'])
             if price_check.mentions:
                 e.metadata['price_v3'] = price_check.to_dict()
@@ -458,9 +481,11 @@ def _analyze_job(job_id):
                 flag('PRICE-01','medium',e.timestamp,
                      f'Giá quan sát {price_check.compared_vnd:,} ₫ khác giá tham chiếu '
                      f'{p["price"]:,} ₫; cần kiểm tra sản phẩm, giá khuyến mãi và bối cảnh.',
-                     source='price_rule_v3',confidence=e.score,
+                     source='price_rule_vlm' if is_vlm_text else 'price_rule_v3',confidence=e.score,
                      meta={'canonical_index':n,'price_assessment':price_check.to_dict(),
-                           'price_parser_version':PRICE_PARSER_VERSION})
+                           'price_parser_version':PRICE_PARSER_VERSION,
+                           'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind,
+                           'reference_status':p.get('reference_status','unverified')})
         if not any(e.kind in ('ocr','asr','vlm_observation','vlm_issue') for e in normalized):
             flag('EVIDENCE-LOW','medium',0,'Chưa có bằng chứng nội dung từ OCR/ASR/VLM; cần reviewer kiểm tra.')
         # A3 aggregates the existing A1/A2/VLM evidence without changing the
@@ -493,7 +518,11 @@ def _analyze_job(job_id):
                            'same_shot_pairs':sum(x.likely_same_shot for x in signals),
                            'change_candidates':len(candidates)},
                  'vlm':{'enabled':vlm_enabled(),'model':os.environ.get('VLM_MODEL',DEFAULT_MODEL),
-                        'calls_succeeded':vlm_calls,'errors':vlm_errors[:12],
+                        'calls_succeeded':vlm_calls,
+                         'calls_attempted':locals().get('attempted_calls',0),
+                         'calls_skipped':locals().get('skipped_calls',0),
+                         'soft_budget_seconds':int(os.environ.get('VLM_TOTAL_BUDGET_SECONDS','120')),
+                         'errors':vlm_errors[:12],
                         'prompt_version':PROMPT_VERSION},
                  'limitations':'VLM findings chỉ là giả thuyết cần xác nhận; không có ảnh SKU tham chiếu, không chứng minh deepfake/AI artifact. Confidence VLM chưa hiệu chuẩn.'}
         with db() as c:
