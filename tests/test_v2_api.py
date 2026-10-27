@@ -92,7 +92,7 @@ def test_unavailable_vlm_degrades_to_review_without_fake_issues(tmp_path,monkeyp
     class UnavailableVLM:
         def __init__(self):pass
         def check(self):return {'ready':False,'message':'model not installed'}
-    monkeypatch.setattr(backend,'OllamaVLM',UnavailableVLM)
+    monkeypatch.setattr(backend,'GeminiVLM',UnavailableVLM)
     client=TestClient(backend.app)
     p=client.post('/api/products',json={'sku':'A','name':'B','brand':'C','claims':[],'banned':[]}).json()
     video=tmp_path/'short.mp4';writer=cv2.VideoWriter(str(video),cv2.VideoWriter_fourcc(*'mp4v'),5,(100,80))
