@@ -40,7 +40,8 @@ def run(ground_truth, exports_dir):
         valid = (a is not None and reviewed and reviewer1 and reviewer2
                  and reviewer1.casefold() != reviewer2.casefold()
                  and l1 is not None and l1 == l2 == a
-                 and bool((row.get("source_reference") or "").strip()))
+                 and bool((row.get("source_reference") or "").strip())
+                 and bool((row.get("source_group") or "").strip()))
         truth[job_id] = (a, valid, row)
 
     exported = {}
@@ -60,6 +61,8 @@ def run(ground_truth, exports_dir):
     errors = []
     included = []
     by_source = defaultdict(Counter)
+    by_vlm = defaultdict(Counter)
+    by_model = defaultdict(Counter)
     for job_id, (actual, valid, gt) in truth.items():
         if not valid:
             reasons["unverified_ground_truth"] += 1
@@ -90,6 +93,10 @@ def run(ground_truth, exports_dir):
         counts[key] += 1
         source = gt.get("source_group") or "unknown"
         by_source[source][key] += 1
+        vlm_bucket = str(coverage.get("vlm") or "unknown")
+        by_vlm[vlm_bucket][key] += 1
+        model = str((details.get("vlm") or {}).get("model") or "not_recorded")
+        by_model[model][key] += 1
         included.append(job_id)
         if key in ("fp", "fn"):
             errors.append({"job_id": job_id, "type": key.upper(),
@@ -100,17 +107,22 @@ def run(ground_truth, exports_dir):
         p = tp / (tp + fp) if tp + fp else None
         r = tp / (tp + fn) if tp + fn else None
         f = 2 * p * r / (p + r) if p is not None and r is not None and (p + r) else None
-        return {"n": tp + fp + fn + tn, "tp": tp, "fp": fp, "fn": fn, "tn": tn,
-                "precision": p, "recall": r, "f1": f}
+        n = tp + fp + fn + tn
+        accuracy = (tp + tn) / n if n else None
+        return {"n": n, "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+                "accuracy": accuracy, "precision": p, "recall": r, "f1": f}
 
     return {"policy": "verified-ground-truth-v1", "metrics": metrics(counts),
             "by_source": {k: metrics(v) for k, v in sorted(by_source.items())},
+            "by_vlm_coverage": {k: metrics(v) for k, v in sorted(by_vlm.items())},
+            "by_model": {k: metrics(v) for k, v in sorted(by_model.items())},
             "excluded": dict(reasons), "error_cases": errors,
             "included_job_ids": included,
             "limitations": [
                 "Flags are review candidates, not confirmed violations.",
                 "Excluded jobs are NOT counted as true negatives.",
                 "Repeated videos are not independent; report source-group breakdown.",
+                "Overall candidate metrics include OCR/ASR-only runs; use by_vlm_coverage for VLM-specific claims.",
                 "Small sample metrics must not be presented as production performance."
             ]}
 
