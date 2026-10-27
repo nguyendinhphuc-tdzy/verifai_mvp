@@ -14,7 +14,7 @@ def _video(path):
     writer.release()
 
 
-def _run_case(tmp_path, monkeypatch, visible_text, category='visible_text', failures=False, frame_count=1)
+def _run_case(tmp_path, monkeypatch, visible_text, category='visible_text', failures=False, frame_count=1):
     import backend
     monkeypatch.setenv('VLM_ENABLED','1')
     monkeypatch.setenv('OCR_ENABLED','0')
