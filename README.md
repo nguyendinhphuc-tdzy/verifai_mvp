@@ -36,15 +36,20 @@ Video frames are sampled locally by OpenCV, then selected JPEG frames are sent t
 Do not commit your API key. Run in PowerShell:
 
 ```powershell
-$env:GEMINI_API_KEY=Read-Host "Gemini API key"
+$env:GEMINI_API_KEY = [System.Net.NetworkCredential]::new('', (Read-Host -AsSecureString -Prompt 'Gemini API key')).Password
 $env:VLM_ENABLED="1"
 $env:VLM_MODEL="gemini-3.8-flash"
 $env:OCR_ENABLED="0"
 $env:ASR_ENABLED="0"
 python -m pip install -r requirements.txt
-python scripts/check_vlm.py
+python scripts/check_vlm.py --text-only  # minimal API connectivity check
+python scripts/check_vlm.py              # full structured vision smoke test
 python -m uvicorn backend:app --host 127.0.0.1 --port 8000
 ```
+
+On Windows, `Read-Host -AsSecureString` masks the key while entering it. Do not paste keys into chat logs or commits. If a key was disclosed, rotate it in Google AI Studio.
+
+If an API call returns `504 DEADLINE_EXCEEDED`, the adapter runs bounded retries; you can set `VLM_TIMEOUT_SECONDS=240`, `GEMINI_THINKING_LEVEL=low`, and test `python scripts/check_vlm.py --text-only` first to isolate model/API issues. If text-only works but the vision smoke test fails, inspect the vision schema/request. The server can still be overloaded; do not claim a passed live test until it actually succeeds.
 
 Gemini is still billed/rate-limited according to your project and plan.
 The MVP sends selected JPEG frames, not the full video/audio. With local OCR/ASR disabled,
