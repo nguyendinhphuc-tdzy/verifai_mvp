@@ -26,13 +26,23 @@ Acceptance: no evaluated case without source and two agreeing annotators; zero l
 
 ## Milestone 3 — Actual Precision/Recall/F1
 
-Export fresh job evidence JSON files into one folder. Run:
+While the local app is running, create a full evidence export with immutable hashes and a BLANK annotation draft:
 
 ```powershell
-python scripts/evaluate_real_jobs.py --ground-truth data/ground_truth_verified.csv --exports-dir exports --out reports/real_eval.json
+python scripts/export_evaluation_bundle.py --base-url http://127.0.0.1:8001 --out-dir evaluation_bundle
 ```
 
-The script excludes unverifiable ground truth, jobs without evidence, and jobs lacking model coverage or findings. It reports TP, FP, FN, TN, precision, recall, F1, by-source results, and FP/FN review cases. It does not fabricate a number from missing video uploads. Review error cases with timestamps and flag codes and maintain a changelog of rule/model changes. A `source_group` with derived variations should be considered one correlated cluster, not independent samples.
+The script exports completed jobs only. It does not alter video jobs, reviewer decisions or labels. `manifest.csv` records filenames, SKU, model, coverage, findings and SHA-256; `ground_truth_TO_LABEL.csv` starts with all labels blank and is never overwritten. **Do not publish the bundle or place it in GitHub.** Repeated filenames are warned, but a shared original clip can still appear under multiple filenames.
+
+Two independent reviewers must inspect each video and Product Truth source. Copy the draft to `data/ground_truth_verified.csv` and complete all fields, including a stable `source_group` shared by every derivative of the same original. Different reviewers must not use model predictions to assign labels. Only after manual adjudication set `adjudication_status=verified`. Never use the Sprint-2 simulated 80-case outcomes as actual predictions.
+
+Then run:
+
+```powershell
+python scripts/evaluate_real_jobs.py --ground-truth data/ground_truth_verified.csv --exports-dir evaluation_bundle/exports --out reports/real_eval.json
+```
+
+The script excludes unverifiable ground truth, jobs without evidence, and jobs lacking model coverage or findings. It reports TP, FP, FN, TN, accuracy, precision, recall, F1, by-source and VLM-coverage results, and FP/FN review cases. Overall scores are not Gemini-only scores; use the VLM coverage strata to distinguish OCR-only fallback. Exported evidence files are snapshots and must not be replaced silently during a benchmark. It does not fabricate a number from missing video uploads. Review error cases with timestamps and flag codes and maintain a changelog of rule/model changes. A `source_group` with derived variations should be considered one correlated cluster, not independent samples.
 
 Acceptance: non-zero eligible cases and numerical metrics; FP/FN analysis reviewed by a human. With a small sample report uncertainty and counts, not just percentages.
 

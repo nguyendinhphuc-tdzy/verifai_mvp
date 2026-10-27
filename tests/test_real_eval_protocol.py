@@ -60,3 +60,50 @@ def test_duplicate_jobs_in_ground_truth_rejected(tmp_path):
     import pytest
     with pytest.raises(ValueError, match="Trùng job_id"):
         module.run(labels, exports)
+
+
+def test_accuracy_and_vlm_strata_not_overclaimed(tmp_path):
+    labels = tmp_path / "labels.csv"
+    exports = tmp_path / "exports"
+    exports.mkdir()
+    write_ground_truth(labels, [
+        base_row("tp", "error"), base_row("tn", "clean"),
+        base_row("fp", "clean"), base_row("fn", "error"),
+    ])
+    findings = {
+        "tp": [{"severity": "medium", "code": "SKU-01"}],
+        "tn": [], "fp": [{"severity": "medium", "code": "PRICE-01"}], "fn": [],
+    }
+    coverage = {
+        "tp": "ok", "tn": "error", "fp": "ok", "fn": "error",
+    }
+    for job_id in findings:
+        (exports / (job_id + ".json")).write_text(json.dumps({
+            "job_id": job_id,
+            "details": {"coverage": {"ocr": "ok", "vlm": coverage[job_id]},
+                        "vlm": {"model": "gemini-3.5-flash-lite"}},
+            "findings": findings[job_id]}), encoding="utf-8")
+    result = module.run(labels, exports)
+    assert result["metrics"]["n"] == 4
+    assert result["metrics"]["accuracy"] == 0.5
+    assert result["metrics"]["precision"] == 0.5
+    assert result["metrics"]["recall"] == 0.5
+    assert result["metrics"]["f1"] == 0.5
+    assert result["by_vlm_coverage"]["ok"]["n"] == 2
+    assert result["by_vlm_coverage"]["error"]["n"] == 2
+    assert len(result["error_cases"]) == 2
+
+
+def test_verified_without_source_group_is_excluded(tmp_path):
+    labels = tmp_path / "labels.csv"
+    exports = tmp_path / "exports"
+    exports.mkdir()
+    item = base_row("nogroup", "clean")
+    item["source_group"] = ""
+    write_ground_truth(labels, [item])
+    (exports / "nogroup.json").write_text(json.dumps({
+        "job_id": "nogroup", "details": {"coverage": {"ocr": "ok"}},
+        "findings": []}), encoding="utf-8")
+    result = module.run(labels, exports)
+    assert result["metrics"]["n"] == 0
+    assert result["excluded"]["unverified_ground_truth"] == 1

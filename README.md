@@ -355,3 +355,23 @@ Gemini coverage as evidence of compliance.
 - [Final report draft](docs/FINAL_REPORT_DRAFT.md) and [demo shot list](docs/DEMO_SHOTLIST.md). Neither implies an actual benchmark or recording exists.
 - Local verification: `python -m pytest -q`, `python scripts/check_vlm.py`, then launch `python -m uvicorn backend:app --host 127.0.0.1 --port 8001` and inspect `http://127.0.0.1:8001/api/health`.
 
+
+
+### Actual Evaluation: from localhost jobs to human-verified metrics
+
+1. Keep VerifAI running on port 8001. Export only completed jobs:
+
+```powershell
+python scripts/export_evaluation_bundle.py --out-dir evaluation_bundle
+```
+
+2. Review `evaluation_bundle/manifest.csv` and fill `evaluation_bundle/ground_truth_TO_LABEL.csv` **independently with two reviewers**. Save the final agreed file as `data/ground_truth_verified.csv` and supply a truthful `source_group` and `source_reference` for every row. The template contains no artificial labels. Be sure variants from the same original have the SAME source_group.
+3. Calculate measured job-level metrics:
+
+```powershell
+python scripts/evaluate_real_jobs.py --ground-truth data/ground_truth_verified.csv --exports-dir evaluation_bundle/exports --out reports/real_eval.json
+```
+
+The JSON reports TP/FP/FN/TN, Accuracy, Precision, Recall, F1, model and coverage strata, exclusions, and FP/FN case IDs. Do not interpret aggregate OCR-only results as Gemini performance. Source-group strata are descriptive; correlated derived video variants are not independent samples. Actual performance remains unproven until verified labels and completed video runs are present.
+
+**Privacy:** local bundles contain potentially sensitive video evidence, business claims and source URLs. `evaluation_bundle/` and the final labeling file are gitignored; do not upload them to GitHub. Evidence export filenames are stable per job, so use `--overwrite` only when intentionally replacing old snapshots, after archiving earlier evidence.
