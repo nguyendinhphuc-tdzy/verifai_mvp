@@ -72,7 +72,7 @@ class GeminiVLM:
                 raise VLMError('GEMINI_API_KEY chưa được thiết lập')
             try:
                 from google import genai
-                seconds = max(10, int(os.getenv('VLM_TIMEOUT_SECONDS', '120')))
+                seconds = max(10, min(600, int(os.getenv('VLM_TIMEOUT_SECONDS', '240'))))
                 self._client = genai.Client(
                     api_key=self._key, http_options={'timeout': seconds * 1000})
             except (ImportError, TypeError, ValueError) as exc:
@@ -91,16 +91,19 @@ class GeminiVLM:
             contents = [_prompt(product, task)]
             contents.extend(types.Part.from_bytes(data=p.read_bytes(), mime_type='image/jpeg')
                             for p in images)
+            level = os.getenv('GEMINI_THINKING_LEVEL', 'low').strip().lower()
+            if level not in ('low', 'medium', 'high'):
+                raise VLMError('GEMINI_THINKING_LEVEL phải là low, medium hoặc high')
             config = types.GenerateContentConfig(
                 response_mime_type='application/json',
                 response_schema=VLMResult,
-                temperature=0,
+                thinking_config=types.ThinkingConfig(thinking_level=level),
             )
         except (ImportError, ValueError, TypeError) as exc:
             raise VLMError(f'Không tạo được Gemini request: {str(exc)[:160]}') from exc
 
         client = self._get_client()
-        attempts = max(1, min(4, int(os.getenv('GEMINI_MAX_ATTEMPTS', '3'))))
+        attempts = max(1, min(3, int(os.getenv('GEMINI_MAX_ATTEMPTS', '2'))))
         for attempt in range(attempts):
             try:
                 response = client.models.generate_content(
@@ -122,9 +125,16 @@ class GeminiVLM:
             except Exception as exc:
                 code = str(getattr(exc, 'code', '') or getattr(exc, 'status', ''))
                 msg = str(exc)
-                retriable = any(t in code or t in msg for t in ('429', '503', 'UNAVAILABLE', 'RESOURCE_EXHAUSTED'))
+                transient = ('408', '429', '500', '502', '503', '504',
+                             'UNAVAILABLE', 'DEADLINE_EXCEEDED',
+                             'RESOURCE_EXHAUSTED', 'TimeoutException')
+                retriable = any(t in code or t in msg or t in type(exc).__name__
+                                for t in transient)
                 if retriable and attempt + 1 < attempts:
-                    time.sleep(min(12, 2 ** (attempt + 1)))
+                    delay = min(12, 2 ** (attempt + 1))
+                    print(f'Gemini API temporary error ({code or type(exc).__name__}); '
+                          f'retrying {attempt + 2}/{attempts} in {delay}s...', flush=True)
+                    time.sleep(delay)
                     continue
                 raise VLMError(f'Gemini request failed: {msg[:220]}') from exc
         raise VLMError('Gemini retry budget exhausted')
