@@ -245,7 +245,9 @@ function progressText(job){
  const detail=progressNames[p.stage]||'Đang phân tích video';
  const counts=Number.isFinite(p.done)&&Number.isFinite(p.total)?' '+p.done+'/'+p.total:'';
  const elapsed=p.updated_at?(Date.now()-Date.parse(p.updated_at))/60000:0;
- return detail+counts+(elapsed>10?' · Đã lâu chưa cập nhật. Kiểm tra terminal; nếu tiến trình bị gián đoạn, khởi động lại server để tự phục hồi.':'');
+ const request=p.stage==='vlm'&&p.current?' · '+String(p.current):'';
+ const ageWarning=elapsed>3?' · API chậm, xem log nếu không có tiến triển.':'';
+ return detail+counts+request+ageWarning;
 }
 async function showJob(jid){
  const changed=selected!==jid;
