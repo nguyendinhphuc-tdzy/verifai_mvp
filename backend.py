@@ -18,7 +18,9 @@ from verifai_core.verification import build_verification_report, attach_evidence
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
 from verifai_core.media_quality import video_stride, select_ocr_frames, OCRCoverage, SAMPLING_VERSION
 from verifai_core.vlm import VLMError, vlm_enabled, PROMPT_VERSION
-from verifai_core.gemini import GeminiVLM, DEFAULT_MODEL
+from verifai_core.gemini import GeminiVLM, DEFAULT_MODEL, GeminiVLM as _ProductionGeminiVLM
+from verifai_core.brand import detect_brand_inconsistencies, BRAND_RULE_VERSION
+from verifai_core.vlm_health import GEMINI_OUTAGE_CIRCUIT
 from verifai_core.evaluation import predicted_error, sufficient_coverage, independent_consensus, calculate_metrics
 
 BASE = Path(__file__).resolve().parent
@@ -379,8 +381,17 @@ def _analyze_job(job_id):
                 client=GeminiVLM()
                 readiness=client.check()
                 if not readiness['ready']: raise VLMError(readiness['message'])
+                # Circuit only applies to the actual cloud adapter, not
+                # offline test mocks or other potential VLM backends.
+                circuit_enabled=(isinstance(client,_ProductionGeminiVLM)
+                                 and os.getenv('VLM_CIRCUIT_ENABLED','1') == '1')
+                if circuit_enabled and not GEMINI_OUTAGE_CIRCUIT.allow():
+                    remaining=round(GEMINI_OUTAGE_CIRCUIT.remaining_seconds())
+                    raise VLMError(
+                        f'Gemini API tạm thời không sẵn sàng (503/504); '
+                        f'tạm bỏ qua VLM ~{remaining}s để OCR/ASR tiếp tục.')
                 frame_limit=max(0,min(8,int(os.environ.get('VLM_MAX_FRAMES','1'))))
-                pair_limit=max(0,min(6,int(os.environ.get('VLM_MAX_PAIRS','1'))))
+                pair_limit=max(0,min(6,int(os.environ.get('VLM_MAX_PAIRS','0'))))
                 frame_selection=evenly_spaced(sampled,frame_limit)
                 pair_selection=select_pairs(signals,pair_limit)
                 def collect(result, selected_frames, task):
@@ -431,10 +442,22 @@ def _analyze_job(job_id):
                     try:
                         result=client.analyze([frame_dir/f['frame'] for f in frames],p,task)
                         vlm_calls+=1;failed_calls=0
+                        if circuit_enabled:
+                            GEMINI_OUTAGE_CIRCUIT.success()
                         collect(result,frames,task)
                     except (VLMError, OSError, ValueError, IndexError) as exc:
                         failed_calls+=1
                         vlm_errors.append(f'{label}: {str(exc)[:160]}')
+                        if circuit_enabled:
+                            opened=GEMINI_OUTAGE_CIRCUIT.failure(
+                                str(exc),
+                                threshold=int(os.getenv('VLM_CIRCUIT_FAILURES','2')),
+                                cooldown_seconds=int(os.getenv('VLM_CIRCUIT_COOLDOWN_SECONDS','180')))
+                            if opened:
+                                failed_calls=stop_failures
+                                vlm_errors.append(
+                                    'Gemini outage circuit opened: skipping subsequent VLM calls; '
+                                    'OCR/ASR continue and reviewer decides.')
                     _set_progress(job_id,'vlm',done=n,total=len(requests),
                                   current=label,failures=failed_calls,
                                   elapsed_seconds=round(time.monotonic()-stage_start,1))
@@ -447,6 +470,19 @@ def _analyze_job(job_id):
         timings['vlm_seconds']=round(time.monotonic()-stage_start,3)
         _set_progress(job_id,'finalizing')
         normalized,raw_map=normalize_evidence(raw)
+        for detected in detect_brand_inconsistencies(normalized,p.get('brand','')):
+            # Repeated OCR brand transposition is an evidence-linked candidate;
+            # unrelated labels are not automatically treated as brand mistakes.
+            evidence_index=detected['canonical_index']
+            brand_evidence=normalized[evidence_index]
+            brand_evidence.metadata['brand_check']={
+                **detected, 'reference_status':p.get('reference_status','unverified')}
+            flag('SKU-01','medium',brand_evidence.timestamp,
+                 f'Thương hiệu trong video “{detected["observed_brand"]}” '
+                 f'khác thứ tự tên tham chiếu “{detected["reference_brand"]}”; '
+                 'reviewer cần kiểm tra nhãn bao bì, chữ quảng cáo và Product Truth.',
+                 source='brand_rule_v1',confidence=brand_evidence.score,
+                 meta={**detected,'reference_status':p.get('reference_status','unverified')})
         if coverage['ocr']!='ok' and coverage['asr']!='ok':
             flag('COVERAGE','medium',0,'OCR/ASR chưa khả dụng; chữ do Gemini đọc chỉ là bằng chứng ứng viên, cần xác minh độc lập.')
         for n,e in enumerate(normalized):
@@ -522,6 +558,8 @@ def _analyze_job(job_id):
                          'calls_attempted':locals().get('attempted_calls',0),
                          'calls_skipped':locals().get('skipped_calls',0),
                          'soft_budget_seconds':int(os.environ.get('VLM_TOTAL_BUDGET_SECONDS','120')),
+                         'outage_circuit_remaining_seconds':round(GEMINI_OUTAGE_CIRCUIT.remaining_seconds())
+                             if os.getenv('VLM_CIRCUIT_ENABLED','1') == '1' else 0,
                          'errors':vlm_errors[:12],
                         'prompt_version':PROMPT_VERSION},
                  'limitations':'VLM findings chỉ là giả thuyết cần xác nhận; không có ảnh SKU tham chiếu, không chứng minh deepfake/AI artifact. Confidence VLM chưa hiệu chuẩn.'}
