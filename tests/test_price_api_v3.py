@@ -50,7 +50,7 @@ def test_price_v3_findings_and_evidence_are_persisted(tmp_path, monkeypatch):
             break
         time.sleep(.05)
     assert job['status']=='completed',job['details']
-    assert job['details']['price_parser_version']=='price-v3.0-alpha1'
+    assert job['details']['price_parser_version']=='price-v3.0-alpha2'
     assert job['decision']=='Needs Review', 'Price mismatch is reviewer candidate, not automatic rejection'
     price_flags=[f for f in job['findings'] if f['code']=='PRICE-01']
     assert price_flags,job['findings']
