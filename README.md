@@ -40,7 +40,7 @@ $env:GEMINI_API_KEY = [System.Net.NetworkCredential]::new('', (Read-Host -AsSecu
 $env:VLM_ENABLED="1"
 $env:VLM_MODEL="gemini-3.8-flash"
 $env:VLM_MAX_FRAMES="1"
-$env:VLM_MAX_PAIRS="1"
+$env:VLM_MAX_PAIRS="0"
 $env:GEMINI_MAX_ATTEMPTS="1"
 $env:VLM_TIMEOUT_SECONDS="45"
 $env:VLM_TOTAL_BUDGET_SECONDS="120"
@@ -297,8 +297,50 @@ See [Sprint B1 Reliability](docs/MULTIMODAL_RELIABILITY_B1.md) for technical det
 
 ### Fast demo + OCR/ASR verification (v2.2.1)
 
-The actual model run on `VID_LOI01` lasted >21 minutes: four of six Gemini calls failed with 503/504 even though OpenCV sampling took under two seconds. The pipeline now schedules a maximum of **one selected single-frame + one temporal frame-pair call** by default; you may increase this during coverage benchmarking. This does **not** guarantee a specific real response time. Progress exposes `vlm done/total` and attempted, successful and skipped call counts after completion.
+The actual model run on `VID_LOI01` lasted >21 minutes: four of six Gemini calls failed with 503/504 even though OpenCV sampling took under two seconds. The pipeline now schedules a maximum of **one selected single-frame call (temporal pair optionally enabled)** by default; you may increase this during coverage benchmarking. This does **not** guarantee a specific real response time. Progress exposes `vlm done/total` and attempted, successful and skipped call counts after completion.
 
 Visible text reported by Gemini as `vlm_observation` with `category=visible_text` and confidence ≥0.80 now enters the existing deterministic price/claim parsing rules. Example: candidate 99.000đ against 149.000đ creates a medium `PRICE-01` warning, source `price_rule_vlm`, linked to its frame and flagged as self-reported VLM evidence; it is **not** an automatic violation, and discounts / unreviewed Product Truth require human verification. Product, packaging and scene descriptions do not enter these text rules. OCR/ASR retain distinct independent provenance.
 
 On the current Windows workstation, enter `$env:OCR_ENABLED="1"` and `$env:ASR_ENABLED="1"` **in the shell where Uvicorn is started**; the `.env.example` file is an example, not automatically loaded. Install `requirements-ai.txt` in that Python environment, inspect `python scripts/check_perception.py`, and then restart Uvicorn. Existing processing jobs can be recovered at startup and may run before new uploads. Do not upload the same video repeatedly while the queue is blocked.
+
+### Brand consistency and Gemini outage safety (Sprint B2)
+
+**Brand screening:** OCR evidence such as `BabySkin` on a tube and
+`SkinBaby` in advertising copy generates a **review-only** `SKU-01`
+candidate only when a clear transposed two-part brand token is detected
+with confidence >=0.90 on at least **two distinct frames**.
+The finding retains the original OCR text and canonical evidence ID, and
+Verification displays a linked `brand` candidate. This is not broad
+brand recognition, not a product SKU match, and cannot auto-reject a video.
+Unrelated words and a single OCR reading remain unflagged.
+
+**Gemini failure handling:** the app defaults to one Cloud request per
+video (`VLM_MAX_FRAMES=1`, `VLM_MAX_PAIRS=0`), capped by its per-call SDK
+timeout. Once two consecutive transient API errors occur (503/504/429/etc.),
+an in-process circuit breaker skips Gemini for queued videos for the next
+180 seconds. OCR, ASR, rule evaluation and human review still complete, but
+`coverage.vlm=error`, not `ok`. After the cooldown, the next job may try
+Gemini again. This limits wasted waiting; **it cannot repair a Google API
+outage or ensure successful Gemini responses**. Increasing the pair count
+improves temporal coverage at the cost of another Cloud request.
+
+In PowerShell **before starting Uvicorn**:
+
+```powershell
+$env:OCR_ENABLED="1"
+$env:ASR_ENABLED="1"
+$env:VLM_ENABLED="1"
+$env:VLM_MAX_FRAMES="1"
+$env:VLM_MAX_PAIRS="0"
+$env:VLM_CIRCUIT_ENABLED="1"
+$env:VLM_CIRCUIT_FAILURES="2"
+$env:VLM_CIRCUIT_COOLDOWN_SECONDS="180"
+$env:VLM_TIMEOUT_SECONDS="45"
+# Set a NEW GEMINI_API_KEY securely in the same shell; do not paste it in logs.
+python -m uvicorn backend:app --host 127.0.0.1 --port 8001
+```
+
+The circuit state is local to the Python process; restarting resets it.
+If Gemini is not essential for a price/brand-rule evaluation, set
+`VLM_ENABLED=0` to test OCR/ASR independently. Do not interpret incomplete
+Gemini coverage as evidence of compliance.

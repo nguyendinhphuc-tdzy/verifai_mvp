@@ -141,6 +141,7 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
     # calibrated second vote for OCR/ASR claim or price verification.
     vlm_groups: dict[str, list[dict]] = defaultdict(list)
     visual_flags = []
+    brand_groups: dict[str, list[dict]] = defaultdict(list)
     unresolved_findings = []
     coverage_codes = {'COVERAGE', 'EVIDENCE-LOW', 'VIS-06'}
     known = {'PRICE-01', 'CLAIM-01'} | coverage_codes
@@ -153,7 +154,10 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
         observations = []
         if isinstance(index, int) and 0 <= index < len(evidence):
             observations.append(_observation(index, evidence[index]))
-        if str(finding.get('source', '')) == 'vlm':
+        if str(finding.get('source', '')) == 'brand_rule_v1' and code == 'SKU-01':
+            observed_brand=str(meta.get('observed_brand') or '').strip()
+            brand_groups[observed_brand].extend(observations)
+        elif str(finding.get('source', '')) == 'vlm':
             vlm_groups[code].extend(observations)
             if not observations:
                 vlm_groups[code]  # retain unlinked candidate
@@ -162,6 +166,12 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
         elif code not in known and code != 'VIS-SCREEN':
             unresolved_findings.append(code)
 
+    for observed_brand in sorted(brand_groups):
+        observations = brand_groups[observed_brand]
+        checks.append(_summary('brand', 'CANDIDATE',
+                               'repeated_ocr_transposed_brand_requires_review',
+                               observations, values=[observed_brand],
+                               phrase=str(product_truth.get('brand') or '')))
     for code in sorted(vlm_groups):
         observations = vlm_groups[code]
         checks.append(_summary('visual', 'CANDIDATE', 'vlm_visual_hypothesis', observations,
