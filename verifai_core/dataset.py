@@ -5,6 +5,7 @@ predictions are kept separately and NEVER used as actual model metrics.
 No xlsx data is sent to an external service; this import is local only.
 """
 from __future__ import annotations
+from verifai_core.evaluation import calculate_metrics, predicted_error, sufficient_coverage, independent_consensus
 
 from collections import Counter
 from datetime import datetime, timezone
@@ -353,8 +354,7 @@ def install_dataset_routes(app, db, utc) -> None:
               severity=excluded.severity,timestamp=excluded.timestamp,notes=excluded.notes,created_at=excluded.created_at''',
               (code,annotator,payload.label,payload.issue_type,payload.severity,payload.timestamp,payload.notes,utc()))
             items=[r['label'] for r in c.execute('SELECT label FROM dataset_annotations WHERE code=?',(code,))]
-            valid=[v for v in items if v in ('clean','error')]
-            consensus=valid[0] if len(valid)>=2 and len(valid)==len(items) and len(set(valid))==1 else None
+            consensus=independent_consensus([dict(r) for r in c.execute('SELECT annotator,label FROM dataset_annotations WHERE code=?',(code,))])
             c.execute('UPDATE dataset_cases SET verified_truth=?,verified_by=?,updated_at=? WHERE code=?',
                       (consensus,'independent_consensus' if consensus else None,utc(),code))
         return {'case_code':code,'annotators':len(items),'verified_truth':consensus,
@@ -378,18 +378,12 @@ def install_dataset_routes(app, db, utc) -> None:
                             (d['code'],)).fetchone()
                 if not j:continue
                 details=json.loads(j['details'] or '{}');cov=details.get('coverage',{})
-                if cov.get('ocr')!='ok' and cov.get('asr')!='ok' and cov.get('vlm') not in ('ok','partial'):
+                if not sufficient_coverage(cov):
                     continue
-                pred=bool(c.execute('''SELECT 1 FROM findings WHERE job_id=? AND severity IN ('high','medium')
-                   AND code NOT IN ('COVERAGE','EVIDENCE-LOW','VIS-SCREEN','VIS-06') LIMIT 1''',(j['id'],)).fetchone())
+                pred=predicted_error([dict(r) for r in c.execute('SELECT code,severity FROM findings WHERE job_id=?',(j['id'],))])
                 samples.append((d['verified_truth']=='error',pred))
-            tp=sum(a and b for a,b in samples);fp=sum(not a and b for a,b in samples)
-            tn=sum(not a and not b for a,b in samples);fn=sum(a and not b for a,b in samples)
+            calculated=calculate_metrics(samples)
             return {'planned_cases':count,'target':80,'groups':counts,'product_links_missing':missing_product,
                 'cases_with_job':linked,'cases_with_completed_job':completed,'human_consensus_verified':verified,
-                'simulated_prediction_rows':simulation_rows,'actual':{'evaluated':len(samples),
-                 'tp':tp,'fp':fp,'fn':fn,'tn':tn,
-                 'precision':round(tp/(tp+fp),3) if tp+fp else None,
-                 'recall':round(tp/(tp+fn),3) if tp+fn else None,
-                 'f1':round(2*tp/(2*tp+fp+fn),3) if 2*tp+fp+fn else None},
+                'simulated_prediction_rows':simulation_rows,'actual':calculated,
                 'note':'Actual chỉ tính video đã chạy thật + >=2 annotator thống nhất + OCR/ASR/VLM có coverage. Simulated của Sheet 5–6 KHÔNG tính.'}

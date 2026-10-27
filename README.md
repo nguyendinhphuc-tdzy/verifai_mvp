@@ -1,6 +1,6 @@
 # VerifAI MVP v2.1 — 80-case Dataset Workspace + VLM / Evidence / Visual
 
-**Working local web application** upgraded from v1.0. Frontend: standalone `static/index.html`; backend: FastAPI + SQLite + OpenCV; VLM: **Qwen3-VL-4B-Instruct via local Ollama** (optional); OCR/ASR remain optional.
+**Working local web application** upgraded from v1.0. Frontend: standalone `static/index.html`; backend: FastAPI + SQLite + OpenCV; VLM: **Gemini 3.8 Flash via Google API** (optional, cloud inference); OCR/ASR remain optional.
 
 > Scope: evidence-first **review assistance**, not a deepfake detector, not automatic legal compliance, not a production service. A VLM assertion is an unverified candidate until a human confirms it. No product-reference image is stored, so precise visual SKU matching is not implemented.
 
@@ -29,63 +29,51 @@ Open http://127.0.0.1:8000. API docs: http://127.0.0.1:8000/docs.
 
 With VLM disabled, OpenCV temporal checks still run, and potential visual changes appear as **VIS-SCREEN** low-severity review prompts. This does **not** imply AI-generated defects.
 
-## 3. Enable a real local VLM (Qwen3-VL)
+## 3. Enable Gemini Flash (cloud VLM)
 
-Install [Ollama](https://ollama.com/download) and ensure its server is running. **Ollama 0.12.7 or newer** is required for Qwen3-VL. Download the model once:
-
-```bash
-ollama pull qwen3-vl:4b-instruct
-ollama list
-```
-
-If Ollama is not already running as a service, start it in a separate terminal with `ollama serve`.
-
-**Windows PowerShell**, from the `verifai_mvp` folder:
+Video frames are sampled locally by OpenCV, then selected JPEG frames are sent to Gemini.
+**Privacy:** selected frames leave your device. Obtain permission and avoid transmitting personal/sensitive video without authorization.
+Do not commit your API key. Run in PowerShell:
 
 ```powershell
+$env:GEMINI_API_KEY = [System.Net.NetworkCredential]::new('', (Read-Host -AsSecureString -Prompt 'Gemini API key')).Password
 $env:VLM_ENABLED="1"
-$env:VLM_MODEL="qwen3-vl:4b-instruct"
-$env:VLM_MAX_FRAMES="4"
-$env:VLM_MAX_PAIRS="2"
-uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
+$env:VLM_MODEL="gemini-3.8-flash"
+$env:OCR_ENABLED="0"
+$env:ASR_ENABLED="0"
+python -m pip install -r requirements.txt
+python scripts/check_vlm.py --text-only  # minimal API connectivity check
+python scripts/check_vlm.py              # full structured vision smoke test
+python -m uvicorn backend:app --host 127.0.0.1 --port 8000
 ```
 
-**macOS/Linux**:
+On Windows, `Read-Host -AsSecureString` masks the key while entering it. Do not paste keys into chat logs or commits. If a key was disclosed, rotate it in Google AI Studio.
 
-```bash
-export VLM_ENABLED=1
-export VLM_MODEL=qwen3-vl:4b-instruct
-export VLM_MAX_FRAMES=4
-export VLM_MAX_PAIRS=2
-uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
-```
+If an API call returns `504 DEADLINE_EXCEEDED`, the adapter runs bounded retries; you can set `VLM_TIMEOUT_SECONDS=240`, `GEMINI_THINKING_LEVEL=low`, and test `python scripts/check_vlm.py --text-only` first to isolate model/API issues. If text-only works but the vision smoke test fails, inspect the vision schema/request. The server can still be overloaded; do not claim a passed live test until it actually succeeds.
 
-Test model connectivity:
-
-```bash
-curl http://127.0.0.1:8000/api/health
-python scripts/check_vlm.py
-```
-
-`/api/health` should show `"vlm":{"enabled":true,"ready":true,...}`. `scripts/check_vlm.py` sends a generated **synthetic image** to Ollama and validates its response; it is a live smoke test, **not an accuracy benchmark**.
-
-The 4B quantized weights are about **3.3 GB** on disk, plus RAM/VRAM overhead. CPU inference may be slow; allow a few minutes per video, especially for multiple frame/pair requests. Use `VLM_MAX_FRAMES=2` and `VLM_MAX_PAIRS=1` on limited hardware. A local 8B model can be substituted after checking hardware.
+Gemini is still billed/rate-limited according to your project and plan.
+The MVP sends selected JPEG frames, not the full video/audio. With local OCR/ASR disabled,
+spoken claims are not transcribed. A missing module is not proof that the video is clean.
+The schema of VLM findings and Human Review remains unchanged.
 
 **VLM configuration** (environment variables):
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `VLM_ENABLED` | `0` | Opt-in to VLM calls |
-| `VLM_MODEL` | `qwen3-vl:4b-instruct` | Ollama model tag |
-| `VLM_BASE_URL` | `http://127.0.0.1:11434` | Ollama root URL |
-| `VLM_TIMEOUT_SECONDS` | `120` | Timeout per VLM request |
+| `GEMINI_THINKING_LEVEL` | `low` | Gemini 3.8 Flash reasoning effort (low/medium/high; minimal unsupported) |
+| `VLM_MODEL` | `gemini-3.8-flash` | Gemini API model ID |
+| `GEMINI_API_KEY` | unset | Gemini API key, set in shell and never commit |
+| `VLM_TIMEOUT_SECONDS` | `240` | Per-request timeout in seconds; Gemini calls may have server-side limits |
 | `VLM_MAX_FRAMES` | `4` | Single-frame checks, capped at 8 |
 | `VLM_MAX_PAIRS` | `2` | Same-shot pair checks, capped at 6 |
-| `VLM_ALLOW_REMOTE` | `0` | Allow non-loopback Ollama only when explicitly `1` (privacy risk) |
+| `GEMINI_MAX_ATTEMPTS` | `2` | Application-level attempts for 408/429/5xx, including 504; Google SDK can also retry |
+| `OCR_ENABLED` | `1` | Set to `0` to skip local OCR processing |
+| `ASR_ENABLED` | `1` | Set to `0` to skip local ASR processing |
 | `WHISPER_MODEL` | `tiny` | ASR model (if installed) |
 | `VERIFAI_DATA` | `./data` | Persistent storage root |
 
-**Privacy:** Default Ollama endpoint is localhost. Setting `VLM_ALLOW_REMOTE=1` may send image frames to another host. Do not use cloud/remote endpoints for sensitive videos without explicit authorization.
+**Privacy:** Gemini runs in Google's cloud, so selected image frames leave the local machine. Ensure processing rights and user consent before enabling it.
 
 ## 4. Enable OCR + ASR on Windows (Python 3.11, CPU first)
 
@@ -131,9 +119,7 @@ Re-analysis resets current findings and reviewer decision (preserves audit).
 `ffmpeg` on PATH is optional for faster-whisper audio decoding (PyAV bundles
 its own FFmpeg libraries), but is recommended for video conversion/troubleshooting.
 
-**VLM is separate**: Python dependencies do not install the Ollama executable
-or Qwen3-VL model. See section 3 to install Ollama, `ollama pull`, and set
-`VLM_ENABLED=1` in the terminal running the backend.
+**VLM is API-based:** The Python SDK is installed by `requirements.txt`; no Ollama weights are required. Set `GEMINI_API_KEY` and `VLM_ENABLED=1` before starting the backend.
 
 References: [PaddleOCR installation](https://www.paddleocr.ai/main/en/version3.x/installation.html),
 [PaddleOCR multilingual OCR](https://www.paddleocr.ai/main/en/version3.x/pipeline_usage/OCR.html),
@@ -146,7 +132,7 @@ Video + Product Truth
   -> OpenCV frame sampling (max 60 frames) + optional PaddleOCR + faster-whisper
   -> Temporal signals: HSV histogram, frame pixel delta, pHash, ORB matches
   -> Same-shot pair selection (avoid likely scene cuts)
-  -> Optional Ollama VLM: sampled single frames + up to 2 frame pairs
+  -> Optional Gemini VLM: sampled single frames + up to 2 frame pairs
   -> Pydantic JSON schema validation + evidence provenance
   -> Evidence normalization (dedup adjacent repeated OCR/ASR, keep timestamps)
   -> Deterministic price/restricted-claim rules + visual candidate flags
@@ -158,7 +144,7 @@ Video + Product Truth
 
 **Visual Consistency Checking:** OpenCV compares consecutive sampled frames and classifies likely scene cuts vs same-shot candidates. The VLM compares selected same-shot pairs for apparent changes to product details. `VIS-01`/`VIS-02`/`VIS-03` are **review candidates**, not proven defects. Natural movement, transitions, lighting, occlusion and camera angles can cause false positives. Two sampled frames cannot establish the exact frame where a transient anomaly occurred.
 
-**VLM:** Uses `POST /api/chat` with base64-encoded local JPEG frames and a Pydantic-generated JSON Schema in `format`. Requests have `temperature=0`. Outputs are validated and stored with model + prompt versions; malformed output or unreachable Ollama produces `coverage.vlm=error`/`partial` rather than fabricated findings. `confidence` is **self-reported, not calibrated**. No automatic `Regenerate` from VLM-only flags.
+**VLM:** Uses Gemini `models.generate_content` with locally sampled JPEG frames and structured JSON response schema. Requests use `temperature=0`. Outputs are validated and stored with model + prompt versions; malformed output, rate limits or API failures produce `coverage.vlm=error`/`partial` rather than fabricated findings. `confidence` is **self-reported, not calibrated**. No automatic `Regenerate` from VLM-only flags.
 
 **Product truth:** Product name, SKU, brand, price, approved/restricted claims are *textual reference information*, **not an image of the actual product**. The system cannot reliably detect lookalike packaging or prove SKU mismatch from appearance alone. `SKU-01` is only a tentative visible-label contradiction.
 
@@ -176,7 +162,7 @@ pip install pytest httpx
 python -m pytest -q tests
 ```
 
-Automated tests cover: v1 smoke flow; evidence dedup/provenance; scene-cut and temporal candidate signals; VLM schema and invalid JSON; security of remote model endpoint; SQLite v1->v2 migration; **end-to-end job with a mocked VLM** including linked findings, JSON export, re-analysis and audit log. They do **not** evaluate the accuracy or speed of the real Qwen3-VL model.
+Automated tests cover: v1 smoke flow; evidence dedup/provenance; scene-cut and temporal candidate signals; VLM schema and invalid JSON; Gemini API adapter; SQLite v1->v2 migration; **end-to-end job with a mocked VLM** including linked findings, JSON export, re-analysis and audit log. They do **not** evaluate the accuracy or speed of the real Gemini model.
 
 ## 8. Known limitations
 
@@ -190,7 +176,7 @@ For architecture details and upgrade checklist see [ARCHITECTURE.md](ARCHITECTUR
 
 ## Open-source references
 
-- [Ollama](https://github.com/ollama/ollama), [Qwen3-VL](https://ollama.com/library/qwen3-vl:4b-instruct)
+- [Google Gemini API](https://ai.google.dev/gemini-api/docs/get-started)
 - [FastAPI](https://github.com/fastapi/fastapi), [OpenCV](https://github.com/opencv/opencv)
 - [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR), [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
 
@@ -293,10 +279,11 @@ remain readable; only a deliberate Re-analyze creates an A3 report for them.
 See [Verification Engine A3](docs/VERIFICATION_ENGINE_A3.md) for the exact
 status semantics, data contract, tests and known limitations.
 
-## Sprint B1 — Multimodal Evidence Reliability
 
-The video sampler now targets 1-second spacing on shorter clips (maximum 60 sampled frames). OCR frame selection is configurable via OCR_SAMPLING_MODE=hybrid (default, temporally distributed anchors plus changed frames) or uniform (original evenly spaced behavior). OCR still receives at most OCR_MAX_FRAMES=12 selected frames by default. Selection is heuristic; real-video recall must be tested.
+## Sprint B1 — Multimodal Evidence Reliability (merged with Gemini)
 
-OCR coverage now distinguishes ok, partial, error, not_installed and skipped across **every attempted OCR frame**. A completed job records frame counts, empty successful frames and ASR segment counts under details.perception_quality. Whisper end times are retained in canonical evidence; no ASR confidence values are invented.
+The video sampler targets one frame/second on short clips, capped at 60 frames. OCR selection can use `OCR_SAMPLING_MODE=hybrid` (temporal anchors plus changed frames) or `uniform`. The OCR engine still analyzes up to `OCR_MAX_FRAMES=12` frames by default, unless `OCR_ENABLED=0` disables OCR entirely.
 
-See [Multimodal Reliability B1](docs/MULTIMODAL_RELIABILITY_B1.md) for PowerShell commands, Windows QA and limitations. The changes do not alter login/RBAC or database schema.
+The app reports OCR attempted/successful/failed/empty frame counts and ASR segment timing under `details.perception_quality`. ASR end timestamps are retained in evidence when valid. These counts are operational coverage, not proof of OCR or claim accuracy.
+
+See [Sprint B1 Reliability](docs/MULTIMODAL_RELIABILITY_B1.md) for technical details. **Cloud privacy change:** when `VLM_ENABLED=1`, the sampled JPEG images sent to Gemini leave the local machine. Explicit rights/consent remain required.

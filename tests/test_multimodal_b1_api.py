@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 def _setup(monkeypatch, tmp_path):
     import backend
     monkeypatch.setenv('VLM_ENABLED', '0')
+    monkeypatch.setenv('OCR_ENABLED', '1')
+    monkeypatch.setenv('ASR_ENABLED', '1')
     monkeypatch.setattr(backend, 'DATA', tmp_path)
     monkeypatch.setattr(backend, 'DB', tmp_path / 'verifai.sqlite3')
     monkeypatch.setattr(backend, 'UPLOAD', tmp_path / 'uploads')

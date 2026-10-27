@@ -6,6 +6,7 @@ import pytest
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.visual import compare_frames, select_pairs, visual_pairs
 from verifai_core.vlm import OllamaVLM, VLMError
+from verifai_core.gemini import GeminiVLM
 
 
 def test_evidence_normalization_merges_only_adjacent_same_source():
