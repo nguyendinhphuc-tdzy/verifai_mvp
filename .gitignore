@@ -67,3 +67,8 @@ logs/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+
+# Human-labeling workbooks and real video evidence may contain private content
+evaluation_bundle/
+reports/real_eval*.json
+data/ground_truth_verified.csv
