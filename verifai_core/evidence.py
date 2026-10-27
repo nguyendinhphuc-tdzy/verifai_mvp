@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import hashlib
 import json
+import math
 import re
 import unicodedata
 from typing import Any
@@ -64,6 +65,16 @@ def normalize_evidence(raw: list[RawEvidence], window_seconds: float = 2.3) -> t
         if not content:
             continue
         at = max(0.0, round(float(item.at), 2))
+        observed_end = at
+        # Whisper segments have start/end; retaining the actual end keeps
+        # transcript evidence seekable as a time range, not a point.
+        if item.kind == 'asr':
+            try:
+                candidate = float(item.metadata.get('segment_end_seconds', at))
+                if math.isfinite(candidate) and at <= candidate <= at + 60:
+                    observed_end = round(candidate, 2)
+            except (TypeError, ValueError):
+                pass
         key = comparison_key(content)
         group_idx = None
         if item.kind in ('ocr', 'asr'):
@@ -81,7 +92,7 @@ def normalize_evidence(raw: list[RawEvidence], window_seconds: float = 2.3) -> t
                       'source_model': item.source_model}
         if group_idx is not None:
             existing = normalized[group_idx]
-            existing.end_timestamp = max(existing.end_timestamp, at)
+            existing.end_timestamp = max(existing.end_timestamp, observed_end)
             if item.score is not None:
                 existing.score = max(existing.score or 0.0, float(item.score))
             existing.metadata['sources'].append(provenance)
@@ -96,7 +107,7 @@ def normalize_evidence(raw: list[RawEvidence], window_seconds: float = 2.3) -> t
             metadata = {**item.metadata, 'sources': [provenance],
                         'frames': [f for f in (item.frame, item.frame2) if f],
                         'normalization_version': 'evidence-2.0'}
-            normalized.append(Evidence(item.kind, at, at, content, item.score,
+            normalized.append(Evidence(item.kind, at, observed_end, content, item.score,
                                        item.frame, item.frame2, item.source_model,
                                        fingerprint, metadata))
             raw_to_canonical[item.uid] = len(normalized) - 1
