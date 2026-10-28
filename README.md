@@ -197,7 +197,7 @@ The latest Sprint-2 workbook defines **80 evaluation cases**: `VID_GOC01–06`
 files have been downloaded or run through VerifAI**.
 
 1. Run the existing app (after backing up `data/`) with `python -m uvicorn backend:app --reload`.
-2. Open **Dataset (80) → Import workbook**, select `Sprint 2 - Thu thập & tạo dữ liệu thật.xlsx`.
+2. Open **Bộ kiểm thử → Import Excel (.xlsx)** (visible at the top of the Dataset page), select the **official Sprint-2 workbook** `Sprint 2 - Thu thập & tạo dữ liệu thật.xlsx` (max 8 MB; required tabs beginning with `1. Kich ban goc` through `7. Policy Rules`). This is **not** a generic spreadsheet import: the separately generated Actual Evaluation Review Pack is not accepted as the 80-case source workbook. Re-import retains prior verified labels and product links.
 3. The importer creates 6 sample Product Truth records. Public cases with no
    verified SKU are kept unlinked. Review prices/variants/claims before using
    them as hard rules; product info and legal references are not auto-verified.

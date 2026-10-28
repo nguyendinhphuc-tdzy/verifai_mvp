@@ -91,3 +91,25 @@ def test_no_fake_interactions():
     assert 'function flag(id,state)' in html
     assert 'function exportEvidence()' in html
     assert 'function selectDatasetCase(' in html
+
+
+def test_excel_import_is_visible_from_dataset_heading_and_stays_wired():
+    html = HTML.read_text(encoding="utf-8")
+    dataset = html.split('<section id="dataset"', 1)[1].split('</section>', 1)[0]
+    # The primary entry point must be visible without opening a disclosure.
+    heading, panel = dataset.split('<details id="datasetImportPanel"', 1)
+    assert 'id="datasetImportTrigger"' in heading
+    assert 'onclick="openDatasetImport()"' in heading
+    assert 'aria-controls="datasetImportPanel"' in heading
+    # Opening shows the existing Excel file form above the case table.
+    assert dataset.index('id="datasetImportPanel"') < dataset.index('id="datasetTable"')
+    assert 'id="datasetForm"' in panel
+    assert 'id="datasetFile"' in panel
+    assert 'id="datasetImportSubmit"' in panel
+    assert 'type="file"' in panel and 'accept=".xlsx' in panel
+    assert 'id="datasetImportStatus"' in panel and 'aria-live="polite"' in panel
+    assert 'function openDatasetImport()' in html
+    assert "panel.open=true" in html
+    assert "api('/api/dataset/import',{method:'POST',body:f})" in html
+    assert 'file.size>8*1024*1024' in html
+    assert 'btn.disabled=true' in html and 'btn.disabled=false' in html
