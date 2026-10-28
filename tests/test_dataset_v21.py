@@ -98,6 +98,11 @@ def test_data_import_idempotent_truth_and_simulation_isolation(monkeypatch,tmp_p
     s=client.get('/api/dataset/summary').json()
     assert s['human_consensus_verified']==1
     assert s['actual']['evaluated']==0  # still no actual job linked
+    # UI permits importing an updated workbook: never erase manually verified labels.
+    assert upload().status_code==200
+    persisted=next(c for c in client.get('/api/dataset/cases').json() if c['code']=='PUB001')
+    assert persisted['verified_truth']=='error'
+    assert persisted['annotation_count']==2
     # Insert a synthetic *completed job record* to verify actual-only aggregation;
     # this is fixture plumbing, not evidence of performance on a video.
     prod=client.get('/api/products').json()[0]
