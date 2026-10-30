@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
 from verifai_core.product_import import ensure_product_import_schema, install_product_import_routes
+from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, RULE_VERSION as SPRINT2_RULE_VERSION
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
@@ -519,6 +520,38 @@ def _analyze_job(job_id):
                            'product_truth_revision':p.get('revision',1),
                            'reference_status':p.get('reference_status','unverified'),
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            # Scenarios in Sprint-2 Sheet 2 informed these text candidates.
+            # They are not labels or trained weights, and require reviewer signoff.
+            for mismatch in check_variant(e.content, p.get('variant','')):
+                flag(mismatch.code,'medium',e.timestamp,
+                     f'Quy cách/dung tích quan sát "{mismatch.observed}" '
+                     f'khác hoặc tự mâu thuẫn với tham chiếu "{mismatch.expected or p.get("variant","")}"; '
+                     'cần kiểm tra đúng sản phẩm và ngữ cảnh.',
+                     source='variant_rule_v1',confidence=e.score,
+                     meta={'canonical_index':n,'reason':mismatch.reason,
+                           'reference_variant':p.get('variant',''),
+                           'rule_version':SPRINT2_RULE_VERSION,
+                           'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            for claim in check_unapproved_high_risk_claims(e.content,p['claims'],p['banned']):
+                flag(claim.code,'medium',e.timestamp,
+                     f'Phát hiện claim có rủi ro chưa nằm trong Approved Claims: "{claim.observed}". '
+                     'Không mặc định vi phạm; reviewer cần xác minh nội dung và nguồn.',
+                     source='claim_candidate_v1',confidence=e.score,
+                     meta={'canonical_index':n,'rule_version':SPRINT2_RULE_VERSION,
+                           'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            if e.kind=='ocr':
+                source_frames={str(x.get('frame')) for x in e.metadata.get('sources',[])
+                               if isinstance(x,dict) and x.get('frame')}
+                if not source_frames and e.frame:source_frames={e.frame}
+                if e.score is not None and e.score>=0.90:
+                    for typo in check_brand_typo(e.content,p.get('brand',''),
+                                                 supporting_frames=len(source_frames)):
+                        flag(typo.code,'medium',e.timestamp,
+                             f'Chữ thương hiệu "{typo.observed}" có thể bị lỗi chính tả '
+                             f'(tham chiếu: "{typo.expected}"). Cần kiểm tra frame gốc.',
+                             source='text_typo_v1',confidence=e.score,
+                             meta={'canonical_index':n,'rule_version':SPRINT2_RULE_VERSION,
+                                   'supporting_frames':sorted(source_frames)})
             price_check = assess_price(e.content, p['price'])
             if price_check.mentions:
                 e.metadata['price_v3'] = price_check.to_dict()
@@ -554,8 +587,8 @@ def _analyze_job(job_id):
                  'rule_version':'rules-0.4','price_parser_version':PRICE_PARSER_VERSION,
                  'claim_rule_version':CLAIM_RULE_VERSION,
                  'product_truth_snapshot':{key:p.get(key) for key in
-                     ('sku','name','brand','price','claims','banned','reference_url',
-                      'reference_note','reference_status','revision')},'normalization_version':'evidence-2.0',
+                     ('sku','name','brand','price','variant','expected_video_description',
+                      'claims','banned','reference_url','reference_note','reference_status','revision')},'normalization_version':'evidence-2.0',
                  'frame_timeline':[{'at':f['at'],'frame':f['frame'],'blur':f['blur']} for f in sampled],
                  'normalization':{'raw_count':len(raw),'canonical_count':len(normalized),
                                   'merged_count':len(raw)-len(normalized)},
