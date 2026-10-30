@@ -35,7 +35,7 @@
   </header>
 
   <section id="queue" class="section active" aria-labelledby="queueHeading">
-    <div class="sectionhead"><div><h2 id="queueHeading">Video cần kiểm tra</h2><p>Chọn một video để xem cảnh báo, xác minh bằng chứng và đưa ra quyết định.</p></div><button type="button" class="mini" onclick="refreshAll()" aria-label="Làm mới hàng đợi">↻ Làm mới</button></div>
+    <div class="sectionhead"><div><h2 id="queueHeading">Video cần kiểm tra</h2><p>Chọn một video để xem cảnh báo, xác minh bằng chứng và đưa ra quyết định.</p></div><div class="row"><a id="exportAllSessionsQueue" class="button secondary" href="/api/sessions/export" download aria-label="Xuất tất cả phiên, kết quả AI và reviewer dưới dạng ZIP">↓ Export All Sessions</a><button type="button" class="mini" onclick="refreshAll()" aria-label="Làm mới hàng đợi">↻ Làm mới</button></div></div>
     <div class="panel">
       <div class="queue-toolbar"><div class="row"><input id="queueSearch" class="search" type="search" aria-label="Tìm video hoặc SKU" placeholder="Tìm video hoặc SKU..." oninput="renderQueue()"><select id="queueStatus" class="search" aria-label="Lọc trạng thái" onchange="renderQueue()"><option value="pending">Cần xử lý</option><option value="all">Tất cả video</option><option value="processing">Đang phân tích</option><option value="reviewed">Đã duyệt</option><option value="failed">Có lỗi xử lý</option></select></div><span class="queue-stat" id="queueCount" aria-live="polite">Đang tải...</span></div>
       <div id="queueTable" class="tablewrap" aria-live="polite"></div>
@@ -96,7 +96,7 @@
   </section>
 
   <section id="overview" class="section" aria-labelledby="overviewHeading">
-    <div class="sectionhead"><div><h2 id="overviewHeading">Tổng quan</h2><p>Tình trạng xử lý và hoạt động kiểm duyệt gần đây.</p></div><button type="button" class="button" onclick="openTab('analyze')">+ Thêm video</button></div>
+    <div class="sectionhead"><div><h2 id="overviewHeading">Tổng quan</h2><p>Tình trạng xử lý và hoạt động kiểm duyệt gần đây.</p></div><div class="row"><a id="exportAllSessionsOverview" class="button secondary" href="/api/sessions/export" download aria-label="Xuất toàn bộ phiên cùng kết quả AI và reviewer">↓ Export All Sessions</a><button type="button" class="button" onclick="openTab('analyze')">+ Thêm video</button></div></div>
     <div id="stats" class="stats"><div class="stat"><small>Tổng video</small><strong id="stat-total">–</strong></div><div class="stat"><small>Đã phân tích</small><strong id="stat-done">–</strong></div><div class="stat"><small>Đã duyệt</small><strong id="stat-reviewed">–</strong></div><div class="stat subtle"><small>Đã gán nhãn</small><strong id="stat-labels">–</strong></div></div>
     <div class="panel"><div class="review-subhead"><h3>Video gần đây</h3><button type="button" class="mini" onclick="openTab('queue')">Mở hàng đợi →</button></div><div id="overviewJobs" class="tablewrap"></div></div>
   </section>
