@@ -29,11 +29,22 @@ def report(evs=(), findings=(), coverage=FULL, truth=TRUTH, raw_map=None):
 
 
 def test_empty_but_full_coverage_does_not_pass():
+    # A successful pipeline with no observed OCR/ASR/VLM content must not PASS.
     r=report()
-    assert r['status']=='NO_ISSUES_OBSERVED'
+    assert r['status']=='INSUFFICIENT_EVIDENCE'
+    assert r['content_evidence_observed'] is False
     assert r['requires_human_review'] is True
     assert r['is_final_decision'] is False
     assert r['version']==VERIFICATION_VERSION
+
+
+def test_reviewed_reference_with_actual_matching_observation_can_be_clean():
+    r=report([price('MATCH',149000)])
+    assert r['status']=='NO_ISSUES_OBSERVED'
+    assert r['content_evidence_observed'] is True
+    assert r['reference_scope']=='commercial'
+    assert r['requires_human_review'] is True
+    assert r['is_final_decision'] is False
 
 
 def test_missing_vlm_refusal_is_inconclusive_even_with_price_match():
