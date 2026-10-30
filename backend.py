@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, model_validator
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
 from verifai_core.product_import import ensure_product_import_schema, install_product_import_routes
 from verifai_core.recommendation import recommend_ai
+from verifai_core.local_security import local_only_middleware
 from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, RULE_VERSION as SPRINT2_RULE_VERSION
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.evidence import RawEvidence, normalize_evidence
@@ -41,6 +42,7 @@ async def app_lifespan(_app):
     yield
 
 app=FastAPI(title='VerifAI MVP API',version='2.1.0',lifespan=app_lifespan)
+app.middleware('http')(local_only_middleware)
 app.mount('/static',StaticFiles(directory=str(BASE/'static')),name='static')
 
 def utc(): return datetime.now(timezone.utc).isoformat(timespec='seconds')
