@@ -191,7 +191,7 @@ function renderProducts(){
   products.map(p=>`<option value="${esc(p.id)}">${esc(p.sku)} — ${esc(p.name)}</option>`).join('');
  $('productsList').innerHTML=products.length?products.map(p=>`
  <div class="finding"><div class="row space"><div style="min-width:0"><b>${esc(p.name)}</b><div class="muted">${esc(p.brand)} · ${p.price===null?'Chưa nhập giá':p.price.toLocaleString('vi-VN')+' ₫'}</div>
- <small class="muted">${p.claims.length} claims được phép · ${p.banned.length} cụm hạn chế · ${p.reference_status==='reviewed'?'Đã xem xét nguồn':'Chưa xem xét nguồn'}</small></div>
+ <small class="muted">${p.variant?'Quy cách: '+esc(p.variant)+' · ':''}${p.claims.length} claims được phép · ${p.banned.length} cụm hạn chế · ${p.reference_status==='reviewed'?'Đã xem xét nguồn':'Chưa xem xét nguồn'}</small>${p.expected_video_description?'<div class="footnote">Mô tả video gốc: '+esc(p.expected_video_description)+'</div>':''}${p.source_class?'<div class="footnote">Nguồn: '+esc(p.source_class)+'</div>':''}</div>
  <div class="row"><span class="pill">${esc(p.sku)}</span><button class="mini" type="button" onclick="startProductEdit('${esc(p.id)}')">Chỉnh sửa</button></div></div></div>`).join(''):'<div class="empty">Chưa có sản phẩm tham chiếu nào.</div>';
 }
 function startProductEdit(id){
