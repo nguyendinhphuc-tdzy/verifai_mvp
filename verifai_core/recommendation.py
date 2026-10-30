@@ -31,7 +31,7 @@ def recommend_ai(
         and (f.get('evidence_id') is not None or f.get('evidence_refs'))
         and f.get('flag_review') != 'rejected'
     ]
-    if high and report.get('reference_status') == 'reviewed' and all(
+    if high and report.get('reference_status') in ('reviewed', 'test_reference_approved') and all(
             coverage.get(m) == 'ok' for m in COVERAGE_MODULES):
         return {
             'decision': 'Regenerate',
@@ -56,7 +56,7 @@ def recommend_ai(
             'explanation': 'Có ứng viên lỗi hoặc tín hiệu xung đột cần người duyệt xác minh.',
             'is_final_decision': False,
         }
-    if report.get('reference_status') != 'reviewed':
+    if report.get('reference_status') not in ('reviewed', 'test_reference_approved'):
         return {
             'decision': 'Needs Review',
             'reason': 'product_truth_unverified',
@@ -75,13 +75,20 @@ def recommend_ai(
             'is_final_decision': False,
         }
     if status == 'NO_ISSUES_OBSERVED' and not findings:
+        test_only = report.get('reference_status') == 'test_reference_approved'
         return {
             'decision': 'Pass',
-            'reason': 'no_issues_in_checked_scope',
+            'reason': ('no_issues_in_checked_test_scope' if test_only
+                       else 'no_issues_in_checked_scope'),
+            'reference_scope': 'test' if test_only else 'commercial',
             'explanation': (
-                'Chưa phát hiện ứng viên lỗi trong phạm vi các module đã chạy '
-                'với Product Truth đã được xem xét nguồn. Chỉ là đề xuất AI; '
-                'reviewer vẫn phải xem video và ra quyết định cuối.'
+                ('Chưa phát hiện ứng viên lỗi trong phạm vi bộ kiểm thử được '
+                 'xác nhận bởi người dùng. PASS chỉ áp dụng cho bộ kiểm thử, '
+                 'không chứng nhận thông tin thương mại hay tuân thủ thực tế.'
+                 ) if test_only else
+                ('Chưa phát hiện ứng viên lỗi trong phạm vi các module đã chạy '
+                 'với Product Truth đã được xem xét nguồn. Chỉ là đề xuất AI; '
+                 'reviewer vẫn phải xem video và ra quyết định cuối.')
             ),
             'is_final_decision': False,
         }
