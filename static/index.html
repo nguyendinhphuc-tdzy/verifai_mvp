@@ -55,6 +55,7 @@
         </div>
         <div class="panel">
           <div class="review-subhead"><h3>Cảnh báo cần xác minh</h3><button type="button" class="mini" onclick="reanalyzeSelected()" title="Chạy lại sẽ đặt lại cảnh báo và quyết định reviewer đã có">↻ Phân tích lại</button></div>
+          <div id="aiDecisionSummary" class="notice" role="status" aria-live="polite">Đang xác định đề xuất AI...</div>
           <div id="verificationSummary" class="notice" role="status" aria-live="polite"></div>
           <details id="verificationDetails" class="detail-disclosure">
             <summary>Giải thích kết quả kiểm tra <span id="verificationCount" class="footnote"></span></summary>
@@ -171,7 +172,7 @@ const decisionText={Pass:'Chấp thuận',Regenerate:'Yêu cầu sửa','Needs R
 const findingNames={'VIS-SCREEN':'Hình ảnh cần xem lại','COVERAGE':'Nội dung chưa được kiểm tra','EVIDENCE-LOW':'Chưa đủ bằng chứng','PRICE-MISMATCH':'Giá không khớp','PRICE_MISMATCH':'Giá không khớp'};
 function tableData(data){
  if(!data.length)return '<div class="work-empty"><h3>Chưa có video phù hợp</h3><p>Bạn có thể thử đổi bộ lọc hoặc bắt đầu phân tích một video.</p><button class="button secondary" onclick="openTab(\'analyze\')">+ Phân tích video</button></div>';
- return `<table><thead><tr><th>Video</th><th>Sản phẩm</th><th>Tiến độ</th><th>Quyết định</th><th></th></tr></thead><tbody>${data.map(j=>`<tr><td><b class="truncate" style="display:block">${esc(j.filename)}</b><small class="muted">${esc(j.created_at?.slice(0,16).replace('T',' '))}</small></td><td><b>${esc(j.sku)}</b><br><small class="muted">${esc(j.product_name)}</small></td><td><span class="pill ${esc(j.status)}">${esc(statusText[j.status]||j.status)}</span></td><td><span class="pill ${esc(j.review_decision||j.decision||'')}">${esc(j.review_decision?decisionText[j.review_decision]||j.review_decision:'Chưa duyệt')}</span></td><td><button type="button" class="mini" onclick="showJob('${esc(j.id)}')">Mở →</button></td></tr>`).join('')}</tbody></table>`;
+ return `<table><thead><tr><th>Video</th><th>Sản phẩm</th><th>Tiến độ</th><th>AI đề xuất</th><th>Reviewer</th><th></th></tr></thead><tbody>${data.map(j=>`<tr><td><b class="truncate" style="display:block">${esc(j.filename)}</b><small class="muted">${esc(j.created_at?.slice(0,16).replace('T',' '))}</small></td><td><b>${esc(j.sku)}</b><br><small class="muted">${esc(j.product_name)}</small></td><td><span class="pill ${esc(j.status)}">${esc(statusText[j.status]||j.status)}</span></td><td><span class="pill ${esc(j.ai_recommendation?.decision||'')}">${esc(j.ai_recommendation?decisionText[j.ai_recommendation.decision]||j.ai_recommendation.decision:'—')}</span></td><td><span class="pill ${esc(j.review_decision||'')}">${esc(j.review_decision?decisionText[j.review_decision]||j.review_decision:'Chưa duyệt')}</span></td><td><button type="button" class="mini" onclick="showJob('${esc(j.id)}')">Mở →</button></td></tr>`).join('')}</tbody></table>`;
 }
 function renderOverview(){$('overviewJobs').innerHTML=tableData(jobs.slice(0,6))}
 function renderQueue(){
@@ -311,6 +312,13 @@ const verificationReasonNames={
 function renderVerification(d){
  const report=d.details?.verification||null;
  const ready=d.status==='completed';
+ const recommendation=ready?(d.ai_recommendation||d.details?.ai_recommendation):null;
+ const aiTitle=recommendation?decisionText[recommendation.decision]||recommendation.decision:'Chưa có kết quả';
+ $('aiDecisionSummary').innerHTML=recommendation?
+  '<b>AI đề xuất: <span class="pill '+esc(recommendation.decision)+'">'+esc(aiTitle)+'</span></b>'+
+  '<p class="footnote" style="margin:7px 0 0">'+esc(recommendation.explanation||'')+'</p>'+
+  '<p class="footnote" style="margin:5px 0 0">Đây là đề xuất AI, không phải quyết định reviewer hay chứng nhận tuân thủ.</p>':
+  '<b>AI đề xuất: Chưa có kết quả</b> — '+esc(progressText(d)||'Video chưa có kết quả phân tích.');
  $('verificationDetails').classList.toggle('hidden',!ready||!report?.checks?.length);
  if(!ready){
   $('verificationSummary').textContent=progressText(d)||'Đang chờ phân tích';
