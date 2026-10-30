@@ -13,7 +13,7 @@
 .analysis-optional .optional-body{padding:0 14px 5px;border-top:1px solid #e9edf6}
 .analysis-optional .optional-body .field:first-child{margin-top:12px}
 .analysis-optional .optional-body .field:last-child{margin-bottom:9px}
-</style><link rel="stylesheet" href="/static/workspace.css"></head><body><div class="app">
+.danger-action{background:#a64040;border-color:#a64040}.danger-action:hover:not(:disabled){background:#8e2929;border-color:#8e2929}</style><link rel="stylesheet" href="/static/workspace.css"></head><body><div class="app">
 <aside class="side" aria-label="Điều hướng chính">
   <div class="brand"><span class="brandmark" aria-hidden="true">V</span><span>Verif<span style="color:#4564db">AI</span></span></div>
   <nav class="nav" id="nav" aria-label="Các khu vực làm việc">
@@ -35,7 +35,8 @@
   </header>
 
   <section id="queue" class="section active" aria-labelledby="queueHeading">
-    <div class="sectionhead"><div><h2 id="queueHeading">Video cần kiểm tra</h2><p>Chọn một video để xem cảnh báo, xác minh bằng chứng và đưa ra quyết định.</p></div><button type="button" class="mini" onclick="refreshAll()" aria-label="Làm mới hàng đợi">↻ Làm mới</button></div>
+    <div class="sectionhead"><div><h2 id="queueHeading">Video cần kiểm tra</h2><p>Chọn một video để xem cảnh báo, xác minh bằng chứng và đưa ra quyết định.</p></div><div class="row"><a id="exportAllSessionsButton" class="button secondary" href="/api/sessions/export" download>↓ Export All Sessions (.zip)</a><button type="button" class="mini" onclick="openSessionReset()">Xóa lịch sử phiên</button><button type="button" class="mini" onclick="refreshAll()" aria-label="Làm mới hàng đợi">↻ Làm mới</button></div></div>
+    <details class="detail-disclosure" id="sessionResetPanel" style="margin:0 0 15px"><summary>Xóa toàn bộ phiên phân tích cũ <span class="footnote">Không thể hoàn tác</span></summary><div class="disclosure-body"><p class="footnote">Trước khi xóa, hãy dùng <b>Export All Sessions</b> và lưu file ZIP. Xóa sẽ bỏ các quyết định AI, findings, evidence, nhãn, audit và tệp video/frame của phiên đã lưu. Product Truth và Excel đã nhập được giữ nguyên. Không thể xóa khi còn phiên đang xử lý.</p><div class="field"><label for="sessionResetConfirm">Gõ chính xác: XOA TAT CA PHIEN</label><input id="sessionResetConfirm" autocomplete="off" placeholder="XOA TAT CA PHIEN"></div><div class="row"><button id="sessionResetButton" type="button" class="button danger-action" onclick="resetAllSessions()">Xóa toàn bộ phiên</button><span id="sessionResetStatus" class="footnote" role="status" aria-live="polite"></span></div></div></details>
     <div class="panel">
       <div class="queue-toolbar"><div class="row"><input id="queueSearch" class="search" type="search" aria-label="Tìm video hoặc SKU" placeholder="Tìm video hoặc SKU..." oninput="renderQueue()"><select id="queueStatus" class="search" aria-label="Lọc trạng thái" onchange="renderQueue()"><option value="pending">Cần xử lý</option><option value="all">Tất cả video</option><option value="processing">Đang phân tích</option><option value="reviewed">Đã duyệt</option><option value="failed">Có lỗi xử lý</option></select></div><span class="queue-stat" id="queueCount" aria-live="polite">Đang tải...</span></div>
       <div id="queueTable" class="tablewrap" aria-live="polite"></div>
@@ -120,10 +121,11 @@
   </section>
 
   <section id="dataset" class="section" aria-labelledby="datasetHeading">
-    <div class="sectionhead"><div><h2 id="datasetHeading">Bộ kiểm thử</h2><p>Quản lý trường hợp đánh giá, dữ liệu chuẩn và liên kết video chạy thực tế.</p></div><div class="row"><button type="button" id="datasetImportTrigger" class="button secondary" aria-controls="datasetImportPanel" onclick="openDatasetImport()">↑ Import Excel (.xlsx)</button><button type="button" class="mini" onclick="refreshDataset()">↻ Làm mới</button></div></div>
+    <div class="sectionhead"><div><h2 id="datasetHeading">Bộ kiểm thử</h2><p>Quản lý trường hợp đánh giá, dữ liệu chuẩn và liên kết video chạy thực tế.</p></div><div class="row"><button type="button" id="datasetImportTrigger" class="button secondary" aria-controls="datasetImportPanel" onclick="openDatasetImport()">↑ Import Excel (.xlsx)</button><button type="button" id="datasetClearTrigger" class="mini" aria-controls="datasetClearPanel" onclick="openDatasetClear()">Xóa Excel hiện tại</button><button type="button" class="mini" onclick="refreshDataset()">↻ Làm mới</button></div></div>
     <details id="datasetImportPanel" class="detail-disclosure dataset-import-panel" style="margin:0 0 15px"><summary>Nhập dữ liệu từ Excel <span class="footnote">Workbook Sprint 2 · tối đa 8 MB</span></summary><div class="disclosure-body">
       <div class="grid2"><div><h3>Import workbook 80 trường hợp</h3><p class="footnote">Chỉ hỗ trợ workbook Sprint 2 định dạng .xlsx có các Sheet 1–7. Kịch bản và dự đoán giả lập được lưu riêng, không tự chạy video hoặc tính vào Actual Evaluation. Nhập lại sẽ giữ nhãn xác minh và liên kết Product Truth hiện có.</p><form id="datasetForm"><div class="field"><label for="datasetFile">Chọn file Excel (.xlsx, tối đa 8 MB)</label><input id="datasetFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div><button class="button" id="datasetImportSubmit" type="submit">Nhập workbook</button></form><p id="datasetImportStatus" class="footnote" role="status" aria-live="polite">Chọn workbook Sprint 2 để bắt đầu import.</p></div><div><h3>Trạng thái bộ dữ liệu</h3><div id="datasetSummary" class="grid2"></div></div></div>
     </div></details>
+    <details class="detail-disclosure" id="datasetClearPanel" style="margin:0 0 15px"><summary>Xóa bộ Excel hiện tại để nhập workbook mới <span class="footnote">Xóa 80 case và nhãn case, giữ Product Truth</span></summary><div class="disclosure-body"><p class="footnote">Xóa các case, nhãn độc lập, policy tham khảo và mô phỏng đã import. Những phiên phân tích video và dữ liệu sản phẩm vẫn được giữ; liên kết case_code trong phiên cũ sẽ được gỡ. Hãy xuất các phiên trước nếu bạn muốn lưu liên kết đánh giá.</p><div class="field"><label for="datasetClearConfirm">Gõ chính xác: XOA EXCEL</label><input id="datasetClearConfirm" placeholder="XOA EXCEL" autocomplete="off"></div><div class="row"><button id="datasetClearButton" type="button" class="button danger-action" onclick="resetImportedExcel()">Xóa Excel hiện tại</button><span id="datasetClearStatus" role="status" aria-live="polite" class="footnote"></span></div></div></details>
     <div class="panel" style="margin-bottom:15px"><div class="data-toolbar"><div class="row"><input class="search" id="datasetSearch" type="search" aria-label="Tìm test case" placeholder="Tìm mã case, SKU, loại lỗi..." oninput="renderDataset()"><select id="datasetGroupFilter" class="search" aria-label="Lọc nhóm dữ liệu" onchange="renderDataset()"><option value="all">Tất cả nhóm</option><option value="original">Video gốc</option><option value="controlled_error">Lỗi kiểm soát</option><option value="public">Video công khai</option></select></div><span class="pill" id="datasetShown">0 cases</span></div><div id="datasetTable" class="tablewrap"></div></div>
     <div class="panel data-selected" style="margin-bottom:16px"><div class="review-subhead"><h3>Chi tiết trường hợp</h3><span class="footnote">Dữ liệu nguồn và nhãn kiểm định</span></div><div id="datasetDetail" class="muted">Chọn một trường hợp ở danh sách để xem và thao tác.</div></div>
 
@@ -397,6 +399,33 @@ async function submitReview(decision){
 }
 async function addLabel(){if(!selected)return;const annotator=$('reviewer').value.trim();if(!annotator)return toast('Nhập tên annotator');try{await post(`/api/jobs/${selected}/labels`,{annotator,label:$('truthLabel').value});toast('Đã lưu ground truth label');await loadJob(selected);await refreshAll()}catch(e){toast(e.message)}}
 api('/api/health').then(h=>{$('health').textContent=`OCR ${h.ocr?'ready':'optional'} · ASR ${h.asr?'ready':'optional'} · VLM ${h.vlm?.ready?'ready':h.vlm?.enabled?'unavailable':'disabled'} · ${h.vlm?.model||''}`}).catch(()=>{$('health').textContent='Backend chưa kết nối'});refreshAll();
+
+function openSessionReset(){const p=$('sessionResetPanel');p.open=true;p.scrollIntoView({behavior:'smooth',block:'center'});$('sessionResetConfirm').focus({preventScroll:true})}
+async function resetAllSessions(){
+ const phrase=$('sessionResetConfirm').value,status=$('sessionResetStatus'),button=$('sessionResetButton');
+ if(phrase!=='XOA TAT CA PHIEN'){status.textContent='Hãy gõ chính xác XOA TAT CA PHIEN';return}
+ button.disabled=true;status.textContent='Đang xóa phiên...';
+ try{const r=await post('/api/sessions/reset',{confirmation:phrase});
+    status.textContent='Đã xóa '+r.deleted_sessions+' phiên, '+r.removed_uploaded_videos+' video, '+r.removed_frame_directories+' thư mục frame.'+(r.cleanup_errors.length?' Còn lỗi dọn file: '+r.cleanup_errors.join('; '):'');
+    $('sessionResetConfirm').value='';selected=null;currentJob=null;
+    const player=$('player');player.pause();player.removeAttribute('src');player.load();player.dataset.job='';
+    $('jobDetail').classList.add('hidden');await refreshAll();await refreshDataset();toast('Đã xóa lịch sử phiên chạy');
+ }catch(e){status.textContent='Không thể xóa: '+e.message;toast(e.message)}finally{button.disabled=false}
+}
+function openDatasetClear(){openTab('dataset');const p=$('datasetClearPanel');p.open=true;p.scrollIntoView({behavior:'smooth',block:'center'});$('datasetClearConfirm').focus({preventScroll:true})}
+async function resetImportedExcel(){
+ const phrase=$('datasetClearConfirm').value,status=$('datasetClearStatus'),button=$('datasetClearButton');
+ if(phrase!=='XOA EXCEL'){status.textContent='Hãy gõ chính xác XOA EXCEL';return}
+ button.disabled=true;status.textContent='Đang xóa dữ liệu Excel...';
+ try{const r=await post('/api/dataset/reset',{confirmation:phrase});
+    datasetSelected=null;$('datasetDetail').textContent='Chưa có trường hợp nào. Hãy import workbook mới.';
+    $('datasetFile').value='';$('datasetClearConfirm').value='';
+    $('datasetImportStatus').textContent='Bộ dữ liệu trống. Có thể import workbook mới.';
+    await refreshDataset();await refreshAll();
+    status.textContent='Đã xóa '+r.deleted_cases+' case và '+r.deleted_case_annotations+' nhãn; giữ nguyên lịch sử phiên và Product Truth.';
+    toast('Đã xóa bộ Excel hiện tại');
+ }catch(e){status.textContent='Không thể xóa: '+e.message;toast(e.message)}finally{button.disabled=false}
+}
 
 // Sprint-2 dataset: source scenarios, simulated predictions and actual runs are separated.
 let datasetCases=[],datasetSelected=null,datasetOverview=null;

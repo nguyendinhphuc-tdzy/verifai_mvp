@@ -355,3 +355,22 @@ Gemini coverage as evidence of compliance.
 - [Final report draft](docs/FINAL_REPORT_DRAFT.md) and [demo shot list](docs/DEMO_SHOTLIST.md). Neither implies an actual benchmark or recording exists.
 - Local verification: `python -m pytest -q`, `python scripts/check_vlm.py`, then launch `python -m uvicorn backend:app --host 127.0.0.1 --port 8001` and inspect `http://127.0.0.1:8001/api/health`.
 
+
+
+## Session cleanup and full AI decision exports (MVP local)
+
+In **Hàng đợi duyệt**, click **Export All Sessions (.zip)** to download:
+- `session_summary.csv`: one row per submitted job (including failed and unreviewed), AI decision, verification status/reason, reviewer decision/note, Gemini model and OCR/ASR/VLM coverage.
+- `ai_findings.csv`: all detected candidate problems and AI/rule observations classified as findings: code, severity, timestamp, detailed description, source, uncalibrated confidence, reviewer flag and evidence link.
+- `sessions/*.json`: complete stored job details, Product Truth snapshot, verification checks, canonical OCR/ASR/VLM evidence, findings, independent labels and audit entries.
+- `README.txt`: meaning and limitations. **Video files and JPEG frame bytes are not included**. Keep the ZIP private: it may contain marketing information and reviewer data. Snapshot export is not a guarantee of accuracy.
+
+To start a fresh evaluation history, click **Xóa lịch sử phiên**, enter `XOA TAT CA PHIEN`, then confirm. This deletes rows from `jobs`, `evidence`, `findings`, `audits` and job `labels`, plus the uploaded video and frame folders **owned by these job IDs**, if filesystem cleanup succeeds. The server rejects deletion while jobs are queued/processing (409). The response reports any filesystem cleanup errors. Product Truth and imported workbook/case annotations **are not deleted**. The operation cannot be undone; export first.
+
+In **Bộ kiểm thử**, expand **Xóa bộ Excel hiện tại**, enter `XOA EXCEL`, then confirm. This clears imported cases, simulated baseline predictions, policy references, workbook import history and case-level human annotations; historical video jobs, evidence, reviewer decisions and Product Truth stay in place, while the old case links on jobs are cleared. **Case-level reviewed labels are permanently deleted**. Export needed source data before clearing. A new workbook can then be imported using the existing `Import Excel (.xlsx)` button.
+
+The Excel importer **still expects the official Sprint-2 80-case 7-sheet XLSX schema**, not a generic arbitrary spreadsheet or the separate evaluation review workbook. Old Product Truth is deliberately retained, and matching SKUs reuse existing products instead of overwriting their reference fields. Edit or verify Product Truth separately when importing a different version of the workbook.
+
+Both destructive APIs require localhost access and an exact typed confirmation phrase. The endpoints are intended for a single local Uvicorn process; do not expose the MVP publicly or run several workers. No reset runs automatically on server startup or git pull.
+
+API: `GET /api/sessions/export` downloads ZIP; `POST /api/sessions/reset` with JSON `{"confirmation":"XOA TAT CA PHIEN"}`; `POST /api/dataset/reset` with `{"confirmation":"XOA EXCEL"}`.

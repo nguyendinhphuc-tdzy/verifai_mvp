@@ -22,6 +22,7 @@ from verifai_core.gemini import GeminiVLM, DEFAULT_MODEL, GeminiVLM as _Producti
 from verifai_core.brand import detect_brand_inconsistencies, BRAND_RULE_VERSION
 from verifai_core.vlm_health import GEMINI_OUTAGE_CIRCUIT
 from verifai_core.evaluation import predicted_error, sufficient_coverage, independent_consensus, calculate_metrics
+from verifai_core.session_management import install_session_routes
 
 BASE = Path(__file__).resolve().parent
 DATA = Path(os.environ.get('VERIFAI_DATA', str(BASE/'data'))).resolve()
@@ -788,3 +789,4 @@ def metrics():
 
 # Additive, backwards-compatible Sprint-2 evaluation dataset routes.
 install_dataset_routes(app,db,utc)
+install_session_routes(app, db, utc, lambda: UPLOAD, lambda: FRAMES, get_job)
