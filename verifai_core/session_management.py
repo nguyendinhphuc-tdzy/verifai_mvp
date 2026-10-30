@@ -83,7 +83,7 @@ def build_session_archive(db, utc, get_job) -> bytes:
                 if e.status_code == 404:
                     raise HTTPException(409, 'Sessions changed during export; please retry') from e
                 raise
-            assert JOB_ID.fullmatch(job_id), 'Unexpected job id from database'
+            safe_name = re.sub(r'[^A-Za-z0-9_-]', '_', job_id)[:80]
             details = job.get('details') or {}
             coverage = details.get('coverage') or {}
             vlm = details.get('vlm') or {}
@@ -124,7 +124,7 @@ def build_session_archive(db, utc, get_job) -> bytes:
                 })
             # Full data: AI observations and verification, evidence, findings,
             # human annotations, audits, review and Product Truth at analysis time.
-            archive.writestr(f'sessions/{job_id}.json',
+            archive.writestr(f'sessions/{len(summary):05d}-{safe_name}.json',
                              json.dumps(job, ensure_ascii=False, indent=2, default=str))
             if memory.tell() > MAX_ZIP_BYTES:
                 raise HTTPException(413, 'Export exceeds 120 MB; archive jobs separately')
@@ -205,7 +205,7 @@ def reset_sessions(db, upload: Path, frames: Path) -> dict:
     }
 
 
-def install_session_routes(app, db, utc, upload, frames, get_job):
+def install_session_routes(app, db, utc, upload_path, frame_path, get_job):
     @app.get('/api/sessions/export')
     def export_sessions(request: Request):
         require_local(request)
@@ -221,4 +221,4 @@ def install_session_routes(app, db, utc, upload, frames, get_job):
         require_local(request)
         if payload.confirmation != RESET_PHRASE:
             raise HTTPException(400, 'Confirmation phrase does not match')
-        return reset_sessions(db, upload, frames)
+        return reset_sessions(db, upload_path(), frame_path())
