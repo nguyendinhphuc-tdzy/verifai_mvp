@@ -86,7 +86,7 @@ def test_accessibility_and_reduced_motion():
 
 def test_no_fake_interactions():
     html = HTML.read_text(encoding="utf-8")
-    for endpoint in ('/api/jobs','/api/products','/api/dataset/import','/api/dataset/cases'):
+    for endpoint in ('/api/jobs','/api/products','/api/products/import','/api/dataset/cases'):
         assert endpoint in html
     assert 'function flag(id,state)' in html
     assert 'function exportEvidence()' in html
