@@ -9,6 +9,8 @@ from collections import Counter
 import json
 from pathlib import Path
 import re
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from verifai_core.dataset import _sheet_rows,_rows_named,_as_text,_val,MAX_XLSX_BYTES
 
 CATEGORY_TO_TARGET={
