@@ -31,7 +31,8 @@ def recommend_ai(
         and (f.get('evidence_id') is not None or f.get('evidence_refs'))
         and f.get('flag_review') != 'rejected'
     ]
-    if high:
+    if high and report.get('reference_status') == 'reviewed' and all(
+            coverage.get(m) == 'ok' for m in COVERAGE_MODULES):
         return {
             'decision': 'Regenerate',
             'reason': 'evidence_linked_high_severity_findings',
