@@ -82,6 +82,9 @@ def test_old_completed_job_receives_ai_recommendation_without_reanalysis(monkeyp
     assert after['review_decision']=='Pass'
     assert after['ai_recommendation']['decision']=='Needs Review'
     assert after['details']['product_truth_snapshot']['reference_status']=='unverified'
+    exported=client.get('/api/jobs/'+j+'/evidence/export').json()
+    assert exported['ai_recommendation']['reason']=='product_truth_unverified'
+    assert exported['review_decision']=='Pass'
 
 
 def test_legacy_verified_clean_job_can_show_pass_but_review_stays_separate(monkeypatch,tmp_path):
