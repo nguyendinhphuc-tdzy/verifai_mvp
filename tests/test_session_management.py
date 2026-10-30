@@ -162,3 +162,27 @@ def test_session_admin_blocks_remote_host(monkeypatch,tmp_path):
         json={'confirmation':'XOA TAT CA PHIEN'}).status_code==403
     assert remote.post('/api/dataset/reset',
         json={'confirmation':'XOA EXCEL'}).status_code==403
+
+
+def test_export_empty_archive_is_valid_and_csv_formula_is_escaped(monkeypatch,tmp_path):
+    backend, client, pid = setup_local(monkeypatch,tmp_path)
+    empty=client.get('/api/sessions/export')
+    assert empty.status_code==200
+    with zipfile.ZipFile(io.BytesIO(empty.content)) as z:
+        assert 'session_summary.csv' in z.namelist()
+        assert 'ai_findings.csv' in z.namelist()
+    from verifai_core.session_management import _csv_bytes
+    encoded=_csv_bytes(['detail'], [{'detail': '=HYPERLINK("bad","click")'}])
+    assert '"=HYPERLINK' not in encoded.decode('utf-8')
+    assert "'=HYPERLINK" in encoded.decode('utf-8')
+
+def test_loopback_peer_with_localhost_host_permitted():
+    from starlette.requests import Request
+    from verifai_core.session_management import require_local
+    request=Request({
+        'type':'http','scheme':'http','path':'/', 'root_path':'',
+        'query_string':b'', 'method':'POST',
+        'headers':[(b'host',b'localhost:8001')],
+        'server':('localhost',8001), 'client':('127.0.0.1',23456),
+    })
+    require_local(request)
