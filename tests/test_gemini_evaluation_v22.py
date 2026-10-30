@@ -26,6 +26,7 @@ def test_ground_truth_requires_distinct_annotators():
 
 
 def test_gemini_adapter_schema_and_pair_constraints(tmp_path, monkeypatch):
+    monkeypatch.delenv('VLM_MODEL', raising=False)
     monkeypatch.setenv('GEMINI_API_KEY','test-not-real')
     frame=tmp_path/'000.jpg'
     frame.write_bytes(b'fake-image')
@@ -44,7 +45,7 @@ def test_gemini_adapter_schema_and_pair_constraints(tmp_path, monkeypatch):
     vlm=GeminiVLM(client=client)
     product={'sku':'A','name':'Baby','brand':'B','claims':[],'banned':[]}
     out=vlm.analyze([frame],product,'single')
-    assert len(calls)==1 and calls[0]['model']=='gemini-3.8-flash'
+    assert len(calls)==1 and calls[0]['model']=='gemini-3.5-flash-lite'
     assert out.issues==[]  # temporal issue cannot come from single frame
     assert out.observations[0].description=='Visible label Baby'
 
