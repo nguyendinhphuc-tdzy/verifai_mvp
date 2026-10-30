@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
 from verifai_core.product_import import ensure_product_import_schema, install_product_import_routes
+from verifai_core.recommendation import recommend_ai
 from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, RULE_VERSION as SPRINT2_RULE_VERSION
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.evidence import RawEvidence, normalize_evidence
@@ -571,7 +572,6 @@ def _analyze_job(job_id):
         # A3 aggregates the existing A1/A2/VLM evidence without changing the
         # candidate findings or the human's final decision.
         verification=build_verification_report(normalized,findings,coverage,p,raw_map)
-        decision='Regenerate' if any(f['severity']=='high' for f in findings) else 'Needs Review'
         timings['total_seconds']=round(time.monotonic()-t0,3)
         details={'verification_version':VERIFICATION_VERSION,
                  'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
@@ -618,11 +618,16 @@ def _analyze_job(job_id):
                 if idx is None and f['uid'] is not None: idx=raw_map.get(f['uid'])
                 eid=ids[idx] if idx is not None and 0<=idx<len(ids) else None
                 refs=[eid] if eid else []
+                f['evidence_id']=eid
+                f['evidence_refs']=refs
                 c.execute("""INSERT INTO findings(job_id,code,severity,timestamp,detail,evidence_id,source,confidence,evidence_refs,metadata)
                              VALUES(?,?,?,?,?,?,?,?,?,?)""",
                           (job_id,f['code'],f['severity'],f['at'],f['detail'],eid,f['source'],f['confidence'],
                            json.dumps(refs),json.dumps(f['metadata'],ensure_ascii=False)))
             details['verification']=attach_evidence_ids(verification,ids)
+            recommendation=recommend_ai(details['verification'],findings)
+            details['ai_recommendation']=recommendation
+            decision=recommendation['decision']
             c.execute('UPDATE jobs SET status=?,decision=?,finished_at=?,details=? WHERE id=?',
                       ('completed',decision,utc(),json.dumps(details,ensure_ascii=False),job_id))
             audit(c,job_id,'system','analysis_completed',{'decision':decision,'coverage':coverage,
@@ -718,7 +723,23 @@ def reanalyze(jid: str):
 
 @app.get('/api/jobs')
 def list_jobs():
-    with db() as c:return [dict(r) for r in c.execute('SELECT j.id,j.filename,j.status,j.decision,j.review_decision,j.created_at,p.sku,p.name AS product_name FROM jobs j JOIN products p ON j.product_id=p.id ORDER BY j.created_at DESC')]
+    with db() as c:
+        rows=[dict(r) for r in c.execute(
+            'SELECT j.id,j.filename,j.status,j.decision,j.review_decision,j.created_at,'
+            'j.details,p.sku,p.name AS product_name '
+            'FROM jobs j JOIN products p ON j.product_id=p.id ORDER BY j.created_at DESC')]
+        findings_by_job={}
+        for r in c.execute(
+            'SELECT job_id,severity,source,evidence_id,evidence_refs,flag_review FROM findings'):
+            f=dict(r)
+            f['evidence_refs']=json.loads(f.get('evidence_refs') or '[]')
+            findings_by_job.setdefault(f.pop('job_id'),[]).append(f)
+    for item in rows:
+        details=json.loads(item.pop('details') or '{}')
+        item['ai_recommendation']=(recommend_ai(details.get('verification'),
+            findings_by_job.get(item['id'],[]))
+            if item['status']=='completed' else None)
+    return rows
 @app.get('/api/jobs/{jid}')
 def get_job(jid:str):
     with db() as c:
@@ -735,6 +756,8 @@ def get_job(jid:str):
             f['evidence_refs']=json.loads(f.get('evidence_refs') or '[]')
         d['audits']=[dict(r) for r in c.execute('SELECT * FROM audits WHERE job_id=? ORDER BY id DESC',(jid,))]
         d['labels']=[dict(r) for r in c.execute('SELECT * FROM labels WHERE job_id=? ORDER BY id DESC',(jid,))]
+        d['ai_recommendation']=(recommend_ai(d['details'].get('verification'),d['findings'])
+                                 if d['status']=='completed' else None)
         return d
 @app.get('/api/jobs/{jid}/verification')
 def get_verification(jid: str):
