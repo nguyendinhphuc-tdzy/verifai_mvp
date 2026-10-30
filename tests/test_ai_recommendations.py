@@ -46,6 +46,8 @@ def test_high_severity_requires_evidence_and_not_vlm_only():
     assert recommend_ai(report('REVIEW_REQUIRED'),[{**high,'evidence_id':None}])['decision']=='Needs Review'
     assert recommend_ai(report('REVIEW_REQUIRED'),[{**high,'source':'vlm'}])['decision']=='Needs Review'
     assert recommend_ai(report('REVIEW_REQUIRED'),[{**high,'flag_review':'rejected'}])['decision']=='Needs Review'
+    assert recommend_ai(report('REVIEW_REQUIRED',truth='unverified'),[high])['decision']=='Needs Review'
+    assert recommend_ai(report('REVIEW_REQUIRED',vlm='error'),[high])['decision']=='Needs Review'
 
 
 def test_old_completed_job_receives_ai_recommendation_without_reanalysis(monkeypatch,tmp_path):
