@@ -143,6 +143,7 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
     visual_flags = []
     brand_groups: dict[str, list[dict]] = defaultdict(list)
     unresolved_findings = []
+    text_rule_groups: dict[str, list[dict]] = defaultdict(list)
     coverage_codes = {'COVERAGE', 'EVIDENCE-LOW', 'VIS-06'}
     known = {'PRICE-01', 'CLAIM-01'} | coverage_codes
     for finding in findings:
@@ -161,6 +162,8 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
             vlm_groups[code].extend(observations)
             if not observations:
                 vlm_groups[code]  # retain unlinked candidate
+        elif code in ('VARIANT-01', 'CLAIM-02', 'TEXT-01'):
+            text_rule_groups[code].extend(observations)
         elif code == 'VIS-SCREEN':
             visual_flags.extend(observations)
         elif code not in known and code != 'VIS-SCREEN':
@@ -172,6 +175,10 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
                                'repeated_ocr_transposed_brand_requires_review',
                                observations, values=[observed_brand],
                                phrase=str(product_truth.get('brand') or '')))
+    for code in sorted(text_rule_groups):
+        checks.append(_summary('product_text', 'CANDIDATE',
+                               'sprint2_text_rule_requires_human_review',
+                               text_rule_groups[code], phrase=code))
     for code in sorted(vlm_groups):
         observations = vlm_groups[code]
         checks.append(_summary('visual', 'CANDIDATE', 'vlm_visual_hypothesis', observations,
