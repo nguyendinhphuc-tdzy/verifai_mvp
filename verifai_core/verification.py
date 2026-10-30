@@ -193,7 +193,10 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
     raw_coverage = {k: str(coverage.get(k, 'unknown')) for k in ('ocr', 'asr', 'vlm')}
     incomplete = sorted(k for k, state in raw_coverage.items() if state != 'ok')
     reference_status = str(product_truth.get('reference_status') or 'unverified')
-    reference_reviewed = reference_status == 'reviewed'
+    reference_reviewed = reference_status in ('reviewed', 'test_reference_approved')
+    reference_scope = ('test' if reference_status == 'test_reference_approved'
+                       else 'commercial' if reference_status == 'reviewed'
+                       else 'unverified')
     candidate = any(c['status'] in ('CANDIDATE', 'CONFLICT') for c in checks)
     # If a serious finding exists without a linked evidence record, never hide it.
     if not candidate:
@@ -217,6 +220,7 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
         'coverage': raw_coverage,
         'incomplete_modules': incomplete,
         'reference_status': reference_status,
+        'reference_scope': reference_scope,
         'reference_revision': product_truth.get('revision'),
         'observed_modalities': sorted(observed_sources),
         'checks': checks,
