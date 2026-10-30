@@ -355,3 +355,31 @@ Gemini coverage as evidence of compliance.
 - [Final report draft](docs/FINAL_REPORT_DRAFT.md) and [demo shot list](docs/DEMO_SHOTLIST.md). Neither implies an actual benchmark or recording exists.
 - Local verification: `python -m pytest -q`, `python scripts/check_vlm.py`, then launch `python -m uvicorn backend:app --host 127.0.0.1 --port 8001` and inspect `http://127.0.0.1:8001/api/health`.
 
+
+
+## NEW — Six original products only for Excel import
+
+The MVP Excel button now uploads **only the six original video product
+references (Sheet `1. Kich ban goc`)** through
+`POST /api/products/import`. It does **not** import 44 error
+scenarios, public-video labels, policy simulations or evaluation predictions.
+An XLSX file containing only this sheet is supported. It preserves existing
+SKUs and never silently overwrites a manually reviewed Product Truth record.
+Imported variants and expected video descriptions appear in the Product page.
+Source type 'Giả lập' remains unverified.
+
+`POST /api/products/import/reset` with typed `XOA EXCEL` clears
+the import only when no job references its products. Manually reviewed
+Product Truth is preserved.
+
+The 44 error scenarios can be converted into a separate rule-design and
+in-context example library via `python scripts/build_sprint2_examples.py
+--xlsx "Sprint 2 - Thu thập & tạo dữ liệu thật (2).xlsx"
+--out reports/sprint2_scenario_examples.json`.
+This is **not Gemini weight fine-tuning** and **not real-video performance**.
+Added conservative `VARIANT-01`, `CLAIM-02` and `TEXT-01` reviewer
+candidates. See [Sheet 1 import / scenario adaptation](docs/SHEET1_PRODUCT_IMPORT_RULE_ADAPTATION.md).
+
+The older `/api/dataset/import` is retained for legacy automated tests
+and historical evaluation compatibility only. Its former 80-case import
+instructions below are legacy, not the new UI upload path.
