@@ -19,7 +19,8 @@ import uuid
 import xml.etree.ElementTree as ET
 import zipfile
 
-from fastapi import File, HTTPException, UploadFile
+from fastapi import File, HTTPException, UploadFile, Request
+from verifai_core.session_management import require_local
 from pydantic import BaseModel, Field
 
 X = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
@@ -215,6 +216,10 @@ class HumanAnnotation(BaseModel):
     notes: str = Field(default='',max_length=2000)
 
 
+class DatasetResetIn(BaseModel):
+    confirmation: str
+
+
 class CaseLink(BaseModel):
     product_id: str | None = None
     job_id: str | None = None
@@ -254,6 +259,40 @@ def ensure_dataset_schema(db) -> None:
 def install_dataset_routes(app, db, utc) -> None:
     """Extends v2 without modifying existing API semantics or past job data."""
     ensure_dataset_schema(db)
+
+    @app.post('/api/dataset/reset')
+    def reset_imported_workbook(request: Request, payload: DatasetResetIn):
+        """Clear imported workbook and its annotations; retain sessions and Product Truth."""
+        require_local(request)
+        if payload.confirmation != 'XOA EXCEL':
+            raise HTTPException(400, 'Confirmation phrase does not match')
+        with db() as c:
+            c.execute('BEGIN IMMEDIATE')
+            active = c.execute("""
+                SELECT COUNT(*) AS n FROM jobs
+                WHERE case_code IS NOT NULL AND status IN ('queued','processing')
+            """).fetchone()['n']
+            if active:
+                raise HTTPException(409,
+                    f'Có {active} phiên phân tích liên kết workbook đang chạy; hãy đợi hoàn tất.')
+            n = c.execute('SELECT COUNT(*) AS n FROM dataset_cases').fetchone()['n']
+            annotations = c.execute('SELECT COUNT(*) AS n FROM dataset_annotations').fetchone()['n']
+            linked = c.execute(
+                'SELECT COUNT(*) AS n FROM jobs WHERE case_code IS NOT NULL'
+            ).fetchone()['n']
+            # Preserve all historical jobs, but avoid links to non-existing case codes.
+            c.execute('UPDATE jobs SET case_code=NULL WHERE case_code IS NOT NULL')
+            for table in ('dataset_annotations', 'dataset_simulated', 'dataset_rules',
+                          'dataset_imports', 'dataset_cases'):
+                c.execute(f'DELETE FROM {table}')
+        return {
+            'ok': True, 'deleted_cases': n,
+            'deleted_case_annotations': annotations,
+            'unlinked_existing_jobs': linked,
+            'preserved': ['jobs', 'findings', 'evidence', 'products',
+                          'product_truth_history', 'review_decisions'],
+            'note': 'Imported workbook removed; Product Truth and past AI sessions kept.',
+        }
 
     @app.post('/api/dataset/import')
     async def dataset_import(file: UploadFile = File(...)):
