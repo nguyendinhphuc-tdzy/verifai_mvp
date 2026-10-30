@@ -101,3 +101,40 @@ def test_existing_reviewed_product_is_not_overwritten(monkeypatch,tmp_path):
     assert p['price']==999999
     assert p['reference_status']=='reviewed'
     assert p['variant']=='200ml'
+
+
+def test_clear_only_import_owned_unreviewed_products(monkeypatch,tmp_path):
+    import backend
+    monkeypatch.setattr(backend,'DB',tmp_path/'reset-import.sqlite3')
+    backend.init()
+    client=TestClient(backend.app)
+    assert client.post('/api/products/import',files={'file':('original.xlsx',
+        BytesIO(only_original_sheet(example_workbook())),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}).status_code==200
+    assert len(client.get('/api/products').json())==6
+    assert client.post('/api/products/import/reset',json={
+        'confirmation':'incorrect'}).status_code==400
+    result=client.post('/api/products/import/reset',json={'confirmation':'XOA EXCEL'})
+    assert result.status_code==200,result.text
+    assert result.json()['removed_imported_products']==6
+    assert client.get('/api/products').json()==[]
+
+def test_clear_excel_refuses_when_video_jobs_reference_product(monkeypatch,tmp_path):
+    import json
+    import backend
+    monkeypatch.setattr(backend,'DB',tmp_path/'import-linked.sqlite3')
+    backend.init()
+    client=TestClient(backend.app)
+    assert client.post('/api/products/import',files={'file':('original.xlsx',
+        BytesIO(only_original_sheet(example_workbook())),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}).status_code==200
+    pid=client.get('/api/products').json()[0]['id']
+    with backend.db() as c:
+        c.execute('''INSERT INTO jobs(id,filename,stored_name,product_id,status,
+                     created_at,details) VALUES(?,?,?,?,?,?,?)''',(
+                 'fixture-job','video.mp4','fixture-job.mp4',pid,'completed',
+                 '2026-10-30T00:00:00Z',json.dumps({})))
+    result=client.post('/api/products/import/reset',json={
+        'confirmation':'XOA EXCEL'})
+    assert result.status_code==409
+    assert len(client.get('/api/products').json())==6
