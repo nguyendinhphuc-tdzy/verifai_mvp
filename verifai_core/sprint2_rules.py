@@ -48,7 +48,7 @@ def _canonical(text: str) -> str:
 def _specs(text: str) -> set[tuple[str,str]]:
     result=set()
     for m in _SPEC.finditer(_canonical(text)[:1500]):
-        value=str(Decimal(m.group('amount').replace(',', '.')).normalize())
+        value=format(Decimal(m.group('amount').replace(',', '.')).normalize(), 'f')
         unit=m.group('unit').lower()
         if unit=='to':unit='tờ'
         if unit=='vien':unit='viên'
