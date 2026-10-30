@@ -124,3 +124,14 @@ def test_original_sheet_product_import_and_clear_controls():
     assert 'id="productImportResetConfirm"' in html
     assert "post('/api/products/import/reset',{confirmation:phrase})" in html
     assert "phrase!=='XOA EXCEL'" in html
+
+
+def test_ai_and_reviewer_decisions_are_shown_separately():
+    html=HTML.read_text(encoding='utf-8')
+    assert 'id="aiDecisionSummary"' in html
+    assert '<th>AI đề xuất</th><th>Reviewer</th>' in html
+    assert 'j.ai_recommendation?.decision' in html
+    assert 'j.review_decision' in html
+    assert "recommendation.reason==='product_truth_unverified'" in html
+    assert 'Xem và xác minh Product Truth' in html
+    assert 'không phải quyết định reviewer' in html
