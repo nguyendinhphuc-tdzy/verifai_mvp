@@ -35,12 +35,15 @@ def require_local(request: Request) -> None:
     """No network-wide export/deletion when app is accidentally exposed."""
     peer = request.client.host if request.client else ''
     hostname = request.url.hostname or ''
-    try:
-        peer_ok = ipaddress.ip_address(peer).is_loopback
-        host_ok = ipaddress.ip_address(hostname).is_loopback
-    except ValueError:
-        peer_ok = peer == 'localhost'
-        host_ok = hostname == 'localhost'
+    def loopback(value: str) -> bool:
+        if value == 'localhost':
+            return True
+        try:
+            return ipaddress.ip_address(value).is_loopback
+        except ValueError:
+            return False
+    peer_ok = loopback(peer)
+    host_ok = loopback(hostname)
     # Starlette TestClient's built-in in-process scope (no network socket).
     if peer == 'testclient' and hostname == 'testserver':
         peer_ok = host_ok = True
@@ -57,15 +60,13 @@ def _csv_bytes(headers, rows) -> bytes:
     output = io.StringIO(newline='')
     writer = csv.DictWriter(output, fieldnames=headers, extrasaction='ignore')
     writer.writeheader()
-    writer.writerows(rows)
+    # Prevent spreadsheet formula execution in Excel when text came from OCR/VLM.
+    def safe(row):
+        return {k: ("'" + v if isinstance(v, str) and
+                    v.lstrip().startswith(('=', '+', '-', '@', '\\t', '\\r'))
+                    else v) for k, v in row.items()}
+    writer.writerows(safe(row) for row in rows)
     return ('\ufeff' + output.getvalue()).encode('utf-8')
-
-
-def _safe_json(text, default):
-    try:
-        return json.loads(text or '')
-    except (TypeError, ValueError):
-        return default
 
 
 def build_session_archive(db, utc, get_job) -> bytes:
