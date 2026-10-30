@@ -404,7 +404,8 @@ when read and **do not need re-analysis just to show a label**.
   candidate issues, conflicts, missing context or ambiguous claims. No
   findings alone never overrides an unverified reference.
 - **Regenerate (proposed):** A non-VLM-only **high-severity** finding linked
-  to actual evidence and not rejected. Current OCR/VLM rule candidates
+  to actual evidence and not rejected, with reviewed Product Truth and
+  complete OCR/ASR/VLM coverage. Current OCR/VLM rule candidates
   are intentionally medium-severity and normally remain Review pending
   adjudication; the system does not manufacture Regenerate verdicts.
 
