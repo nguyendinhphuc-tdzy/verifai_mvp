@@ -118,7 +118,7 @@
         <details class="analysis-optional"><summary>Nguồn tham chiếu &amp; xác minh</summary><div class="optional-body">
           <div class="field"><label for="productReferenceUrl">URL nguồn (nếu có)</label><input id="productReferenceUrl" name="reference_url" type="url" placeholder="https://..."></div>
           <div class="field"><label for="productReferenceNote">Ghi chú nguồn</label><textarea id="productReferenceNote" name="reference_note" placeholder="Nhãn sản phẩm, tài liệu xác minh, ngày đối chiếu..."></textarea></div>
-          <div class="field"><label for="productReferenceStatus">Trạng thái tham chiếu</label><select id="productReferenceStatus" name="reference_status"><option value="unverified">Chưa xem xét</option><option value="reviewed">Đã xem xét thủ công (không đồng nghĩa chứng nhận)</option></select></div>
+          <div class="field"><label for="productReferenceStatus">Trạng thái tham chiếu</label><select id="productReferenceStatus" name="reference_status"><option value="unverified">Chưa xem xét</option><option value="reviewed">Đã xem xét thủ công (không đồng nghĩa chứng nhận)</option><option value="test_reference_approved">Chuẩn kiểm thử đã xác nhận (không phải xác minh thương mại)</option></select></div>
         </div></details>
         <div class="row"><button class="button" id="productSaveButton" type="submit">Lưu sản phẩm</button><button class="button ghost hidden" type="button" id="productCancelButton" onclick="cancelProductEdit()">Hủy chỉnh sửa</button></div>
       </form>
@@ -172,7 +172,8 @@ const decisionText={Pass:'Chấp thuận',Regenerate:'Yêu cầu sửa','Needs R
 const findingNames={'VIS-SCREEN':'Hình ảnh cần xem lại','COVERAGE':'Nội dung chưa được kiểm tra','EVIDENCE-LOW':'Chưa đủ bằng chứng','PRICE-MISMATCH':'Giá không khớp','PRICE_MISMATCH':'Giá không khớp'};
 function tableData(data){
  if(!data.length)return '<div class="work-empty"><h3>Chưa có video phù hợp</h3><p>Bạn có thể thử đổi bộ lọc hoặc bắt đầu phân tích một video.</p><button class="button secondary" onclick="openTab(\'analyze\')">+ Phân tích video</button></div>';
- return `<table><thead><tr><th>Video</th><th>Sản phẩm</th><th>Tiến độ</th><th>AI đề xuất</th><th>Reviewer</th><th></th></tr></thead><tbody>${data.map(j=>`<tr><td><b class="truncate" style="display:block">${esc(j.filename)}</b><small class="muted">${esc(j.created_at?.slice(0,16).replace('T',' '))}</small></td><td><b>${esc(j.sku)}</b><br><small class="muted">${esc(j.product_name)}</small></td><td><span class="pill ${esc(j.status)}">${esc(statusText[j.status]||j.status)}</span></td><td><span class="pill ${esc(j.ai_recommendation?.decision||'')}">${esc(j.ai_recommendation?decisionText[j.ai_recommendation.decision]||j.ai_recommendation.decision:'—')}</span></td><td><span class="pill ${esc(j.review_decision||'')}">${esc(j.review_decision?decisionText[j.review_decision]||j.review_decision:'Chưa duyệt')}</span></td><td><button type="button" class="mini" onclick="showJob('${esc(j.id)}')">Mở →</button></td></tr>`).join('')}</tbody></table>`;
+ return `<table><thead><tr><th>Video</th><th>Sản phẩm</th><th>Tiến độ</th><th>AI đề xuất</th><th>Reviewer</th><th></th></tr></thead><tbody>${data.map(j=>`<tr><td><b class="truncate" style="display:block">${esc(j.filename)}</b><small class="muted">${esc(j.created_at?.slice(0,16).replace('T',' '))}</small></td><td><b>${esc(j.sku)}</b><br><small class="muted">${esc(j.product_name)}</small></td><td><span class="pill ${esc(j.status)}">${esc(statusText[j.status]||j.status)}</span></td><td><span class="pill ${esc(j.ai_recommendation?.decision||'')}">${esc(j.ai_recommendation?(j.ai_recommendation.reference_scope==='test'&&j.ai_recommendation.decision==='Pass'
+  ?'Pass (kiểm thử)':decisionText[j.ai_recommendation.decision]||j.ai_recommendation.decision):'—')}</span></td><td><span class="pill ${esc(j.review_decision||'')}">${esc(j.review_decision?decisionText[j.review_decision]||j.review_decision:'Chưa duyệt')}</span></td><td><button type="button" class="mini" onclick="showJob('${esc(j.id)}')">Mở →</button></td></tr>`).join('')}</tbody></table>`;
 }
 function renderOverview(){$('overviewJobs').innerHTML=tableData(jobs.slice(0,6))}
 function renderQueue(){
@@ -209,7 +210,7 @@ function renderProducts(){
   products.map(p=>`<option value="${esc(p.id)}">${esc(p.sku)} — ${esc(p.name)}</option>`).join('');
  $('productsList').innerHTML=products.length?products.map(p=>`
  <div class="finding"><div class="row space"><div style="min-width:0"><b>${esc(p.name)}</b><div class="muted">${esc(p.brand)} · ${p.price===null?'Chưa nhập giá':p.price.toLocaleString('vi-VN')+' ₫'}</div>
- <small class="muted">${p.variant?'Quy cách: '+esc(p.variant)+' · ':''}${p.claims.length} claims được phép · ${p.banned.length} cụm hạn chế · ${p.reference_status==='reviewed'?'Đã xem xét nguồn':'Chưa xem xét nguồn'}</small>${p.expected_video_description?'<div class="footnote">Mô tả video gốc: '+esc(p.expected_video_description)+'</div>':''}${p.source_class?'<div class="footnote">Nguồn: '+esc(p.source_class)+'</div>':''}</div>
+ <small class="muted">${p.variant?'Quy cách: '+esc(p.variant)+' · ':''}${p.claims.length} claims được phép · ${p.banned.length} cụm hạn chế · ${p.reference_status==='reviewed'?'Đã xem xét nguồn thực tế':p.reference_status==='test_reference_approved'?'Chuẩn tham chiếu kiểm thử':'Chưa xem xét nguồn'}</small>${p.expected_video_description?'<div class="footnote">Mô tả video gốc: '+esc(p.expected_video_description)+'</div>':''}${p.source_class?'<div class="footnote">Nguồn: '+esc(p.source_class)+'</div>':''}</div>
  <div class="row"><span class="pill">${esc(p.sku)}</span><button class="mini" type="button" onclick="startProductEdit('${esc(p.id)}')">Chỉnh sửa</button></div></div></div>`).join(''):'<div class="empty">Chưa có sản phẩm tham chiếu nào.</div>';
 }
 function startProductEdit(id){
@@ -313,7 +314,8 @@ function renderVerification(d){
  const report=d.details?.verification||null;
  const ready=d.status==='completed';
  const recommendation=ready?(d.ai_recommendation||d.details?.ai_recommendation):null;
- const aiTitle=recommendation?decisionText[recommendation.decision]||recommendation.decision:'Chưa có kết quả';
+ const aiTitle=recommendation?(recommendation.reference_scope==='test'&&recommendation.decision==='Pass'
+  ?'Pass (bộ kiểm thử)':decisionText[recommendation.decision]||recommendation.decision):'Chưa có kết quả';
  $('aiDecisionSummary').innerHTML=recommendation?
   '<b>AI đề xuất: <span class="pill '+esc(recommendation.decision)+'">'+esc(aiTitle)+'</span></b>'+
   '<p class="footnote" style="margin:7px 0 0">'+esc(recommendation.explanation||'')+'</p>'+
@@ -367,7 +369,7 @@ async function loadJob(jid){
  const truthStale=d.status==='completed'&&truth.revision&&d.product?.revision&&truth.revision!==d.product.revision;
  const truthAlert=d.status!=='completed'?'':truthStale
   ?'<p class="notice">Product Truth đã được cập nhật sau lần phân tích này. Chạy phân tích lại để sử dụng dữ liệu mới, và lưu lại quyết định trước đó nếu cần.</p>'
-  :truth.reference_status!=='reviewed'
+  :!['reviewed','test_reference_approved'].includes(truth.reference_status)
    ?'<p class="notice">Nguồn Product Truth chưa được xem xét; reviewer cần xác minh tham chiếu trước khi chấp thuận.</p>':'';
  $('findings').innerHTML=truthAlert+caution+(d.status!=='completed'?'<div class="empty">'+esc(progressText(d))+'</div>':d.findings.length?d.findings.map(f=>`<div class="finding"><header><span><span class="pill ${esc(f.severity)}">${esc(f.severity)}</span> <b>${esc(findingNames[f.code]||f.code)}</b></span><button class="mini" onclick="seek(${Number(f.timestamp)})">▶ ${Number(f.timestamp).toFixed(1)}s</button></header><p>${esc(f.detail)}</p><div class="row"><span class="footnote">${esc(f.source||'rule')}${f.confidence!==null&&f.confidence!==undefined?' · confidence (uncalibrated) '+Math.round(f.confidence*100)+'%':''}</span>${f.evidence_id?`<button class="mini" onclick="jumpEvidence(${Number(f.evidence_id)})">↗ Evidence #${Number(f.evidence_id)}</button>`:''}</div><div class="row" style="margin-top:9px"><button class="mini" onclick="flag(${f.id},'confirmed')">✓ Confirm</button><button class="mini" onclick="flag(${f.id},'rejected')">✕ Reject</button><span class="footnote">${esc(f.flag_review)}</span></div></div>`).join(''):'<div class="notice">Không có cảnh báo trên những module đã chạy; các nhóm lỗi chưa được kiểm tra vẫn yêu cầu reviewer.</div>');
  $('audits').innerHTML=d.audits.map(a=>`<div>${esc(a.created_at.slice(11,19))} · ${esc(a.actor)} · ${esc(a.action)}</div>`).join('')||'Chưa có log';
@@ -415,7 +417,7 @@ async function submitReview(decision){
   const pending=currentJob.findings.filter(f=>f.flag_review==='unreviewed').length;
   const reconciliationIssue=currentJob.details?.verification?.status!=='NO_ISSUES_OBSERVED';
   const truth=currentJob.details?.product_truth_snapshot||{};
-  const refIssue=truth.reference_status!=='reviewed'||
+  const refIssue=!['reviewed','test_reference_approved'].includes(truth.reference_status)||
    (truth.revision&&truth.revision!==currentJob.product?.revision);
   if((incomplete.length||pending||refIssue||reconciliationIssue)&&!confirm('Có '+pending+' cảnh báo chưa xác minh, '+incomplete.length+' nguồn AI chưa đầy đủ và '+(refIssue?'Product Truth cần xem lại.':'Product Truth đã được xem xét.')+(reconciliationIssue?' Kết quả Verification Engine còn cần kiểm tra.':'')+' Bạn vẫn muốn chấp thuận sau khi tự kiểm tra?'))return;
  }
