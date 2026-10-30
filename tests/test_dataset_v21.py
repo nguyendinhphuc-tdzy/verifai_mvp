@@ -122,3 +122,28 @@ def test_data_import_idempotent_truth_and_simulation_isolation(monkeypatch,tmp_p
     assert conflict.json()['verified_truth'] is None
     assert client.get('/api/dataset/summary').json()['actual']['evaluated']==0
     assert client.post('/api/dataset/import',files={'file':('invalid.csv',BytesIO(b'a,b'))}).status_code==400
+
+
+def test_clear_imported_workbook_can_import_a_new_one_without_losing_products(monkeypatch,tmp_path):
+    import backend
+    monkeypatch.setattr(backend,'DB',tmp_path/'new-workbook.sqlite3')
+    backend.init()
+    client=TestClient(backend.app)
+    payload=example_workbook()
+    def import_current():
+        return client.post('/api/dataset/import',files={'file':(
+            'sprint-2-new.xlsx', BytesIO(payload),
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')})
+    assert import_current().status_code==200
+    assert len(client.get('/api/dataset/cases').json())==80
+    assert len(client.get('/api/products').json())==6
+    assert client.post('/api/dataset/reset',json={'confirmation':'incorrect'}).status_code==400
+    wiped=client.post('/api/dataset/reset',json={'confirmation':'XOA EXCEL'})
+    assert wiped.status_code==200, wiped.text
+    assert wiped.json()['deleted_cases']==80
+    assert len(client.get('/api/dataset/cases').json())==0
+    assert len(client.get('/api/products').json())==6
+    after=import_current()
+    assert after.status_code==200, after.text
+    assert len(client.get('/api/dataset/cases').json())==80
+    assert len(client.get('/api/products').json())==6
