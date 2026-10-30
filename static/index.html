@@ -101,8 +101,13 @@
   </section>
 
   <section id="products" class="section" aria-labelledby="productsHeading">
-    <div class="sectionhead"><div><h2 id="productsHeading">Sản phẩm tham chiếu</h2><p>Thông tin sáu video gốc từ Sheet 1, cần xác minh nguồn trước khi kết luận.</p></div><button type="button" class="button secondary" onclick="openDatasetImport()">↑ Import Excel 6 sản phẩm gốc</button></div>
+    <div class="sectionhead"><div><h2 id="productsHeading">Sản phẩm tham chiếu</h2><p>Thông tin sáu video gốc từ Sheet 1, cần xác minh nguồn trước khi kết luận.</p></div><div class="row"><button type="button" class="button secondary" onclick="openDatasetImport()">↑ Import Excel 6 sản phẩm gốc</button><button type="button" class="mini" onclick="openProductImportReset()">Xóa Excel sản phẩm gốc</button></div></div>
     <div class="panel page-slim"><div class="review-subhead"><h3>Danh sách sản phẩm</h3><button type="button" class="mini" onclick="document.getElementById('newProductDetails').open=true;document.querySelector('#newProductDetails input[name=sku]').focus()">+ Thêm sản phẩm</button></div><div id="productsList"></div></div>
+    <details class="detail-disclosure page-slim" id="productImportResetPanel"><summary>Xóa dữ liệu Sheet 1 đã import <span class="footnote">Yêu cầu xác nhận · giữ sản phẩm duyệt thủ công</span></summary><div class="disclosure-body">
+      <p class="footnote">Chỉ xóa sản phẩm do file import tạo ra và chưa chỉnh sửa/xem xét nguồn. Sản phẩm có phiên phân tích liên kết sẽ chặn thao tác để tránh mất bằng chứng. Hãy export phiên trước khi xóa. Các Product Truth có sẵn hoặc đã được chỉnh sửa được giữ nguyên.</p>
+      <div class="field"><label for="productImportResetConfirm">Gõ XOA EXCEL</label><input id="productImportResetConfirm" autocomplete="off" placeholder="XOA EXCEL"></div>
+      <div class="row"><button type="button" class="button" id="productImportResetButton" onclick="clearProductImport()">Xóa 6 sản phẩm Excel đã nhập</button><span id="productImportResetStatus" class="footnote" aria-live="polite" role="status"></span></div>
+    </div></details>
     <details class="detail-disclosure page-slim" id="newProductDetails"><summary>Tạo sản phẩm tham chiếu mới</summary><div class="disclosure-body">
       <form id="productForm"><div class="formgrid"><div class="field"><label for="newSKU">SKU *</label><input id="newSKU" name="sku" required placeholder="SKU001"></div><div class="field"><label for="newBrand">Thương hiệu</label><input id="newBrand" name="brand" placeholder="Tên thương hiệu"></div></div>
         <div class="field"><label for="newName">Tên sản phẩm *</label><input id="newName" name="name" required placeholder="Tên sản phẩm chuẩn"></div>
@@ -186,6 +191,18 @@ function renderQueue(){
  $('queueTable').innerHTML=tableData(filtered);
 }
 let editingProductId=null;
+function openProductImportReset(){openTab('products');const p=$('productImportResetPanel');p.open=true;p.scrollIntoView({behavior:'smooth',block:'center'});$('productImportResetConfirm').focus({preventScroll:true})}
+async function clearProductImport(){
+ const phrase=$('productImportResetConfirm').value,status=$('productImportResetStatus'),button=$('productImportResetButton');
+ if(phrase!=='XOA EXCEL'){status.textContent='Hãy gõ chính xác XOA EXCEL';return}
+ button.disabled=true;status.textContent='Đang gỡ Sheet 1...';
+ try{
+  const r=await post('/api/products/import/reset',{confirmation:phrase});
+  status.textContent='Đã xóa '+r.removed_imported_products+' sản phẩm nhập từ Excel; giữ lại '+r.preserved_existing_or_reviewed_products+' Product Truth.';
+  $('productImportResetConfirm').value='';await refreshAll();toast('Đã gỡ Sheet 1');
+ }catch(e){status.textContent='Không thể xóa: '+e.message;toast(e.message)}
+ finally{button.disabled=false}
+}
 function renderProducts(){
  $('uploadProduct').innerHTML='<option value="">Chọn sản phẩm tham chiếu</option>'+
   products.map(p=>`<option value="${esc(p.id)}">${esc(p.sku)} — ${esc(p.name)}</option>`).join('');
