@@ -522,7 +522,9 @@ def _analyze_job(job_id):
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
             # Scenarios in Sprint-2 Sheet 2 informed these text candidates.
             # They are not labels or trained weights, and require reviewer signoff.
-            for mismatch in check_variant(e.content, p.get('variant','')):
+            for mismatch in (check_variant(e.content, p.get('variant',''))
+                             if e.kind!='ocr' or e.score is None or e.score>=0.80
+                             else []):
                 flag(mismatch.code,'medium',e.timestamp,
                      f'Quy cách/dung tích quan sát "{mismatch.observed}" '
                      f'khác hoặc tự mâu thuẫn với tham chiếu "{mismatch.expected or p.get("variant","")}"; '
