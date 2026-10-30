@@ -110,6 +110,7 @@ def test_excel_import_is_visible_from_dataset_heading_and_stays_wired():
     assert 'id="datasetImportStatus"' in panel and 'aria-live="polite"' in panel
     assert 'function openDatasetImport()' in html
     assert "panel.open=true" in html
-    assert "api('/api/dataset/import',{method:'POST',body:f})" in html
+    assert "api('/api/products/import',{method:'POST',body:f})" in html
+    assert 'Import Product Truth — 6 video gốc' in html
     assert 'file.size>8*1024*1024' in html
     assert 'btn.disabled=true' in html and 'btn.disabled=false' in html
