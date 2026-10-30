@@ -138,3 +138,18 @@ def test_clear_excel_refuses_when_video_jobs_reference_product(monkeypatch,tmp_p
         'confirmation':'XOA EXCEL'})
     assert result.status_code==409
     assert len(client.get('/api/products').json())==6
+
+
+def test_compiler_uses_scenarios_not_fabricated_video_metrics():
+    from pathlib import Path
+    import importlib.util
+    p=Path(__file__).resolve().parents[1] / 'scripts' / 'build_sprint2_examples.py'
+    spec=importlib.util.spec_from_file_location('scenario_compile',p)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    training=module.compile_examples(example_workbook())
+    assert len(training['examples'])==44
+    assert training['trained_model_weights'] is False
+    assert sum(training['counts'].values())==44
+    assert training['examples'][0]['label_status']=='scenario_only_unadjudicated'
+    assert training['examples'][0]['source_group']=='VID_GOC01'
