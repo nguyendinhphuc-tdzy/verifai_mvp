@@ -125,6 +125,9 @@ def test_archive_all_sessions_and_confirmed_cleanup_ui():
     assert 'href="/api/sessions/export"' in html
     assert "post('/api/sessions/reset',{confirmation:phrase})" in html
     assert "phrase!=='XOA TAT CA PHIEN'" in html
+    assert 'id="datasetClearTrigger"' in html
+    assert 'onclick="openDatasetClear()"' in html
+    assert 'function openDatasetClear()' in html
     assert 'id="datasetClearPanel"' in html
     assert 'id="datasetClearConfirm"' in html
     assert 'id="datasetClearStatus"' in html
