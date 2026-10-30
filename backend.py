@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
+from verifai_core.product_import import ensure_product_import_schema, install_product_import_routes
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
@@ -89,6 +90,7 @@ def init():
                 if name not in existing:
                     c.execute(f'ALTER TABLE {table} ADD COLUMN {name} {ddl}')
     ensure_dataset_schema(db)
+    ensure_product_import_schema(db)
 init()
 
 def audit(c,jid,actor,action,payload):c.execute('INSERT INTO audits(job_id,actor,action,payload,created_at) VALUES(?,?,?,?,?)',(jid,actor,action,json.dumps(payload,ensure_ascii=False),utc()))
@@ -104,6 +106,13 @@ def product_dict(r):
         d.update(dict(meta) if meta else {
             'reference_url':'','reference_note':'','reference_status':'unverified',
             'revision':1,'updated_at':d['created_at']})
+        with db() as c:
+            prof=c.execute('SELECT video_code,variant,expected_video_description,source_class,owner,notes,imported_at FROM product_import_profiles WHERE product_id=?',(d['id'],)).fetchone()
+        if prof:
+            d.update(dict(prof))
+        else:
+            d.update({'variant':'','expected_video_description':'','source_class':'',
+                      'video_code':'','owner':'','notes':''})
         d.pop('product_id',None)
     return d
 
@@ -788,3 +797,4 @@ def metrics():
 
 # Additive, backwards-compatible Sprint-2 evaluation dataset routes.
 install_dataset_routes(app,db,utc)
+install_product_import_routes(app,db,utc)
