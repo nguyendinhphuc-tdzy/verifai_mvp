@@ -115,6 +115,7 @@ def product_dict(r):
         else:
             d.update({'variant':'','expected_video_description':'','source_class':'',
                       'video_code':'','owner':'','notes':''})
+        d['reference_scope']=reference_scope(d['reference_status'])
         d.pop('product_id',None)
     return d
 
@@ -138,14 +139,14 @@ class ProductIn(BaseModel):
         self.reference_note=self.reference_note.strip()
         if not self.sku or not self.name:
             raise ValueError('SKU và tên sản phẩm không được để trống')
-        if self.reference_status not in ('unverified','reviewed'):
-            raise ValueError('reference_status phải là unverified hoặc reviewed')
+        if self.reference_status not in ('unverified','reviewed','test_reference_approved'):
+            raise ValueError('reference_status phải là unverified, reviewed hoặc test_reference_approved')
         if self.reference_url:
             u=urlparse(self.reference_url)
             if u.scheme not in ('http','https') or not u.hostname or u.username or u.password:
                 raise ValueError('reference_url phải là URL http(s) hợp lệ không chứa credentials')
-        if self.reference_status=='reviewed' and not (self.reference_url or self.reference_note):
-            raise ValueError('Cần nguồn tham chiếu hoặc ghi chú kiểm tra trước khi đánh dấu đã xem xét')
+        if self.reference_status in ('reviewed','test_reference_approved') and not (self.reference_url or self.reference_note):
+            raise ValueError('Cần nguồn tham chiếu hoặc ghi chú kiểm tra trước khi duyệt nguồn/chuẩn kiểm thử')
         self.claims,self.banned=validate_reference_claims(self.claims,self.banned)
         return self
 
@@ -160,6 +161,12 @@ def _assert_sku_available(conn, sku, skip_id=None):
 def _product_snapshot(v):
     return {key:getattr(v,key) for key in ('sku','name','brand','price','claims','banned',
             'reference_url','reference_note','reference_status')}
+
+def reference_scope(status: str) -> str:
+    """Never conflate benchmark approval with externally verified commerce data."""
+    return ('test' if status == 'test_reference_approved'
+            else 'commercial' if status == 'reviewed' else 'unverified')
+
 
 @app.get('/')
 def home():return FileResponse(BASE/'static'/'index.html')
