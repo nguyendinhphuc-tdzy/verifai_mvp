@@ -121,7 +121,7 @@
   </section>
 
   <section id="dataset" class="section" aria-labelledby="datasetHeading">
-    <div class="sectionhead"><div><h2 id="datasetHeading">Bộ kiểm thử</h2><p>Quản lý trường hợp đánh giá, dữ liệu chuẩn và liên kết video chạy thực tế.</p></div><div class="row"><button type="button" id="datasetImportTrigger" class="button secondary" aria-controls="datasetImportPanel" onclick="openDatasetImport()">↑ Import Excel (.xlsx)</button><button type="button" class="mini" onclick="refreshDataset()">↻ Làm mới</button></div></div>
+    <div class="sectionhead"><div><h2 id="datasetHeading">Bộ kiểm thử</h2><p>Quản lý trường hợp đánh giá, dữ liệu chuẩn và liên kết video chạy thực tế.</p></div><div class="row"><button type="button" id="datasetImportTrigger" class="button secondary" aria-controls="datasetImportPanel" onclick="openDatasetImport()">↑ Import Excel (.xlsx)</button><button type="button" id="datasetClearTrigger" class="mini" aria-controls="datasetClearPanel" onclick="openDatasetClear()">Xóa Excel hiện tại</button><button type="button" class="mini" onclick="refreshDataset()">↻ Làm mới</button></div></div>
     <details id="datasetImportPanel" class="detail-disclosure dataset-import-panel" style="margin:0 0 15px"><summary>Nhập dữ liệu từ Excel <span class="footnote">Workbook Sprint 2 · tối đa 8 MB</span></summary><div class="disclosure-body">
       <div class="grid2"><div><h3>Import workbook 80 trường hợp</h3><p class="footnote">Chỉ hỗ trợ workbook Sprint 2 định dạng .xlsx có các Sheet 1–7. Kịch bản và dự đoán giả lập được lưu riêng, không tự chạy video hoặc tính vào Actual Evaluation. Nhập lại sẽ giữ nhãn xác minh và liên kết Product Truth hiện có.</p><form id="datasetForm"><div class="field"><label for="datasetFile">Chọn file Excel (.xlsx, tối đa 8 MB)</label><input id="datasetFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div><button class="button" id="datasetImportSubmit" type="submit">Nhập workbook</button></form><p id="datasetImportStatus" class="footnote" role="status" aria-live="polite">Chọn workbook Sprint 2 để bắt đầu import.</p></div><div><h3>Trạng thái bộ dữ liệu</h3><div id="datasetSummary" class="grid2"></div></div></div>
     </div></details>
@@ -412,6 +412,7 @@ async function resetAllSessions(){
     $('jobDetail').classList.add('hidden');await refreshAll();await refreshDataset();toast('Đã xóa lịch sử phiên chạy');
  }catch(e){status.textContent='Không thể xóa: '+e.message;toast(e.message)}finally{button.disabled=false}
 }
+function openDatasetClear(){openTab('dataset');const p=$('datasetClearPanel');p.open=true;p.scrollIntoView({behavior:'smooth',block:'center'});$('datasetClearConfirm').focus({preventScroll:true})}
 async function resetImportedExcel(){
  const phrase=$('datasetClearConfirm').value,status=$('datasetClearStatus'),button=$('datasetClearButton');
  if(phrase!=='XOA EXCEL'){status.textContent='Hãy gõ chính xác XOA EXCEL';return}
