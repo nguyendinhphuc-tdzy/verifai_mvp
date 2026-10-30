@@ -789,4 +789,4 @@ def metrics():
 
 # Additive, backwards-compatible Sprint-2 evaluation dataset routes.
 install_dataset_routes(app,db,utc)
-install_session_routes(app, db, utc, UPLOAD, FRAMES, get_job)
+install_session_routes(app, db, utc, lambda: UPLOAD, lambda: FRAMES, get_job)
