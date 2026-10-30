@@ -317,7 +317,9 @@ function renderVerification(d){
  $('aiDecisionSummary').innerHTML=recommendation?
   '<b>AI đề xuất: <span class="pill '+esc(recommendation.decision)+'">'+esc(aiTitle)+'</span></b>'+
   '<p class="footnote" style="margin:7px 0 0">'+esc(recommendation.explanation||'')+'</p>'+
-  '<p class="footnote" style="margin:5px 0 0">Đây là đề xuất AI, không phải quyết định reviewer hay chứng nhận tuân thủ.</p>':
+  '<p class="footnote" style="margin:5px 0 0">Đây là đề xuất AI, không phải quyết định reviewer hay chứng nhận tuân thủ.</p>'+
+  (recommendation.reason==='product_truth_unverified'&&d.product?.id?
+   '<button type="button" class="mini" style="margin-top:8px" onclick="openTab(\'products\');startProductEdit(\''+esc(d.product.id)+'\')">Xem và xác minh Product Truth</button>':''):
   '<b>AI đề xuất: Chưa có kết quả</b> — '+esc(progressText(d)||'Video chưa có kết quả phân tích.');
  $('verificationDetails').classList.toggle('hidden',!ready||!report?.checks?.length);
  if(!ready){
