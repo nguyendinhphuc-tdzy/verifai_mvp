@@ -113,3 +113,23 @@ def test_excel_import_is_visible_from_dataset_heading_and_stays_wired():
     assert "api('/api/dataset/import',{method:'POST',body:f})" in html
     assert 'file.size>8*1024*1024' in html
     assert 'btn.disabled=true' in html and 'btn.disabled=false' in html
+
+
+def test_archive_all_sessions_and_confirmed_cleanup_ui():
+    html = HTML.read_text(encoding="utf-8")
+    p = parse_workspace()
+    assert 'exportAllSessionsButton' in p.ids
+    assert 'sessionResetPanel' in p.details
+    assert 'sessionResetConfirm' in p.ids
+    assert 'sessionResetStatus' in p.ids
+    assert 'href="/api/sessions/export"' in html
+    assert "post('/api/sessions/reset',{confirmation:phrase})" in html
+    assert "phrase!=='XOA TAT CA PHIEN'" in html
+    assert 'id="datasetClearPanel"' in html
+    assert 'id="datasetClearConfirm"' in html
+    assert 'id="datasetClearStatus"' in html
+    assert "post('/api/dataset/reset',{confirmation:phrase})" in html
+    assert "phrase!=='XOA EXCEL'" in html
+    assert 'function resetAllSessions()' in html
+    assert 'function resetImportedExcel()' in html
+    assert 'window.confirm(' not in html
