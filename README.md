@@ -383,3 +383,42 @@ candidates. See [Sheet 1 import / scenario adaptation](docs/SHEET1_PRODUCT_IMPOR
 The older `/api/dataset/import` is retained for legacy automated tests
 and historical evaluation compatibility only. Its former 80-case import
 instructions below are legacy, not the new UI upload path.
+
+
+## AI recommendation versus reviewer decision (Pass / Review / Regenerate)
+
+Completed video jobs now expose `ai_recommendation` separately from
+`review_decision` in `GET /api/jobs` and `GET /api/jobs/{id}`.
+The first is a **deterministic suggestion based on the OCR/ASR/Gemini
+verification report and persisted findings**, not an authoritative legal
+decision or a live model-issued pass certificate. The second is the
+reviewer's independent choice. Existing completed jobs derive a suggestion
+when read and **do not need re-analysis just to show a label**.
+
+- **Pass (proposed):** Product Truth was manually source-reviewed during
+  analysis, OCR/ASR/VLM coverage all `ok`, verification reports
+  `NO_ISSUES_OBSERVED`, and there are no findings. Means no issues observed
+  *in checked scope*, not proof that every frame, law or product property
+  was validated.
+- **Review (proposed):** Product Truth unverified, model coverage partial,
+  candidate issues, conflicts, missing context or ambiguous claims. No
+  findings alone never overrides an unverified reference.
+- **Regenerate (proposed):** A non-VLM-only **high-severity** finding linked
+  to actual evidence and not rejected. Current OCR/VLM rule candidates
+  are intentionally medium-severity and normally remain Review pending
+  adjudication; the system does not manufacture Regenerate verdicts.
+
+For example, **VID_GOC01.mp4** may have zero findings, matching
+149,000 VND price and all three modules `ok` but Product Truth
+`reference_status: unverified`: it must show **AI recommendation: Review**
+with a source-validation explanation, while reviewer choice remains
+`Chưa duyệt`. In the Product Truth editor, provide a legitimate source
+URL or detailed review note, mark the reference reviewed, save, then
+**re-analyze** to generate a new snapshot. For demonstration/illustrative
+reference data, this is a review of the provided fictional scenario, not
+certification of real commercial facts.
+
+Re-analysis clears the previous human verdict and regenerates evidence;
+export or record the previous review first. Existing jobs preserve
+historical `jobs.decision` and human decisions; the dynamic
+`ai_recommendation` is the canonical displayed suggestion on older jobs.
