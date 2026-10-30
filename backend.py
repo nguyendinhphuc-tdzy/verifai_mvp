@@ -776,6 +776,8 @@ def export_evidence(jid: str):
     result = get_job(jid)
     payload = {'schema_version':'verifai-evidence-2.0','job_id':jid,
                'product':result['product'],'details':result['details'],
+               'ai_recommendation':result['ai_recommendation'],
+               'review_decision':result.get('review_decision'),
                'evidence':result['evidence'],'findings':result['findings'],
                'exported_at':utc()}
     return JSONResponse(payload,headers={'Content-Disposition':f'attachment; filename="verifai-evidence-{jid}.json"'})
