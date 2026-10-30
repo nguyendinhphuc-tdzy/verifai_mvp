@@ -10,9 +10,14 @@ import re
 import uuid
 
 from fastapi import File, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from verifai_core.claims import validate_reference_claims
 from verifai_core.dataset import _as_text, _int_price, _rows_named, _sheet_rows, _val, MAX_XLSX_BYTES
+
+
+class ClearImportedProducts(BaseModel):
+    confirmation: str
 
 
 def parse_original_products(content: bytes) -> list[dict]:
@@ -139,4 +144,49 @@ def install_product_import_routes(app, db, utc):
             'core_conflicts_not_overwritten':conflicts,
             'warnings':['Thông tin nguồn Giả lập không phải Product Truth đã xác minh',
                         'Không nhập Sheet 2–9, kịch bản lỗi, prediction mô phỏng hay nhãn kiểm định'],
+        }
+
+    @app.post('/api/products/import/reset')
+    def clear_imported_product_sheet(payload: ClearImportedProducts):
+        """Detach imported sheet and remove import-owned products only if safe.
+
+        Imported products with running/completed job links or later manual edits
+        are never silently removed. Existing independently maintained Product
+        Truth is also never removed.
+        """
+        if payload.confirmation != 'XOA EXCEL':
+            raise HTTPException(400, 'Gõ chính xác XOA EXCEL để xác nhận')
+        with db() as c:
+            c.execute('BEGIN IMMEDIATE')
+            rows = c.execute('''SELECT p.product_id,p.created_by_import,
+                m.reference_status,m.revision
+                FROM product_import_profiles p
+                LEFT JOIN product_truth_meta m ON m.product_id=p.product_id''').fetchall()
+            ids = [row['product_id'] for row in rows]
+            if ids:
+                params=','.join('?' for _ in ids)
+                linked=c.execute('SELECT COUNT(*) n FROM jobs WHERE product_id IN ('+params+')',
+                                 ids).fetchone()['n']
+                if linked:
+                    raise HTTPException(409,
+                        'Còn phiên phân tích liên kết sản phẩm Excel. Hãy export và xóa phiên trước.')
+            removed=0
+            preserved=0
+            for row in rows:
+                pid=row['product_id']
+                # Only delete newly created, unreviewed, unedited products.
+                if (row['created_by_import'] == 1
+                        and row['reference_status'] == 'unverified'
+                        and (row['revision'] is None or row['revision'] == 1)):
+                    c.execute('DELETE FROM product_truth_audits WHERE product_id=?',(pid,))
+                    c.execute('DELETE FROM product_truth_meta WHERE product_id=?',(pid,))
+                    c.execute('DELETE FROM products WHERE id=?',(pid,))
+                    removed+=1
+                else:
+                    preserved+=1
+            c.execute('DELETE FROM product_import_profiles')
+        return {
+            'ok':True,'removed_imported_products':removed,
+            'preserved_existing_or_reviewed_products':preserved,
+            'note':'Sheet 1 đã được gỡ. Product Truth thủ công/đã duyệt được giữ lại.',
         }
