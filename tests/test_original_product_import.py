@@ -5,7 +5,14 @@ import re
 
 from fastapi.testclient import TestClient
 
-from tests.test_dataset_v21 import example_workbook
+import importlib.util
+from pathlib import Path
+
+_fixture_path = Path(__file__).resolve().parent / 'test_dataset_v21.py'
+_spec = importlib.util.spec_from_file_location('test_dataset_v21_fixture', _fixture_path)
+_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_module)
+example_workbook = _module.example_workbook
 from verifai_core.product_import import parse_original_products
 
 def only_original_sheet(workbook: bytes) -> bytes:
