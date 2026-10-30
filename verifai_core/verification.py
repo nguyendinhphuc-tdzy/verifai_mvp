@@ -204,9 +204,12 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
                         for f in findings)
     low_evidence = any(f.get('code') in coverage_codes for f in findings)
     ambiguous = any(c['status'] == 'INSUFFICIENT_EVIDENCE' for c in checks)
+    # Healthy model processes without ANY usable content evidence do not
+    # justify PASS. A blank frame, silent ASR or empty OCR is not validation.
+    content_observed = bool({'ocr', 'asr', 'vlm'} & observed_sources)
     if candidate:
         status, reason = 'REVIEW_REQUIRED', 'candidate_or_conflict_requires_human_review'
-    elif incomplete or not reference_reviewed or low_evidence or ambiguous:
+    elif incomplete or not reference_reviewed or low_evidence or ambiguous or not content_observed:
         status, reason = 'INSUFFICIENT_EVIDENCE', 'missing_model_coverage_or_unreviewed_truth'
     else:
         status, reason = 'NO_ISSUES_OBSERVED', 'no_candidate_with_available_coverage'
@@ -223,6 +226,7 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
         'reference_scope': reference_scope,
         'reference_revision': product_truth.get('revision'),
         'observed_modalities': sorted(observed_sources),
+        'content_evidence_observed': content_observed,
         'checks': checks,
         'candidate_count': sum(c['status'] == 'CANDIDATE' for c in checks),
         'conflict_count': sum(c['status'] == 'CONFLICT' for c in checks),
