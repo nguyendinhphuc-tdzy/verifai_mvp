@@ -51,6 +51,14 @@
             <summary>Bằng chứng và mốc thời gian <span id="evidenceSummary" class="footnote"></span></summary>
             <div class="disclosure-body"><div class="row" style="margin-bottom:12px"><label for="evidenceFilter" class="footnote">Nguồn bằng chứng</label><select id="evidenceFilter" class="search" style="max-width:185px" onchange="renderEvidence()"><option value="all">Tất cả nguồn</option><option value="ocr">OCR</option><option value="asr">ASR</option><option value="vlm">VLM</option><option value="visual">Hình ảnh</option></select></div><div id="evidences" class="evidence-list"></div></div>
           </details>
+          <details class="detail-disclosure" id="geminiVideoTimeline" hidden>
+            <summary>Gemini — diễn biến và bối cảnh toàn bộ video</summary>
+            <div class="disclosure-body">
+              <p class="footnote">Gemini đọc video theo cơ chế lấy mẫu nội bộ của API; timestamp là ước lượng của model, không bảo đảm kiểm tra từng frame gốc.</p>
+              <div id="videoTimelineSummary" class="footnote" style="white-space:pre-wrap"></div>
+              <div id="videoContextSummary" class="footnote" style="margin-top:9px;white-space:pre-wrap"></div>
+            </div>
+          </details>
           <details class="detail-disclosure"><summary>Chi tiết kỹ thuật</summary><div class="disclosure-body"><div id="coverage" class="notice"></div></div></details>
         </div>
         <div class="panel">
@@ -360,6 +368,19 @@ async function loadJob(jid){
  const pq=d.details.perception_quality||{},oq=pq.ocr||{},aq=pq.asr||{};
  renderVerification(d);
  $('coverage').innerHTML=d.status==='failed'?`<b>Lỗi:</b> ${esc(d.details.error)}`:d.status!=='completed'?esc(progressText(d)):`<b>Pipeline coverage</b><div class="coverage-row"><span class="pill">OCR: ${esc(c.ocr||'—')}</span><span class="pill">ASR: ${esc(c.asr||'—')}</span><span class="pill">VLM: ${esc(c.vlm||'—')}</span><span class="pill">Visual: ${esc(c.visual||'—')}</span></div><div class="footnote" style="margin-top:8px">${n.raw_count??'—'} raw → ${n.canonical_count??'—'} canonical (${n.merged_count??0} merged) · ${v.same_shot_pairs??0} same-shot pairs · ${v.change_candidates??0} temporal candidates · ${vlm.calls_succeeded??0} VLM calls · ${esc(d.details.elapsed_seconds)}s</div><div class="footnote" style="margin-top:7px">Sampling: ${t.sampling_seconds??'—'}s · OCR: ${t.ocr_seconds??'—'}s (${t.ocr_frames??'—'} frames) · ASR: ${t.asr_seconds??'—'}s · VLM: ${t.vlm_seconds??'—'}s</div>${pq.sampling_version?`<div class="footnote" style="margin-top:7px">OCR: ${oq.successful_frames??0}/${oq.attempted_frames??0} frame chạy thành công · ${oq.text_lines??0} dòng chữ · ${oq.empty_frames??0} frame không có chữ · ${oq.failed_frames??0} frame lỗi · ASR: ${aq.segments??0} đoạn lời nói. OCR sampling: ${esc(pq.ocr_sampling_mode||'—')}</div>`:''}${vlm.errors?.length?`<div class="footnote" style="color:#ae6621;margin-top:6px">VLM errors: ${esc(vlm.errors.join(' | '))}</div>`:''}<div class="footnote" style="margin-top:5px">VLM là cảnh báo cần xác minh, confidence chưa hiệu chuẩn. Không có ảnh SKU reference. C2PA chưa tích hợp.</div>`;
+ const mode=vlm.input_mode||'frames';
+ const nativeVideo=(d.status==='completed'&&mode==='video');
+ $('geminiVideoTimeline').hidden=!nativeVideo;
+ $('videoTimelineSummary').textContent=vlm.timeline_summary||'Gemini không trả về timeline chi tiết.';
+ $('videoContextSummary').textContent=vlm.video_summary?'Tổng quan: '+vlm.video_summary:'';
+ if(d.status==='completed'){
+   $('coverage').innerHTML+='<div class="footnote" style="margin-top:7px">'+
+      'OCR mode: '+esc(oq.scan_mode||'sampled')+
+      ' · frames đã OCR: '+(oq.attempted_frames??0)+
+      (oq.expected_decoded_frames!=null?' / '+oq.expected_decoded_frames:'')+
+      ' · Gemini input: '+esc(mode)+
+      ' (video nguyên bản ≠ xử lý mọi frame ở FPS gốc)</div>';
+ }
  const frames=d.details.frame_timeline||d.evidence.filter(e=>e.frame).map(e=>({frame:e.frame,at:e.timestamp}));
  $('frames').innerHTML=frames.filter((e,i,a)=>a.findIndex(x=>x.frame===e.frame)===i).slice(0,20).map(e=>`<img loading="lazy" src="/api/jobs/${jid}/frames/${esc(e.frame)}" title="${e.at}s" onclick="seek(${Number(e.at)})">`).join('');
  renderEvidence();
