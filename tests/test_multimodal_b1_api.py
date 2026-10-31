@@ -15,6 +15,7 @@ def _setup(monkeypatch, tmp_path):
     monkeypatch.setattr(backend, 'DB', tmp_path / 'verifai.sqlite3')
     monkeypatch.setattr(backend, 'UPLOAD', tmp_path / 'uploads')
     monkeypatch.setattr(backend, 'FRAMES', tmp_path / 'frames')
+    monkeypatch.setattr(backend, 'OCR_SCAN_MODE', 'sampled')
     monkeypatch.setattr(backend, 'OCR_MAX_FRAMES', 4)
     monkeypatch.setattr(backend, 'OCR_SAMPLING_MODE', 'hybrid')
     backend.UPLOAD.mkdir()

@@ -452,3 +452,59 @@ Its presence does **not** imply production readiness: proper authentication,
 role authorization, secret management, backup/restore and audit of downloads
 remain required before multi-user/public deployment. The product-only Excel
 import and test-only Product Truth approval are retained unchanged.
+
+
+## Full video analysis (OCR all frames + Gemini native video)
+
+The OCR and Gemini pipeline now has two *independent* coverage controls:
+
+```powershell
+$env:OCR_ENABLED="1"
+$env:OCR_SCAN_MODE="all"
+$env:ASR_ENABLED="1"
+$env:VLM_ENABLED="1"
+$env:VLM_INPUT_MODE="video"
+$env:VLM_MODEL="gemini-3.5-flash-lite"
+$env:VLM_VIDEO_PROCESS_TIMEOUT_SECONDS="240"
+python -m uvicorn backend:app --host 127.0.0.1 --port 8001
+```
+
+- **OCR_SCAN_MODE=all** (default on this branch): the pipeline reopens the
+  input file and decodes *every frame* sequentially; PaddleOCR is invoked once
+  for each decoded frame. A 30 FPS / 10-second video normally means about
+  300 OCR calls. No 4-, 12- or 60-frame OCR cap. OCR text records include
+  `source_frame_index` and timestamps. JPEGs are stored for OCR frames only
+  if text was extracted. This mode can take hours for longer videos on CPU;
+  users must monitor `timings.ocr_frames` and `perception_quality.ocr`.
+- **OCR_SCAN_MODE=sampled**: retains the prior `OCR_MAX_FRAMES` (e.g. 4)
+  plus `OCR_SAMPLING_MODE` (hybrid / uniform) behavior.
+- The existing OpenCV thumbnail / scene-change subsystem still retains
+  **up to 60 sampled frames** for UI and temporal heuristics. Full OCR
+  scans the input a second time. This is deliberate to avoid keeping every
+  decoded image in memory.
+- **VLM_INPUT_MODE=video** (default): Gemini's Files API receives the
+  **original video including audio**, not 1/4 chosen JPEGs. The request
+  asks for temporal context, a timeline summary and timestamped
+  `observations`/`issues`. This uses a Gemini-side default video sampling
+  strategy (typically about **1 visual FPS**), **NOT guaranteed source-frame
+  by source-frame processing**. Model-produced timestamps are estimates.
+  The service attempts to delete the uploaded Gemini file in a finally
+  block. The video leaves the local machine; ensure appropriate rights.
+- **VLM_INPUT_MODE=frames**: retains the old static image analysis path
+  with `VLM_MAX_FRAMES` and `VLM_MAX_PAIRS`.
+
+Expected output: `details.vlm.input_mode=video`,
+`details.vlm.timeline_summary`, `details.vlm.video_summary`,
+`evidence.kind=vlm_video_observation` with `timestamp_source=model_reported`.
+All existing evidence/finding/verification/reviewer/export APIs are reused.
+Failed Gemini video uploads/processing are marked as incomplete VLM coverage
+and require a human review; there is **no hidden image-mode fallback**.
+
+**Important limitations:** OCR can only process decodable frames; low-resolution,
+blurry and quickly moving text may still be misread. Full video OCR may multiply
+CPU latency by hundreds. Gemini native video analysis samples media internally;
+neither its JSON timestamps nor its confidence scores are calibrated proof.
+This change does not remove the current required `product_id` for uploads;
+public videos without a verified product reference still need a separate
+observation-first public-discovery mode. Do not assign the six synthetic SKUs
+to unrelated commercial videos.
