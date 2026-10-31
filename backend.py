@@ -16,6 +16,8 @@ from verifai_core.local_security import local_only_middleware
 from verifai_core.session_export import install_export_routes
 from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, RULE_VERSION as SPRINT2_RULE_VERSION
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
+from verifai_core.video_ocr import iter_all_video_frames
+from verifai_core.video_understanding import analyze_native_video
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
 from verifai_core.claims import CLAIM_RULE_VERSION, find_restricted_claims, validate_reference_claims
@@ -35,6 +37,7 @@ MAX_UPLOAD=int(os.environ.get('MAX_VIDEO_MB','150'))*1024*1024
 MAX_DURATION=int(os.environ.get('MAX_VIDEO_SECONDS','180'))
 OCR_MAX_FRAMES=max(0,min(60,int(os.environ.get('OCR_MAX_FRAMES','12'))))
 OCR_SAMPLING_MODE=os.environ.get('OCR_SAMPLING_MODE','hybrid').strip().lower()
+OCR_SCAN_MODE=os.environ.get('OCR_SCAN_MODE','all').strip().lower()
 _ANALYSIS_SLOTS=threading.BoundedSemaphore(max(1,min(2,int(os.environ.get('MAX_CONCURRENT_JOBS','1')))))
 for p in (DATA,UPLOAD,FRAMES): p.mkdir(parents=True,exist_ok=True)
 @asynccontextmanager
@@ -344,22 +347,39 @@ def _analyze_job(job_id):
         # representative subset (default 12) to keep CPU latency bounded.
         # Keep B1 hybrid OCR sampling and PR10's CPU-saving opt-out.
         ocr_enabled = os.getenv('OCR_ENABLED','1') == '1'
-        chosen = (select_ocr_frames(sampled,min(OCR_MAX_FRAMES,len(sampled)),
-                                    mode=OCR_SAMPLING_MODE)
-                  if ocr_enabled else [])
-        _set_progress(job_id,'ocr',done=0,total=len(chosen))
+        if OCR_SCAN_MODE not in ('all','sampled'):
+            raise RuntimeError('OCR_SCAN_MODE phải là all hoặc sampled')
+        all_frames=ocr_enabled and OCR_SCAN_MODE=='all'
+        chosen=(iter_all_video_frames(path) if all_frames else
+                select_ocr_frames(sampled,min(OCR_MAX_FRAMES,len(sampled)),
+                                  mode=OCR_SAMPLING_MODE) if ocr_enabled else [])
+        expected_ocr_frames = total if all_frames and total>0 else len(chosen)
+        _set_progress(job_id,'ocr',done=0,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
         stage_start=time.monotonic()
         for n,frame in enumerate(chosen,1):
             ocr,ocr_status=frame_ocr(frame['image'])
             ocr_health.observe(ocr_status,len(ocr))
             if ocr_status=='ok':
+                if all_frames and ocr:
+                    cv2.imwrite(str(frame_dir/frame['frame']),frame['image'],
+                                [cv2.IMWRITE_JPEG_QUALITY,80])
                 for text,score in ocr:
                     evidence('ocr',frame['at'],text,score,frame['frame'],source='paddleocr',
-                             meta={'confidence_kind':'ocr_engine','sampling_version':SAMPLING_VERSION})
+                             meta={'confidence_kind':'ocr_engine',
+                                   'scan_mode':OCR_SCAN_MODE,
+                                   'source_frame_index':frame.get('source_frame_index'),
+                                   'sampling_version':SAMPLING_VERSION})
             ocr_calls+=1
-            if n==len(chosen) or n%2==0:
-                _set_progress(job_id,'ocr',done=n,total=len(chosen))
+            if n==expected_ocr_frames or n%25==0 or (not all_frames and n%2==0):
+                _set_progress(job_id,'ocr',done=n,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
+        _set_progress(job_id,'ocr',done=ocr_calls,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
         ocr_health_data=ocr_health.snapshot()
+        ocr_health_data['scan_mode']=OCR_SCAN_MODE
+        ocr_health_data['expected_decoded_frames']=total if all_frames else None
+        ocr_health_data['complete_video_scan']=bool(all_frames and total>0 and ocr_calls>=total)
+        if all_frames and total>0 and ocr_calls<total:
+            ocr_health_data['status']='partial' if ocr_health.successful_frames else 'error'
+            ocr_health_data['errors'].append('Decoder stopped before advertised frame count')
         if not ocr_enabled:
             ocr_health_data['status']='disabled'
         coverage['ocr']=ocr_health_data['status']
@@ -590,6 +610,7 @@ def _analyze_job(job_id):
                      'sampling_version':SAMPLING_VERSION,
                      'sampling_stride_frames':interval,
                      'ocr_sampling_mode':OCR_SAMPLING_MODE,
+                     'ocr_scan_mode':OCR_SCAN_MODE,
                      'ocr':ocr_health_data,
                      'asr':{'status':coverage['asr'],
                             'segments':len(speeches),
