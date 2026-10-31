@@ -353,7 +353,7 @@ def _analyze_job(job_id):
         chosen=(iter_all_video_frames(path) if all_frames else
                 select_ocr_frames(sampled,min(OCR_MAX_FRAMES,len(sampled)),
                                   mode=OCR_SAMPLING_MODE) if ocr_enabled else [])
-        expected_ocr_frames = total if all_frames and total>0 else len(chosen)
+        expected_ocr_frames = max(0,total) if all_frames else len(chosen)
         _set_progress(job_id,'ocr',done=0,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
         stage_start=time.monotonic()
         for n,frame in enumerate(chosen,1):
