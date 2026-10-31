@@ -32,6 +32,7 @@ def run_job(tmp_path,monkeypatch, *, native=False):
     monkeypatch.setenv('OCR_ENABLED','1')
     monkeypatch.setenv('ASR_ENABLED','1')
     monkeypatch.setenv('VLM_ENABLED','1' if native else '0')
+    monkeypatch.setenv('VLM_CIRCUIT_ENABLED','0')
     backend.UPLOAD.mkdir(); backend.FRAMES.mkdir()
     backend.init()
     calls=[]
