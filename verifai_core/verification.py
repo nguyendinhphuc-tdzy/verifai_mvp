@@ -193,7 +193,10 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
     raw_coverage = {k: str(coverage.get(k, 'unknown')) for k in ('ocr', 'asr', 'vlm')}
     incomplete = sorted(k for k, state in raw_coverage.items() if state != 'ok')
     reference_status = str(product_truth.get('reference_status') or 'unverified')
-    reference_reviewed = reference_status == 'reviewed'
+    reference_reviewed = reference_status in ('reviewed', 'test_reference_approved')
+    reference_scope = ('test' if reference_status == 'test_reference_approved'
+                       else 'commercial' if reference_status == 'reviewed'
+                       else 'unverified')
     candidate = any(c['status'] in ('CANDIDATE', 'CONFLICT') for c in checks)
     # If a serious finding exists without a linked evidence record, never hide it.
     if not candidate:
@@ -201,9 +204,12 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
                         for f in findings)
     low_evidence = any(f.get('code') in coverage_codes for f in findings)
     ambiguous = any(c['status'] == 'INSUFFICIENT_EVIDENCE' for c in checks)
+    # Healthy model processes without ANY usable content evidence do not
+    # justify PASS. A blank frame, silent ASR or empty OCR is not validation.
+    content_observed = bool({'ocr', 'asr', 'vlm'} & observed_sources)
     if candidate:
         status, reason = 'REVIEW_REQUIRED', 'candidate_or_conflict_requires_human_review'
-    elif incomplete or not reference_reviewed or low_evidence or ambiguous:
+    elif incomplete or not reference_reviewed or low_evidence or ambiguous or not content_observed:
         status, reason = 'INSUFFICIENT_EVIDENCE', 'missing_model_coverage_or_unreviewed_truth'
     else:
         status, reason = 'NO_ISSUES_OBSERVED', 'no_candidate_with_available_coverage'
@@ -217,8 +223,10 @@ def build_verification_report(evidence: Sequence[Any], findings: Sequence[Mappin
         'coverage': raw_coverage,
         'incomplete_modules': incomplete,
         'reference_status': reference_status,
+        'reference_scope': reference_scope,
         'reference_revision': product_truth.get('revision'),
         'observed_modalities': sorted(observed_sources),
+        'content_evidence_observed': content_observed,
         'checks': checks,
         'candidate_count': sum(c['status'] == 'CANDIDATE' for c in checks),
         'conflict_count': sum(c['status'] == 'CONFLICT' for c in checks),
