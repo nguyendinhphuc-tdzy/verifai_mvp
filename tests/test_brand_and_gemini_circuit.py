@@ -165,3 +165,91 @@ def test_gemini_outage_skips_next_job_but_keeps_local_review(tmp_path,monkeypatc
         assert any(f['code']=='SKU-01' for f in third['findings'])
     finally:
         backend.GEMINI_OUTAGE_CIRCUIT.reset()
+
+
+def test_native_gemini_video_outage_opens_circuit_and_skips_third_job(tmp_path,monkeypatch):
+    """Cloud video 504 must obey the SAME cross-job circuit as JPEG mode."""
+    from verifai_core.vlm import VLMError
+    monkeypatch.setenv('VLM_ENABLED','1')
+    monkeypatch.setenv('VLM_INPUT_MODE','video')
+    monkeypatch.setenv('VLM_CIRCUIT_ENABLED','1')
+    monkeypatch.setenv('VLM_CIRCUIT_FAILURES','2')
+    monkeypatch.setenv('VLM_CIRCUIT_COOLDOWN_SECONDS','180')
+    monkeypatch.setenv('OCR_ENABLED','1')
+    monkeypatch.setenv('ASR_ENABLED','0')
+    backend,client,pid,video=_setup(tmp_path,monkeypatch)
+    backend.GEMINI_OUTAGE_CIRCUIT.reset()
+    monkeypatch.setattr(backend,'frame_ocr',
+                        lambda frame:([('BabySkin',0.999),('SkinBaby',0.999)],'ok'))
+    attempts=[]
+    class NativeGemini:
+        model='mock-gemini-native-video'
+        def check(self):
+            return {'ready':True,'message':'ok'}
+        def _get_client(self):
+            return object()
+    def failing_native(client, path, product):
+        attempts.append(str(path))
+        raise VLMError('504 DEADLINE_EXCEEDED simulated native-video outage')
+    monkeypatch.setattr(backend,'GeminiVLM',NativeGemini)
+    monkeypatch.setattr(backend,'_ProductionGeminiVLM',NativeGemini)
+    monkeypatch.setattr(backend,'analyze_native_video',failing_native)
+    try:
+        first=_complete(client,pid,video)
+        second=_complete(client,pid,video)
+        third=_complete(client,pid,video)
+        assert [first['details']['vlm']['calls_attempted'],
+                second['details']['vlm']['calls_attempted'],
+                third['details']['vlm']['calls_attempted']]==[1,1,0]
+        assert len(attempts)==2
+        assert first['details']['coverage']['vlm']=='error'
+        assert second['details']['coverage']['vlm']=='error'
+        assert third['details']['coverage']['vlm']=='error'
+        assert any('tạm bỏ qua VLM' in err for err in
+                   third['details']['vlm']['errors'])
+        assert third['status']=='completed'
+        assert any(f['code']=='SKU-01' for f in third['findings'])
+    finally:
+        backend.GEMINI_OUTAGE_CIRCUIT.reset()
+
+
+def test_native_video_circuit_resets_after_success(tmp_path,monkeypatch):
+    from verifai_core.vlm import VLMError
+    from verifai_core.video_understanding import VideoUnderstandingResult
+    monkeypatch.setenv('VLM_ENABLED','1')
+    monkeypatch.setenv('VLM_INPUT_MODE','video')
+    monkeypatch.setenv('VLM_CIRCUIT_ENABLED','1')
+    monkeypatch.setenv('VLM_CIRCUIT_FAILURES','2')
+    monkeypatch.setenv('OCR_ENABLED','1')
+    monkeypatch.setenv('ASR_ENABLED','0')
+    backend,client,pid,video=_setup(tmp_path,monkeypatch)
+    backend.GEMINI_OUTAGE_CIRCUIT.reset()
+    monkeypatch.setattr(backend,'frame_ocr',lambda frame:([('BabySkin',0.99)],'ok'))
+    class NativeGemini:
+        model='mock-gemini-native-video'
+        def check(self):
+            return {'ready':True,'message':'ok'}
+        def _get_client(self):
+            return object()
+    calls=[]
+    def recover_after_one_error(*args):
+        calls.append(1)
+        if len(calls)==1:
+            raise VLMError('503 UNAVAILABLE simulated')
+        return VideoUnderstandingResult(
+            summary='Product in video',timeline_summary='0s: BabySkin')
+    monkeypatch.setattr(backend,'GeminiVLM',NativeGemini)
+    monkeypatch.setattr(backend,'_ProductionGeminiVLM',NativeGemini)
+    monkeypatch.setattr(backend,'analyze_native_video',recover_after_one_error)
+    try:
+        first=_complete(client,pid,video)
+        second=_complete(client,pid,video)
+        third=_complete(client,pid,video)
+        assert len(calls)==3
+        assert first['details']['coverage']['vlm']=='error'
+        assert second['details']['coverage']['vlm']=='ok'
+        assert third['details']['coverage']['vlm']=='ok'
+        assert all(j['details']['vlm']['calls_attempted']==1
+                   for j in (first,second,third))
+    finally:
+        backend.GEMINI_OUTAGE_CIRCUIT.reset()
