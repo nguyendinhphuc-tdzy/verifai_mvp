@@ -370,13 +370,13 @@ def _analyze_job(job_id):
                                    'source_frame_index':frame.get('source_frame_index'),
                                    'sampling_version':SAMPLING_VERSION})
             ocr_calls+=1
-            if n==expected_ocr_frames or n%25==0 or (not all_frames and n%2==0):
+            if n==expected_ocr_frames or (all_frames and n%5==0) or (not all_frames and n%2==0):
                 _set_progress(job_id,'ocr',done=n,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
         _set_progress(job_id,'ocr',done=ocr_calls,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
         ocr_health_data=ocr_health.snapshot()
         ocr_health_data['scan_mode']=OCR_SCAN_MODE
         ocr_health_data['expected_decoded_frames']=total if all_frames else None
-        ocr_health_data['complete_video_scan']=bool(all_frames and total>0 and ocr_calls>=total)
+        ocr_health_data['complete_video_scan']=bool(all_frames and (total<=0 or ocr_calls>=total))
         if all_frames and total>0 and ocr_calls<total:
             ocr_health_data['status']='partial' if ocr_health.successful_frames else 'error'
             ocr_health_data['errors'].append('Decoder stopped before advertised frame count')
