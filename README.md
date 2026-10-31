@@ -355,3 +355,71 @@ Gemini coverage as evidence of compliance.
 - [Final report draft](docs/FINAL_REPORT_DRAFT.md) and [demo shot list](docs/DEMO_SHOTLIST.md). Neither implies an actual benchmark or recording exists.
 - Local verification: `python -m pytest -q`, `python scripts/check_vlm.py`, then launch `python -m uvicorn backend:app --host 127.0.0.1 --port 8001` and inspect `http://127.0.0.1:8001/api/health`.
 
+
+
+## NEW — Six original products only for Excel import
+
+The MVP Excel button now uploads **only the six original video product
+references (Sheet `1. Kich ban goc`)** through
+`POST /api/products/import`. It does **not** import 44 error
+scenarios, public-video labels, policy simulations or evaluation predictions.
+An XLSX file containing only this sheet is supported. It preserves existing
+SKUs and never silently overwrites a manually reviewed Product Truth record.
+Imported variants and expected video descriptions appear in the Product page.
+Source type 'Giả lập' remains unverified.
+
+`POST /api/products/import/reset` with typed `XOA EXCEL` clears
+the import only when no job references its products. Manually reviewed
+Product Truth is preserved.
+
+The 44 error scenarios can be converted into a separate rule-design and
+in-context example library via `python scripts/build_sprint2_examples.py
+--xlsx "Sprint 2 - Thu thập & tạo dữ liệu thật (2).xlsx"
+--out reports/sprint2_scenario_examples.json`.
+This is **not Gemini weight fine-tuning** and **not real-video performance**.
+Added conservative `VARIANT-01`, `CLAIM-02` and `TEXT-01` reviewer
+candidates. See [Sheet 1 import / scenario adaptation](docs/SHEET1_PRODUCT_IMPORT_RULE_ADAPTATION.md).
+
+The older `/api/dataset/import` is retained for legacy automated tests
+and historical evaluation compatibility only. Its former 80-case import
+instructions below are legacy, not the new UI upload path.
+
+
+## AI recommendation versus reviewer decision (Pass / Review / Regenerate)
+
+Completed video jobs now expose `ai_recommendation` separately from
+`review_decision` in `GET /api/jobs` and `GET /api/jobs/{id}`.
+The first is a **deterministic suggestion based on the OCR/ASR/Gemini
+verification report and persisted findings**, not an authoritative legal
+decision or a live model-issued pass certificate. The second is the
+reviewer's independent choice. Existing completed jobs derive a suggestion
+when read and **do not need re-analysis just to show a label**.
+
+- **Pass (proposed):** Product Truth was manually source-reviewed during
+  analysis, OCR/ASR/VLM coverage all `ok`, verification reports
+  `NO_ISSUES_OBSERVED`, and there are no findings. Means no issues observed
+  *in checked scope*, not proof that every frame, law or product property
+  was validated.
+- **Review (proposed):** Product Truth unverified, model coverage partial,
+  candidate issues, conflicts, missing context or ambiguous claims. No
+  findings alone never overrides an unverified reference.
+- **Regenerate (proposed):** A non-VLM-only **high-severity** finding linked
+  to actual evidence and not rejected, with reviewed Product Truth and
+  complete OCR/ASR/VLM coverage. Current OCR/VLM rule candidates
+  are intentionally medium-severity and normally remain Review pending
+  adjudication; the system does not manufacture Regenerate verdicts.
+
+For example, **VID_GOC01.mp4** may have zero findings, matching
+149,000 VND price and all three modules `ok` but Product Truth
+`reference_status: unverified`: it must show **AI recommendation: Review**
+with a source-validation explanation, while reviewer choice remains
+`Chưa duyệt`. In the Product Truth editor, provide a legitimate source
+URL or detailed review note, mark the reference reviewed, save, then
+**re-analyze** to generate a new snapshot. For demonstration/illustrative
+reference data, this is a review of the provided fictional scenario, not
+certification of real commercial facts.
+
+Re-analysis clears the previous human verdict and regenerates evidence;
+export or record the previous review first. Existing jobs preserve
+historical `jobs.decision` and human decisions; the dynamic
+`ai_recommendation` is the canonical displayed suggestion on older jobs.

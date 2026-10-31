@@ -10,6 +10,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
+from verifai_core.product_import import ensure_product_import_schema, install_product_import_routes
+from verifai_core.recommendation import recommend_ai
+from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, RULE_VERSION as SPRINT2_RULE_VERSION
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
@@ -89,6 +92,7 @@ def init():
                 if name not in existing:
                     c.execute(f'ALTER TABLE {table} ADD COLUMN {name} {ddl}')
     ensure_dataset_schema(db)
+    ensure_product_import_schema(db)
 init()
 
 def audit(c,jid,actor,action,payload):c.execute('INSERT INTO audits(job_id,actor,action,payload,created_at) VALUES(?,?,?,?,?)',(jid,actor,action,json.dumps(payload,ensure_ascii=False),utc()))
@@ -104,6 +108,13 @@ def product_dict(r):
         d.update(dict(meta) if meta else {
             'reference_url':'','reference_note':'','reference_status':'unverified',
             'revision':1,'updated_at':d['created_at']})
+        with db() as c:
+            prof=c.execute('SELECT video_code,variant,expected_video_description,source_class,owner,notes,imported_at FROM product_import_profiles WHERE product_id=?',(d['id'],)).fetchone()
+        if prof:
+            d.update(dict(prof))
+        else:
+            d.update({'variant':'','expected_video_description':'','source_class':'',
+                      'video_code':'','owner':'','notes':''})
         d.pop('product_id',None)
     return d
 
@@ -510,6 +521,40 @@ def _analyze_job(job_id):
                            'product_truth_revision':p.get('revision',1),
                            'reference_status':p.get('reference_status','unverified'),
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            # Scenarios in Sprint-2 Sheet 2 informed these text candidates.
+            # They are not labels or trained weights, and require reviewer signoff.
+            for mismatch in (check_variant(e.content, p.get('variant',''))
+                             if e.kind!='ocr' or e.score is None or e.score>=0.80
+                             else []):
+                flag(mismatch.code,'medium',e.timestamp,
+                     f'Quy cách/dung tích quan sát "{mismatch.observed}" '
+                     f'khác hoặc tự mâu thuẫn với tham chiếu "{mismatch.expected or p.get("variant","")}"; '
+                     'cần kiểm tra đúng sản phẩm và ngữ cảnh.',
+                     source='variant_rule_v1',confidence=e.score,
+                     meta={'canonical_index':n,'reason':mismatch.reason,
+                           'reference_variant':p.get('variant',''),
+                           'rule_version':SPRINT2_RULE_VERSION,
+                           'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            for claim in check_unapproved_high_risk_claims(e.content,p['claims'],p['banned']):
+                flag(claim.code,'medium',e.timestamp,
+                     f'Phát hiện claim có rủi ro chưa nằm trong Approved Claims: "{claim.observed}". '
+                     'Không mặc định vi phạm; reviewer cần xác minh nội dung và nguồn.',
+                     source='claim_candidate_v1',confidence=e.score,
+                     meta={'canonical_index':n,'rule_version':SPRINT2_RULE_VERSION,
+                           'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            if e.kind=='ocr':
+                source_frames={str(x.get('frame')) for x in e.metadata.get('sources',[])
+                               if isinstance(x,dict) and x.get('frame')}
+                if not source_frames and e.frame:source_frames={e.frame}
+                if e.score is not None and e.score>=0.90:
+                    for typo in check_brand_typo(e.content,p.get('brand',''),
+                                                 supporting_frames=len(source_frames)):
+                        flag(typo.code,'medium',e.timestamp,
+                             f'Chữ thương hiệu "{typo.observed}" có thể bị lỗi chính tả '
+                             f'(tham chiếu: "{typo.expected}"). Cần kiểm tra frame gốc.',
+                             source='text_typo_v1',confidence=e.score,
+                             meta={'canonical_index':n,'rule_version':SPRINT2_RULE_VERSION,
+                                   'supporting_frames':sorted(source_frames)})
             price_check = assess_price(e.content, p['price'])
             if price_check.mentions:
                 e.metadata['price_v3'] = price_check.to_dict()
@@ -527,7 +572,6 @@ def _analyze_job(job_id):
         # A3 aggregates the existing A1/A2/VLM evidence without changing the
         # candidate findings or the human's final decision.
         verification=build_verification_report(normalized,findings,coverage,p,raw_map)
-        decision='Regenerate' if any(f['severity']=='high' for f in findings) else 'Needs Review'
         timings['total_seconds']=round(time.monotonic()-t0,3)
         details={'verification_version':VERIFICATION_VERSION,
                  'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
@@ -545,8 +589,8 @@ def _analyze_job(job_id):
                  'rule_version':'rules-0.4','price_parser_version':PRICE_PARSER_VERSION,
                  'claim_rule_version':CLAIM_RULE_VERSION,
                  'product_truth_snapshot':{key:p.get(key) for key in
-                     ('sku','name','brand','price','claims','banned','reference_url',
-                      'reference_note','reference_status','revision')},'normalization_version':'evidence-2.0',
+                     ('sku','name','brand','price','variant','expected_video_description',
+                      'claims','banned','reference_url','reference_note','reference_status','revision')},'normalization_version':'evidence-2.0',
                  'frame_timeline':[{'at':f['at'],'frame':f['frame'],'blur':f['blur']} for f in sampled],
                  'normalization':{'raw_count':len(raw),'canonical_count':len(normalized),
                                   'merged_count':len(raw)-len(normalized)},
@@ -574,11 +618,16 @@ def _analyze_job(job_id):
                 if idx is None and f['uid'] is not None: idx=raw_map.get(f['uid'])
                 eid=ids[idx] if idx is not None and 0<=idx<len(ids) else None
                 refs=[eid] if eid else []
+                f['evidence_id']=eid
+                f['evidence_refs']=refs
                 c.execute("""INSERT INTO findings(job_id,code,severity,timestamp,detail,evidence_id,source,confidence,evidence_refs,metadata)
                              VALUES(?,?,?,?,?,?,?,?,?,?)""",
                           (job_id,f['code'],f['severity'],f['at'],f['detail'],eid,f['source'],f['confidence'],
                            json.dumps(refs),json.dumps(f['metadata'],ensure_ascii=False)))
             details['verification']=attach_evidence_ids(verification,ids)
+            recommendation=recommend_ai(details['verification'],findings)
+            details['ai_recommendation']=recommendation
+            decision=recommendation['decision']
             c.execute('UPDATE jobs SET status=?,decision=?,finished_at=?,details=? WHERE id=?',
                       ('completed',decision,utc(),json.dumps(details,ensure_ascii=False),job_id))
             audit(c,job_id,'system','analysis_completed',{'decision':decision,'coverage':coverage,
@@ -674,7 +723,23 @@ def reanalyze(jid: str):
 
 @app.get('/api/jobs')
 def list_jobs():
-    with db() as c:return [dict(r) for r in c.execute('SELECT j.id,j.filename,j.status,j.decision,j.review_decision,j.created_at,p.sku,p.name AS product_name FROM jobs j JOIN products p ON j.product_id=p.id ORDER BY j.created_at DESC')]
+    with db() as c:
+        rows=[dict(r) for r in c.execute(
+            'SELECT j.id,j.filename,j.status,j.decision,j.review_decision,j.created_at,'
+            'j.details,p.sku,p.name AS product_name '
+            'FROM jobs j JOIN products p ON j.product_id=p.id ORDER BY j.created_at DESC')]
+        findings_by_job={}
+        for r in c.execute(
+            'SELECT job_id,severity,source,evidence_id,evidence_refs,flag_review FROM findings'):
+            f=dict(r)
+            f['evidence_refs']=json.loads(f.get('evidence_refs') or '[]')
+            findings_by_job.setdefault(f.pop('job_id'),[]).append(f)
+    for item in rows:
+        details=json.loads(item.pop('details') or '{}')
+        item['ai_recommendation']=(recommend_ai(details.get('verification'),
+            findings_by_job.get(item['id'],[]))
+            if item['status']=='completed' else None)
+    return rows
 @app.get('/api/jobs/{jid}')
 def get_job(jid:str):
     with db() as c:
@@ -691,6 +756,8 @@ def get_job(jid:str):
             f['evidence_refs']=json.loads(f.get('evidence_refs') or '[]')
         d['audits']=[dict(r) for r in c.execute('SELECT * FROM audits WHERE job_id=? ORDER BY id DESC',(jid,))]
         d['labels']=[dict(r) for r in c.execute('SELECT * FROM labels WHERE job_id=? ORDER BY id DESC',(jid,))]
+        d['ai_recommendation']=(recommend_ai(d['details'].get('verification'),d['findings'])
+                                 if d['status']=='completed' else None)
         return d
 @app.get('/api/jobs/{jid}/verification')
 def get_verification(jid: str):
@@ -709,6 +776,8 @@ def export_evidence(jid: str):
     result = get_job(jid)
     payload = {'schema_version':'verifai-evidence-2.0','job_id':jid,
                'product':result['product'],'details':result['details'],
+               'ai_recommendation':result['ai_recommendation'],
+               'review_decision':result.get('review_decision'),
                'evidence':result['evidence'],'findings':result['findings'],
                'exported_at':utc()}
     return JSONResponse(payload,headers={'Content-Disposition':f'attachment; filename="verifai-evidence-{jid}.json"'})
@@ -788,3 +857,4 @@ def metrics():
 
 # Additive, backwards-compatible Sprint-2 evaluation dataset routes.
 install_dataset_routes(app,db,utc)
+install_product_import_routes(app,db,utc)

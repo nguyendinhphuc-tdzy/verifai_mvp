@@ -86,7 +86,7 @@ def test_accessibility_and_reduced_motion():
 
 def test_no_fake_interactions():
     html = HTML.read_text(encoding="utf-8")
-    for endpoint in ('/api/jobs','/api/products','/api/dataset/import','/api/dataset/cases'):
+    for endpoint in ('/api/jobs','/api/products','/api/products/import','/api/dataset/cases'):
         assert endpoint in html
     assert 'function flag(id,state)' in html
     assert 'function exportEvidence()' in html
@@ -110,6 +110,28 @@ def test_excel_import_is_visible_from_dataset_heading_and_stays_wired():
     assert 'id="datasetImportStatus"' in panel and 'aria-live="polite"' in panel
     assert 'function openDatasetImport()' in html
     assert "panel.open=true" in html
-    assert "api('/api/dataset/import',{method:'POST',body:f})" in html
+    assert "api('/api/products/import',{method:'POST',body:f})" in html
+    assert 'Import Product Truth — 6 video gốc' in html
     assert 'file.size>8*1024*1024' in html
     assert 'btn.disabled=true' in html and 'btn.disabled=false' in html
+
+
+def test_original_sheet_product_import_and_clear_controls():
+    html=HTML.read_text(encoding='utf-8')
+    assert "api('/api/products/import',{method:'POST',body:f})" in html
+    assert 'Import Product Truth — 6 video gốc' in html
+    assert 'id="productImportResetPanel"' in html
+    assert 'id="productImportResetConfirm"' in html
+    assert "post('/api/products/import/reset',{confirmation:phrase})" in html
+    assert "phrase!=='XOA EXCEL'" in html
+
+
+def test_ai_and_reviewer_decisions_are_shown_separately():
+    html=HTML.read_text(encoding='utf-8')
+    assert 'id="aiDecisionSummary"' in html
+    assert '<th>AI đề xuất</th><th>Reviewer</th>' in html
+    assert 'j.ai_recommendation?.decision' in html
+    assert 'j.review_decision' in html
+    assert "recommendation.reason==='product_truth_unverified'" in html
+    assert 'Xem và xác minh Product Truth' in html
+    assert 'không phải quyết định reviewer' in html

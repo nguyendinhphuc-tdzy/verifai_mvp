@@ -24,6 +24,8 @@ def _prompt(product: dict, task: Literal['single', 'pair']) -> str:
         'sku': product.get('sku', ''),
         'product_name': product.get('name', ''),
         'brand': product.get('brand', ''),
+        'variant': product.get('variant', ''),
+        'expected_video_description': product.get('expected_video_description', ''),
         'approved_claims': (product.get('claims') or [])[:15],
         'restricted_claims': (product.get('banned') or [])[:15],
     }
@@ -41,6 +43,22 @@ cảnh thay đổi hình dạng/nhãn một cách khó giải thích); VIS-03 (c
 bất thường rõ ràng); CLAIM-VLM (chữ claim quan sát rõ cần đối chiếu).
 Trả JSON theo schema gồm summary, observations, issues; frame_index bắt đầu từ 0.
 Confidence là độ tin cậy mô hình tự khai báo, KHÔNG hiệu chuẩn."""
+    # In-context demonstrations distilled from controlled Sprint-2 errors;
+    # these are NOT weight updates, ground truth or evidence for the uploaded frame.
+    rules += """
+Ví dụ hướng dẫn (KHÔNG phải bằng chứng của frame hiện tại):
+- VID_LOI11: gói tham chiếu 80 tờ nhưng chữ hiện 100 tờ => mô tả
+  chữ thấy rõ và báo ứng viên SKU-01, không tự khẳng định hàng giả.
+- VID_LOI14: bình 240ml nhưng nhãn/overlay ghi 200ml => cần
+  ghi rõ 200ml ở vị trí nào; nếu không đọc rõ thì issues=[].
+- VID_LOI24: chữ MinniFeed thay MiniFeed => chỉ đề xuất VIS-03
+  nếu thật sự nhìn rõ chữ, không suy diễn từ ví dụ.
+- VID_LOI16..22: claim phóng đại như 'Diệt khuẩn 99.9%' hoặc
+  'Tăng chiều cao vượt trội' => CLAIM-VLM khi đọc được claim và
+  cần kiểm tra Approved Claims, không phải kết luận vi phạm pháp lý.
+- Một clip không hiện nhãn AI trong 1 frame không chứng minh
+  video tạo bởi AI hoặc đang vi phạm nghĩa vụ công bố.
+"""
     if task == 'single':
         rules += '\nChỉ có một frame, tuyệt đối không tạo VIS-02.'
     else:
