@@ -79,6 +79,7 @@ def test_processing_job_cannot_be_claimed_twice(monkeypatch,tmp_path):
 def test_real_video_pipeline_records_stage_timing(monkeypatch,tmp_path,stub_perception):
     backend=_setup(monkeypatch,tmp_path)
     monkeypatch.setenv('VLM_ENABLED','0')
+    monkeypatch.setattr(backend,'OCR_SCAN_MODE','sampled')
     monkeypatch.setattr(backend,'OCR_MAX_FRAMES',2)
     from fastapi.testclient import TestClient
     client=TestClient(backend.app)
