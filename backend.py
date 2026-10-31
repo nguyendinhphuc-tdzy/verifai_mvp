@@ -436,10 +436,12 @@ def _analyze_job(job_id):
                     raise VLMError('VLM_INPUT_MODE phải là video hoặc frames')
                 # Preserve offline test adapters with image-only mocked Gemini.
                 video_mode=(input_mode=='video' and
-                            isinstance(client,_ProductionGeminiVLM))
+                            isinstance(client,_ProductionGeminiVLM) and
+                            callable(getattr(client,'_get_client',None)))
                 native_video_summary=''
                 native_timeline_summary=''
                 attempted_calls=0;skipped_calls=0;failed_calls=0
+                native_request_started=False
                 frame_limit=max(0,min(8,int(os.environ.get('VLM_MAX_FRAMES','1'))))
                 pair_limit=max(0,min(6,int(os.environ.get('VLM_MAX_PAIRS','0'))))
                 frame_selection=evenly_spaced(sampled,frame_limit)
@@ -470,8 +472,11 @@ def _analyze_job(job_id):
                 if video_mode:
                     _set_progress(job_id,'vlm',current='native full video',done=0,total=1)
                     attempted_calls=1
+                    native_request_started=True
                     result=analyze_native_video(client,path,p)
                     vlm_calls+=1
+                    if circuit_enabled:
+                        GEMINI_OUTAGE_CIRCUIT.success()
                     native_video_summary=result.summary
                     native_timeline_summary=result.timeline_summary
                     for obs in result.observations:
@@ -501,12 +506,13 @@ def _analyze_job(job_id):
                 requests=([('single',[f],f'frame {f["at"]}') for f in frame_selection]
                           if not video_mode else [])
                 lookup={f['frame']:f for f in sampled}
-                for pair in pair_selection:
-                    try:
-                        f1,f2=lookup[pair.frame],lookup[pair.frame2]
-                        requests.append(('pair',[f1,f2],f'pair {pair.at}-{pair.at2}'))
-                    except KeyError:
-                        vlm_errors.append(f'pair {pair.at}-{pair.at2}: missing sampled frame')
+                if not video_mode:
+                    for pair in pair_selection:
+                        try:
+                            f1,f2=lookup[pair.frame],lookup[pair.frame2]
+                            requests.append(('pair',[f1,f2],f'pair {pair.at}-{pair.at2}'))
+                        except KeyError:
+                            vlm_errors.append(f'pair {pair.at}-{pair.at2}: missing sampled frame')
                 # Soft budget only prevents scheduling subsequent SDK calls.
                 budget=max(15,min(600,int(os.environ.get('VLM_TOTAL_BUDGET_SECONDS','120'))))
                 stop_failures=max(1,min(6,int(os.environ.get('VLM_STOP_AFTER_FAILURES','2'))))
@@ -545,6 +551,19 @@ def _analyze_job(job_id):
                 coverage['vlm']='ok' if vlm_calls and not vlm_errors else 'partial' if vlm_calls else 'error'
             except (VLMError, ValueError) as exc:
                 coverage['vlm']='error';vlm_errors.append(str(exc)[:180])
+                # Native-video exceptions bypass the legacy per-frame
+                # exception handler. Count transient API failures here so
+                # later jobs can be skipped while OCR/ASR still complete.
+                # Do not count a circuit-open skip as another failed request.
+                if locals().get('native_request_started',False) and circuit_enabled:
+                    opened=GEMINI_OUTAGE_CIRCUIT.failure(
+                        str(exc),
+                        threshold=int(os.getenv('VLM_CIRCUIT_FAILURES','2')),
+                        cooldown_seconds=int(os.getenv('VLM_CIRCUIT_COOLDOWN_SECONDS','180')))
+                    if opened:
+                        vlm_errors.append(
+                            'Gemini outage circuit opened: subsequent jobs '
+                            'skip VLM; OCR/ASR continue and reviewer decides.')
         else:
             coverage['vlm']='disabled'
 
