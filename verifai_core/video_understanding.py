@@ -83,7 +83,7 @@ def video_prompt(product: dict) -> str:
 
 
 _MIME = {
-    '.mp4':'video/mp4', '.mov':'video/quicktime', '.webm':'video/webm',
+    '.mp4':'video/mp4', '.mov':'video/mov', '.webm':'video/webm',
     '.mpeg':'video/mpeg', '.mpg':'video/mpeg', '.avi':'video/x-msvideo',
     '.mkv':'video/x-matroska',
 }
