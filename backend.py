@@ -13,6 +13,7 @@ from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
 from verifai_core.product_import import ensure_product_import_schema, install_product_import_routes
 from verifai_core.recommendation import recommend_ai
 from verifai_core.local_security import local_only_middleware
+from verifai_core.session_export import install_export_routes
 from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, RULE_VERSION as SPRINT2_RULE_VERSION
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.evidence import RawEvidence, normalize_evidence
@@ -867,3 +868,4 @@ def metrics():
 # Additive, backwards-compatible Sprint-2 evaluation dataset routes.
 install_dataset_routes(app,db,utc)
 install_product_import_routes(app,db,utc)
+install_export_routes(app, db, get_job, utc)

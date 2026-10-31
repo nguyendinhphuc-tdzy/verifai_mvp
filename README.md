@@ -423,3 +423,32 @@ Re-analysis clears the previous human verdict and regenerates evidence;
 export or record the previous review first. Existing jobs preserve
 historical `jobs.decision` and human decisions; the dynamic
 `ai_recommendation` is the canonical displayed suggestion on older jobs.
+
+
+## Export All Sessions (current UI, local-only)
+
+From either **Tổng quan** or **Hàng đợi duyệt**, use
+**↓ Export All Sessions**. A single ZIP downloads from
+`GET /api/sessions/export`. This endpoint is **read-only**, not a data
+reset and not a destructive operation.
+
+Contents:
+- `session_summary.csv`: all jobs including failed/queued/unreviewed,
+  proposed AI decision/reason, coverage, verification state, finding count,
+  final reviewer decision/name/note.
+- `ai_findings.csv`: every stored candidate finding, code, severity,
+  timestamp, full explanation, source, linked evidence ID, reviewer flag.
+- `sessions/*.json`: complete per-job JSON including Product Truth snapshot,
+  OCR/ASR/Gemini evidence, verification, proposed AI decision, reviewer
+  decision, independent labels and audit history.
+- `README.txt`: scope and export notes.
+
+The ZIP intentionally excludes raw videos and frame image binaries. Keep the
+ZIP private: it can contain confidential input and reviewer notes. Candidate
+findings are not proven violations. No sessions are deleted by export.
+
+The export API is localhost-only under the current local security middleware.
+Its presence does **not** imply production readiness: proper authentication,
+role authorization, secret management, backup/restore and audit of downloads
+remain required before multi-user/public deployment. The product-only Excel
+import and test-only Product Truth approval are retained unchanged.
