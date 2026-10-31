@@ -431,6 +431,15 @@ def _analyze_job(job_id):
                     raise VLMError(
                         f'Gemini API tạm thời không sẵn sàng (503/504); '
                         f'tạm bỏ qua VLM ~{remaining}s để OCR/ASR tiếp tục.')
+                input_mode=os.environ.get('VLM_INPUT_MODE','video').strip().lower()
+                if input_mode not in ('video','frames'):
+                    raise VLMError('VLM_INPUT_MODE phải là video hoặc frames')
+                # Preserve offline test adapters with image-only mocked Gemini.
+                video_mode=(input_mode=='video' and
+                            isinstance(client,_ProductionGeminiVLM))
+                native_video_summary=''
+                native_timeline_summary=''
+                attempted_calls=0;skipped_calls=0;failed_calls=0
                 frame_limit=max(0,min(8,int(os.environ.get('VLM_MAX_FRAMES','1'))))
                 pair_limit=max(0,min(6,int(os.environ.get('VLM_MAX_PAIRS','0'))))
                 frame_selection=evenly_spaced(sampled,frame_limit)
@@ -458,7 +467,39 @@ def _analyze_job(job_id):
                         if issue.confidence>=0.70 and len(issue.visible_basis.strip())>=10:
                             flag(issue.code,'medium',anchor['at'],issue.description,uid,'vlm',issue.confidence,
                                  {'prompt_version':PROMPT_VERSION,'paired_timestamp':paired['at'] if paired else None})
-                requests=[('single',[f],f'frame {f["at"]}') for f in frame_selection]
+                if video_mode:
+                    _set_progress(job_id,'vlm',current='native full video',done=0,total=1)
+                    attempted_calls=1
+                    result=analyze_native_video(client,path,p)
+                    vlm_calls+=1
+                    native_video_summary=result.summary
+                    native_timeline_summary=result.timeline_summary
+                    for obs in result.observations:
+                        if obs.timestamp_seconds>duration+1:
+                            continue
+                        evidence('vlm_video_observation',obs.timestamp_seconds,
+                                 obs.description,obs.confidence,source=client.model,
+                                 meta={'category':obs.category,'task':'video',
+                                       'timestamp_source':'model_reported',
+                                       'confidence_kind':'model_self_reported',
+                                       'prompt_version':'gemini-native-video-v1'})
+                    for issue in result.issues:
+                        if issue.timestamp_seconds>duration+1:
+                            continue
+                        uid=evidence('vlm_issue',issue.timestamp_seconds,
+                                     issue.visible_basis+' — '+issue.description,
+                                     issue.confidence,source=client.model,
+                                     meta={'code':issue.code,'task':'video',
+                                           'timestamp_source':'model_reported',
+                                           'visible_basis':issue.visible_basis,
+                                           'confidence_kind':'model_self_reported'})
+                        if issue.confidence>=0.70:
+                            flag(issue.code,'medium',issue.timestamp_seconds,
+                                 issue.description,uid,'vlm',issue.confidence,
+                                 {'task':'video','timestamp_source':'model_reported'})
+                    _set_progress(job_id,'vlm',done=1,total=1,current='native full video')
+                requests=([('single',[f],f'frame {f["at"]}') for f in frame_selection]
+                          if not video_mode else [])
                 lookup={f['frame']:f for f in sampled}
                 for pair in pair_selection:
                     try:
@@ -469,7 +510,6 @@ def _analyze_job(job_id):
                 # Soft budget only prevents scheduling subsequent SDK calls.
                 budget=max(15,min(600,int(os.environ.get('VLM_TOTAL_BUDGET_SECONDS','120'))))
                 stop_failures=max(1,min(6,int(os.environ.get('VLM_STOP_AFTER_FAILURES','2'))))
-                failed_calls=0;attempted_calls=0;skipped_calls=0
                 for n,(task,frames,label) in enumerate(requests,1):
                     elapsed=time.monotonic()-stage_start
                     if elapsed>=budget or failed_calls>=stop_failures:
@@ -529,7 +569,7 @@ def _analyze_job(job_id):
         for n,e in enumerate(normalized):
             # Only visual-text observations can enter price/claim reconciliation.
             # Gemini self-reported confidence is NOT an accuracy calibration.
-            is_vlm_text=(e.kind=='vlm_observation'
+            is_vlm_text=(e.kind in ('vlm_observation','vlm_video_observation')
                          and e.metadata.get('category')=='visible_text'
                          and e.score is not None and e.score>=0.80)
             if e.kind not in ('ocr','asr') and not is_vlm_text: continue
@@ -597,7 +637,7 @@ def _analyze_job(job_id):
                            'price_parser_version':PRICE_PARSER_VERSION,
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind,
                            'reference_status':p.get('reference_status','unverified')})
-        if not any(e.kind in ('ocr','asr','vlm_observation','vlm_issue') for e in normalized):
+        if not any(e.kind in ('ocr','asr','vlm_observation','vlm_video_observation','vlm_issue') for e in normalized):
             flag('EVIDENCE-LOW','medium',0,'Chưa có bằng chứng nội dung từ OCR/ASR/VLM; cần reviewer kiểm tra.')
         # A3 aggregates the existing A1/A2/VLM evidence without changing the
         # candidate findings or the human's final decision.
@@ -629,6 +669,9 @@ def _analyze_job(job_id):
                            'same_shot_pairs':sum(x.likely_same_shot for x in signals),
                            'change_candidates':len(candidates)},
                  'vlm':{'enabled':vlm_enabled(),'model':os.environ.get('VLM_MODEL',DEFAULT_MODEL),
+                         'input_mode':'video' if locals().get('video_mode',False) else 'frames',
+                         'video_summary':locals().get('native_video_summary',''),
+                         'timeline_summary':locals().get('native_timeline_summary',''),
                         'calls_succeeded':vlm_calls,
                          'calls_attempted':locals().get('attempted_calls',0),
                          'calls_skipped':locals().get('skipped_calls',0),
