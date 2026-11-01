@@ -23,7 +23,7 @@ from verifai_core.price import assess_price, PRICE_PARSER_VERSION
 from verifai_core.claims import CLAIM_RULE_VERSION, find_restricted_claims, validate_reference_claims
 from verifai_core.verification import build_verification_report, attach_evidence_ids, VERIFICATION_VERSION
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
-from verifai_core.media_quality import video_stride, select_ocr_frames, OCRCoverage, SAMPLING_VERSION
+from verifai_core.media_quality import video_stride, select_ocr_frames, OCRCoverage, SAMPLING_VERSION, count_decodable_frames
 from verifai_core.vlm import VLMError, vlm_enabled, PROMPT_VERSION
 from verifai_core.gemini import GeminiVLM, DEFAULT_MODEL, GeminiVLM as _ProductionGeminiVLM
 from verifai_core.brand import detect_brand_inconsistencies, BRAND_RULE_VERSION
@@ -285,6 +285,25 @@ def _set_progress(job_id, stage, **data):
         c.execute('UPDATE jobs SET details=? WHERE id=? AND status=?',
                   (json.dumps(details,ensure_ascii=False),job_id,'processing'))
 
+RIGHTS_VALUES=('unknown','self_created','permission_granted','public_review_only')
+
+def cloud_upload_rights():
+    """Declared usage rights that allow sending video/frames to Gemini.
+
+    'unknown' is never eligible: media leaves the machine only after the
+    uploader has declared a usage right (PO decision, Sprint 1).
+    """
+    raw=os.environ.get('VLM_CLOUD_RIGHTS','self_created,permission_granted,public_review_only')
+    return {x.strip() for x in raw.split(',') if x.strip() in RIGHTS_VALUES}-{'unknown'}
+
+def _container_frame_count(cap):
+    """Frame count advertised by the container; <=0 means unknown."""
+    import cv2
+    try:
+        return int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
 def _analyze_job(job_id):
     """One local job; only an atomically claimed queued job may run."""
     import cv2
@@ -301,6 +320,9 @@ def _analyze_job(job_id):
         c.execute('DELETE FROM findings WHERE job_id=?',(job_id,))
         c.execute('DELETE FROM evidence WHERE job_id=?',(job_id,))
     path=UPLOAD/j['stored_name']
+    job_rights=(j['rights'] or 'unknown')
+    vlm_rights_ok=job_rights in cloud_upload_rights()
+    vlm_active=vlm_enabled() and vlm_rights_ok
     coverage={'ocr':'not_installed','asr':'not_installed','visual':'heuristic_screening',
               'c2pa':'not_implemented','vlm':'disabled' if not vlm_enabled() else 'pending'}
     raw=[]; findings=[]; sampled=[]; vlm_calls=0; vlm_errors=[]
@@ -320,7 +342,14 @@ def _analyze_job(job_id):
         if not cap.isOpened(): raise RuntimeError('OpenCV không thể mở video; vui lòng dùng MP4/H.264.')
         fps=float(cap.get(cv2.CAP_PROP_FPS) or 25)
         fps=fps if 0<fps<240 else 25
-        total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)); duration=total/fps if total else 0
+        total=_container_frame_count(cap); frame_count_source='container'
+        if total<=0:
+            # WEBM/MKV often omit frame counts. Without a real duration the
+            # length limit and the Gemini timestamp filter would be bypassed.
+            total=count_decodable_frames(path,limit=int(fps*MAX_DURATION)+1)
+            frame_count_source='decoded'
+        if total<=0: raise RuntimeError('Không đọc được frame nào từ video.')
+        duration=total/fps
         if duration>MAX_DURATION: raise RuntimeError(f'Video vượt giới hạn {MAX_DURATION} giây.')
         interval=video_stride(fps,duration,max_frames=60)
         processed=0;idx=0; frame_dir=FRAMES/job_id;frame_dir.mkdir(parents=True,exist_ok=True)
@@ -406,7 +435,7 @@ def _analyze_job(job_id):
                          f'Biến động frame {pair.at:.1f}s → {pair.at2:.1f}s (chỉ báo heuristic, không chứng minh lỗi AI).',
                          None,pair.frame,pair.frame2,'opencv-temporal-v2',
                          {'pair_signal':pair.to_dict(),'paired_timestamp':pair.at2,'confidence_kind':'not_calibrated'})
-            if not vlm_enabled():
+            if not vlm_active:
                 flag('VIS-SCREEN','low',pair.at,'Biến động hình ảnh cùng cảnh: cần reviewer xem hai frame; chưa có VLM xác nhận.',
                      uid,source='visual_heuristic',meta={'paired_timestamp':pair.at2})
         blurry=[f for f in sampled if f['blur']<24]
@@ -417,7 +446,12 @@ def _analyze_job(job_id):
         timings['visual_seconds']=round(time.monotonic()-stage_start,3)
         _set_progress(job_id,'vlm')
         stage_start=time.monotonic()
-        if vlm_enabled():
+        if vlm_enabled() and not vlm_rights_ok:
+            # Fail closed: incomplete VLM coverage keeps the AI suggestion at Review.
+            coverage['vlm']='skipped_rights'
+            vlm_errors.append(f'Không gửi video/frame lên Gemini: quyền sử dụng video là '
+                              f'"{job_rights}". Khai báo quyền rồi phân tích lại để dùng VLM.')
+        elif vlm_enabled():
             try:
                 client=GeminiVLM()
                 readiness=client.check()
@@ -664,6 +698,7 @@ def _analyze_job(job_id):
         timings['total_seconds']=round(time.monotonic()-t0,3)
         details={'verification_version':VERIFICATION_VERSION,
                  'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
+                 'frame_count':total,'frame_count_source':frame_count_source,
                  'coverage':coverage,'elapsed_seconds':round(time.monotonic()-t0,2),
                  'perception_quality':{
                      'sampling_version':SAMPLING_VERSION,
@@ -688,6 +723,7 @@ def _analyze_job(job_id):
                            'same_shot_pairs':sum(x.likely_same_shot for x in signals),
                            'change_candidates':len(candidates)},
                  'vlm':{'enabled':vlm_enabled(),'model':os.environ.get('VLM_MODEL',DEFAULT_MODEL),
+                         'rights':job_rights,'cloud_upload_allowed':vlm_rights_ok,
                          'input_mode':'video' if locals().get('video_mode',False) else 'frames',
                          'video_summary':locals().get('native_video_summary',''),
                          'timeline_summary':locals().get('native_timeline_summary',''),
@@ -780,6 +816,9 @@ async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source
             if not case:raise HTTPException(404,'Dataset case not found')
             if case['product_id'] and case['product_id']!=product_id:
                 raise HTTPException(409,'Dataset case liên kết Product Truth khác với sản phẩm đã chọn')
+    rights=(rights or '').strip() or 'unknown'
+    if rights not in RIGHTS_VALUES:
+        raise HTTPException(400,'rights phải là một trong: '+', '.join(RIGHTS_VALUES))
     ext=Path(file.filename or '').suffix.lower()
     if ext not in ('.mp4','.mov','.mkv','.webm'):raise HTTPException(400,'Chỉ nhận MP4/MOV/MKV/WEBM')
     jid=uuid.uuid4().hex[:12];stored=f'{jid}{ext}';target=UPLOAD/stored
@@ -792,7 +831,7 @@ async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source
             out.write(chunk)
     if not size:target.unlink(missing_ok=True);raise HTTPException(400,'Video rỗng')
     with db() as c:
-        c.execute('INSERT INTO jobs(id,filename,stored_name,product_id,status,source_url,rights,created_at,details,case_code) VALUES(?,?,?,?,?,?,?,?,?,?)',(jid,Path(file.filename).name,stored,product_id,'queued',source_url[:500],rights[:100],utc(),'{}',case_code or None))
+        c.execute('INSERT INTO jobs(id,filename,stored_name,product_id,status,source_url,rights,created_at,details,case_code) VALUES(?,?,?,?,?,?,?,?,?,?)',(jid,Path(file.filename).name,stored,product_id,'queued',source_url[:500],rights,utc(),'{}',case_code or None))
         if case_code:
             c.execute('UPDATE dataset_cases SET product_id=COALESCE(product_id,?),updated_at=? WHERE code=?',
                       (product_id,utc(),case_code))
