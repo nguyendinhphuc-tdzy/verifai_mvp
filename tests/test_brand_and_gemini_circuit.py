@@ -74,7 +74,7 @@ def _video(path):
 
 def _complete(client, pid, video):
     with video.open('rb') as stream:
-        res=client.post('/api/jobs',data={'product_id':pid},
+        res=client.post('/api/jobs',data={'product_id':pid,'rights':'self_created'},
                         files={'file':('brand.mp4',stream,'video/mp4')})
     assert res.status_code == 200,res.text
     job_id=res.json()['id']

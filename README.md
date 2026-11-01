@@ -508,3 +508,20 @@ This change does not remove the current required `product_id` for uploads;
 public videos without a verified product reference still need a separate
 observation-first public-discovery mode. Do not assign the six synthetic SKUs
 to unrelated commercial videos.
+
+
+## Sprint 1 (11/2026): stabilization changes
+
+- **Reproducible environment:** use Python 3.11. `python -m pip install -r requirements-lock.txt -r requirements-dev.txt`
+  installs the exact versions verified by the offline suite; OCR/ASR extras remain in `requirements-ai.txt`.
+  CI now also runs on every push to `main`.
+- **Test isolation:** `tests/conftest.py` points `VERIFAI_DATA` at a temporary directory and removes Gemini keys
+  before `backend` is imported, so `python -m pytest -q` can no longer touch `data/verifai.sqlite3` or call the live API.
+- **Videos without frame-count metadata** (common for WEBM/MKV): frames are now counted by decoding (bounded by
+  `MAX_VIDEO_SECONDS`), so the length limit is enforced and Gemini timeline events after 1 s are no longer dropped.
+  `details.frame_count_source` is `container` or `decoded`.
+- **Usage rights gate for Gemini:** native video stays the default (`VLM_INPUT_MODE=video`), but video or frames are
+  sent to Google only when the upload declares a usage right. The upload form now requires the field. Allowed values:
+  `self_created`, `permission_granted`, `public_review_only`, `unknown`. With `unknown`, OCR/ASR still run,
+  `coverage.vlm=skipped_rights`, and the AI suggestion stays **Needs Review**. Restrict eligible rights with
+  `VLM_CLOUD_RIGHTS` (default `self_created,permission_granted,public_review_only`).

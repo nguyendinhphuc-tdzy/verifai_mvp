@@ -68,7 +68,7 @@ def run_job(tmp_path,monkeypatch, *, native=False):
     assert p.status_code==200,p.text
     video=create_video(tmp_path)
     with video.open('rb') as stream:
-        response=client.post('/api/jobs',data={'product_id':p.json()['id']},
+        response=client.post('/api/jobs',data={'product_id':p.json()['id'],'rights':'self_created'},
                              files={'file':('full.mp4',stream,'video/mp4')})
     assert response.status_code==200,response.text
     jid=response.json()['id']
