@@ -2,6 +2,8 @@ name: Python tests
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,9 +19,11 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-      - name: Install runtime and testing dependencies
+      - name: Install locked runtime and testing dependencies
         run: |
-          python -m pip install -r requirements.txt
-          python -m pip install pytest
+          python -m pip install -r requirements-lock.txt
+          python -m pip install -r requirements-dev.txt
+      - name: Byte-compile sources
+        run: python -m compileall -q backend.py verifai_core scripts
       - name: Run offline regression suite
         run: python -m pytest -q

@@ -3,7 +3,25 @@
 Real PaddleOCR/faster-whisper inference is checked separately using
 scripts/check_perception.py --live --video <path>.
 """
+import atexit
+import os
+import shutil
+import tempfile
+
 import pytest
+
+# `import backend` runs init() against VERIFAI_DATA at import time. Point it at
+# a throwaway directory BEFORE any test imports backend, so the suite can never
+# migrate or write the developer's real data/verifai.sqlite3, uploads or frames.
+_TEST_DATA = tempfile.mkdtemp(prefix='verifai-test-data-')
+os.environ['VERIFAI_DATA'] = _TEST_DATA
+atexit.register(shutil.rmtree, _TEST_DATA, ignore_errors=True)
+
+# Never bill or call the live Gemini API from the offline suite. Tests that
+# exercise VLM paths enable it explicitly with monkeypatch and a mocked client.
+os.environ['VLM_ENABLED'] = '0'
+for _key in ('GEMINI_API_KEY', 'GOOGLE_API_KEY'):
+    os.environ.pop(_key, None)
 
 
 @pytest.fixture
