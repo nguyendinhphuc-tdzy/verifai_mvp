@@ -17,6 +17,7 @@ from verifai_core.session_export import install_export_routes
 from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, RULE_VERSION as SPRINT2_RULE_VERSION
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
 from verifai_core.video_ocr import iter_all_video_frames
+from verifai_core.adaptive_ocr import AdaptiveOCRScanner, AdaptiveOCRConfig, OCREvent, ADAPTIVE_OCR_VERSION
 from verifai_core.video_understanding import analyze_native_video
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
@@ -37,7 +38,18 @@ MAX_UPLOAD=int(os.environ.get('MAX_VIDEO_MB','150'))*1024*1024
 MAX_DURATION=int(os.environ.get('MAX_VIDEO_SECONDS','180'))
 OCR_MAX_FRAMES=max(0,min(60,int(os.environ.get('OCR_MAX_FRAMES','12'))))
 OCR_SAMPLING_MODE=os.environ.get('OCR_SAMPLING_MODE','hybrid').strip().lower()
-OCR_SCAN_MODE=os.environ.get('OCR_SCAN_MODE','all').strip().lower()
+OCR_SCAN_MODES=('adaptive','all','sampled')
+# adaptive (default): check every frame, OCR on a <=0.5 s grid + visual changes,
+# bisect text changes, re-read new numeric text at full resolution.
+# all: OCR every decoded frame (exhaustive reference, slow). sampled: legacy.
+OCR_SCAN_MODE=os.environ.get('OCR_SCAN_MODE','adaptive').strip().lower()
+
+def adaptive_ocr_config():
+    return AdaptiveOCRConfig(
+        max_gap_seconds=float(os.environ.get('OCR_MAX_GAP_SECONDS','0.5')),
+        min_gap_seconds=float(os.environ.get('OCR_MIN_GAP_SECONDS','0.25')),
+        change_threshold=float(os.environ.get('OCR_CHANGE_THRESHOLD','12')),
+        fullres_recheck=os.environ.get('OCR_FULLRES_RECHECK','1')=='1')
 _ANALYSIS_SLOTS=threading.BoundedSemaphore(max(1,min(2,int(os.environ.get('MAX_CONCURRENT_JOBS','1')))))
 for p in (DATA,UPLOAD,FRAMES): p.mkdir(parents=True,exist_ok=True)
 @asynccontextmanager
@@ -376,37 +388,66 @@ def _analyze_job(job_id):
         # representative subset (default 12) to keep CPU latency bounded.
         # Keep B1 hybrid OCR sampling and PR10's CPU-saving opt-out.
         ocr_enabled = os.getenv('OCR_ENABLED','1') == '1'
-        if OCR_SCAN_MODE not in ('all','sampled'):
-            raise RuntimeError('OCR_SCAN_MODE phải là all hoặc sampled')
+        if OCR_SCAN_MODE not in OCR_SCAN_MODES:
+            raise RuntimeError('OCR_SCAN_MODE phải là '+', '.join(OCR_SCAN_MODES))
         all_frames=ocr_enabled and OCR_SCAN_MODE=='all'
-        chosen=(iter_all_video_frames(path) if all_frames else
-                select_ocr_frames(sampled,min(OCR_MAX_FRAMES,len(sampled)),
-                                  mode=OCR_SAMPLING_MODE) if ocr_enabled else [])
-        expected_ocr_frames = max(0,total) if all_frames else len(chosen)
+        adaptive=ocr_enabled and OCR_SCAN_MODE=='adaptive'
+        scanner=None
+        if adaptive:
+            # Every decoded frame is checked; OCR only where text may differ.
+            scanner=AdaptiveOCRScanner(
+                frame_ocr,fps,adaptive_ocr_config(),
+                progress=lambda checked,calls:_set_progress(
+                    job_id,'ocr',done=checked,total=total,ocr_calls=calls,mode='adaptive'))
+            events=scanner.scan(iter_all_video_frames(path,keep_full=scanner.config.fullres_recheck))
+            expected_ocr_frames=total
+        else:
+            chosen=(iter_all_video_frames(path) if all_frames else
+                    select_ocr_frames(sampled,min(OCR_MAX_FRAMES,len(sampled)),
+                                      mode=OCR_SAMPLING_MODE) if ocr_enabled else [])
+            expected_ocr_frames = max(0,total) if all_frames else len(chosen)
+            def _plain_events(frames):
+                for frame in frames:
+                    results,status=frame_ocr(frame['image'])
+                    yield OCREvent(frame,results,status,OCR_SCAN_MODE,visible_until=frame['at'])
+            events=_plain_events(chosen)
         _set_progress(job_id,'ocr',done=0,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
         stage_start=time.monotonic()
-        for n,frame in enumerate(chosen,1):
-            ocr,ocr_status=frame_ocr(frame['image'])
-            ocr_health.observe(ocr_status,len(ocr))
-            if ocr_status=='ok':
-                if all_frames and ocr:
+        for n,event in enumerate(events,1):
+            frame=event.frame
+            ocr_health.observe(event.status,len(event.results))
+            if event.status=='ok':
+                if (all_frames or adaptive) and event.results:
                     cv2.imwrite(str(frame_dir/frame['frame']),frame['image'],
                                 [cv2.IMWRITE_JPEG_QUALITY,80])
-                for text,score in ocr:
-                    evidence('ocr',frame['at'],text,score,frame['frame'],source='paddleocr',
-                             meta={'confidence_kind':'ocr_engine',
-                                   'scan_mode':OCR_SCAN_MODE,
-                                   'source_frame_index':frame.get('source_frame_index'),
-                                   'sampling_version':SAMPLING_VERSION})
+                for text,score in event.results:
+                    meta={'confidence_kind':'ocr_engine',
+                          'scan_mode':OCR_SCAN_MODE,
+                          'source_frame_index':frame.get('source_frame_index'),
+                          'sampling_version':SAMPLING_VERSION}
+                    if adaptive:
+                        meta.update({'ocr_reason':event.reason,
+                                     'inherited_frames':event.inherited_frames,
+                                     'fullres_reread':event.fullres_used,
+                                     'adaptive_version':ADAPTIVE_OCR_VERSION})
+                        if event.visible_until>frame['at']:
+                            meta['segment_end_seconds']=round(event.visible_until,3)
+                    evidence('ocr',frame['at'],text,score,frame['frame'],source='paddleocr',meta=meta)
             ocr_calls+=1
-            if n==expected_ocr_frames or (all_frames and n%5==0) or (not all_frames and n%2==0):
+            if not adaptive and (n==expected_ocr_frames or (all_frames and n%5==0) or (not all_frames and n%2==0)):
                 _set_progress(job_id,'ocr',done=n,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
-        _set_progress(job_id,'ocr',done=ocr_calls,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
+        if not adaptive:
+            _set_progress(job_id,'ocr',done=ocr_calls,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
         ocr_health_data=ocr_health.snapshot()
         ocr_health_data['scan_mode']=OCR_SCAN_MODE
-        ocr_health_data['expected_decoded_frames']=total if all_frames else None
-        ocr_health_data['complete_video_scan']=bool(all_frames and (total<=0 or ocr_calls>=total))
-        if all_frames and total>0 and ocr_calls<total:
+        ocr_health_data['expected_decoded_frames']=total if (all_frames or adaptive) else None
+        checked_frames=(scanner.stats.decoded_frames if scanner else ocr_calls if all_frames else 0)
+        ocr_health_data['complete_video_scan']=bool(
+            (all_frames or adaptive) and (total<=0 or checked_frames>=total)
+            and (scanner is None or scanner.stats.snapshot(scanner.config,fps)['all_frames_accounted']))
+        if scanner:
+            ocr_health_data['adaptive']=scanner.stats.snapshot(scanner.config,fps)
+        if (all_frames or adaptive) and total>0 and checked_frames<total:
             ocr_health_data['status']='partial' if ocr_health.successful_frames else 'error'
             ocr_health_data['errors'].append('Decoder stopped before advertised frame count')
         if not ocr_enabled:
@@ -414,6 +455,9 @@ def _analyze_job(job_id):
         coverage['ocr']=ocr_health_data['status']
         timings['ocr_seconds']=round(time.monotonic()-stage_start,3)
         timings['ocr_frames']=ocr_calls
+        timings['ocr_checked_frames']=checked_frames or ocr_calls
+        if scanner:
+            timings['ocr_fullres_calls']=scanner.stats.fullres_calls
         timings['ocr_avg_seconds_per_frame']=round(timings['ocr_seconds']/ocr_calls,3) if ocr_calls else None
         _set_progress(job_id,'asr')
         stage_start=time.monotonic()
@@ -921,7 +965,8 @@ def get_video(jid:str):
     return FileResponse(UPLOAD/j['stored_name'],media_type='video/mp4')
 @app.get('/api/jobs/{jid}/frames/{name}')
 def get_frame(jid:str,name:str):
-    if not re.fullmatch(r'[0-9a-f]{12}',jid) or not re.fullmatch(r'\d{3}\.jpg',name):raise HTTPException(400,'Invalid frame')
+    # \d{3}.jpg = UI timeline thumbnails; ocr-\d{8}.jpg = frames saved by full/adaptive OCR.
+    if not re.fullmatch(r'[0-9a-f]{12}',jid) or not re.fullmatch(r'(?:\d{3}|ocr-\d{8})\.jpg',name):raise HTTPException(400,'Invalid frame')
     p=FRAMES/jid/name
     if not p.is_file():raise HTTPException(404,'Frame missing')
     return FileResponse(p,media_type='image/jpeg')

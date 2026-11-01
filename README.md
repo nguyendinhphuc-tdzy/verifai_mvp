@@ -525,3 +525,9 @@ to unrelated commercial videos.
   `self_created`, `permission_granted`, `public_review_only`, `unknown`. With `unknown`, OCR/ASR still run,
   `coverage.vlm=skipped_rights`, and the AI suggestion stays **Needs Review**. Restrict eligible rights with
   `VLM_CLOUD_RIGHTS` (default `self_created,permission_granted,public_review_only`).
+- **Adaptive full-coverage OCR (default):** `OCR_SCAN_MODE=adaptive` checks every decoded frame but runs OCR only on a
+  <=0.5 s grid, on visual changes (at most every 0.25 s), at text-change boundaries, and re-reads new numeric text at
+  full resolution. Measured 3.2x faster than `all` with 100% stable-text recall on two real clips (99.37% over nine in
+  simulation). `all` stays available as the exhaustive reference. Details and limits:
+  [docs/OCR_ADAPTIVE_S1-2.md](docs/OCR_ADAPTIVE_S1-2.md). Frames saved by full/adaptive OCR (`ocr-XXXXXXXX.jpg`) are now
+  served to the UI (previously rejected by the frame route).
