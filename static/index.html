@@ -41,7 +41,7 @@
       <div id="queueTable" class="tablewrap" aria-live="polite"></div>
     </div>
     <div id="jobDetail" class="hidden" style="margin-top:22px" aria-live="polite">
-      <div class="sectionhead"><div><h2 id="jobTitle">Chi tiết video</h2><p id="jobMeta"></p></div><span id="jobBadge"></span></div>
+      <div class="sectionhead"><div><h2 id="jobTitle">Chi tiết video</h2><p id="jobMeta"></p><div class="row" id="jobProductControl" style="margin-top:6px"><label for="jobProductSelect" class="footnote">Sản phẩm tham chiếu (SKU)</label><select id="jobProductSelect" class="search" style="max-width:320px" aria-label="Đổi sản phẩm tham chiếu"></select><button type="button" class="mini" id="jobProductApply" onclick="changeJobProduct()">Gắn SKU và phân tích lại</button></div></div><span id="jobBadge"></span></div>
       <div class="review-layout">
         <div class="panel review-video-panel">
           <div class="review-subhead"><h3>Video</h3><button type="button" class="mini" onclick="exportEvidence()">↓ Xuất bằng chứng</button></div>
@@ -360,7 +360,7 @@ function renderVerification(d){
  }).join('');
 }
 async function loadJob(jid){
- const d=await api('/api/jobs/'+jid);currentJob=d;renderLabelSuggestion(d);
+ const d=await api('/api/jobs/'+jid);currentJob=d;renderLabelSuggestion(d);renderJobProduct(d);
  $('jobDetail').classList.remove('hidden');$('jobTitle').textContent=d.filename;
  $('jobBadge').innerHTML=`<span class="pill ${esc(d.status)}">${esc(d.status)}</span>`;
  $('jobMeta').textContent=`${d.product.sku} · ${d.product.name} · ${d.details.duration||'—'}s · Job ${d.id}`;
@@ -446,6 +446,8 @@ async function submitReview(decision){
  try{await post(`/api/jobs/${selected}/review`,{decision,reviewer,note:$('reviewNote').value});toast('Đã lưu quyết định');await loadJob(selected);await refreshAll()}
  catch(e){toast(e.message)}
 }
+function renderJobProduct(d){const sel=$('jobProductSelect'),busy=['queued','processing'].includes(d.status);sel.innerHTML=products.map(p=>`<option value="${esc(p.id)}"${p.id===d.product_id?' selected':''}>${esc(p.sku)} · ${esc(p.name)}</option>`).join('');sel.disabled=busy;$('jobProductApply').disabled=busy}
+async function changeJobProduct(){if(!selected||!currentJob)return;const pid=$('jobProductSelect').value;if(pid===currentJob.product_id)return toast('Video đã gắn sản phẩm này');const p=products.find(x=>x.id===pid);if(!confirm(`Gắn video với ${p?p.sku:'sản phẩm đã chọn'} và phân tích lại? Cảnh báo và quyết định reviewer hiện tại sẽ được đặt lại (audit log vẫn giữ). Video không cần tải lên lại.`))return;try{const actor=$('reviewer').value.trim()||'reviewer';await post(`/api/jobs/${selected}/product`,{product_id:pid,actor});toast('Đã gắn SKU mới, đang phân tích lại');await refreshAll();await loadJob(selected)}catch(e){toast(e.message)}}
 const LABEL_NAMES={clean:'Không lỗi',error:'Có lỗi',uncertain:'Chưa chắc chắn'};
 function renderLabelSuggestion(d){const s=d.label_suggestion,box=$('labelSuggestion'),btn=$('acceptSuggestionBtn');if(!s){box.textContent=d.status==='completed'?'Chưa có gợi ý.':'AI sẽ gợi ý nhãn sau khi phân tích xong.';btn.disabled=true}else{btn.disabled=false;$('truthLabel').value=s.label;box.innerHTML=`<b>AI gợi ý: ${esc(LABEL_NAMES[s.label]||s.label)}</b> <span class="pill">${s.strength==='strong'?'chắc chắn':'cần xác minh'}</span> <span class="pill ${esc(s.decision)}">${esc(s.decision)}</span>`+(s.error_types?.length?`<div style="margin-top:6px">Loại lỗi: ${s.error_types.map(t=>`<span class="pill high">${esc(t)}</span>`).join(' ')}</div>`:'')+`<div class="footnote" style="margin-top:6px">${esc(s.reason)}</div>`}$('labelHistory').innerHTML=(d.labels||[]).map(l=>`${esc(l.annotator)}: <b>${esc(LABEL_NAMES[l.label]||l.label)}</b> (${l.label_source==='accepted_ai_suggestion'?'chấp nhận gợi ý AI':l.label_source==='reviewer_override'?'reviewer sửa gợi ý':'reviewer'})`).join('<br>')}
 async function saveLabel(label,types){if(!selected)return;const annotator=$('reviewer').value.trim();if(!annotator)return toast('Nhập tên người duyệt trước khi gán nhãn');try{const r=await post(`/api/jobs/${selected}/labels`,{annotator,label,error_types:types||[]});toast(r.label_source==='accepted_ai_suggestion'?'Đã chấp nhận gợi ý AI':'Đã lưu nhãn của reviewer');await loadJob(selected);await refreshAll()}catch(e){toast(e.message)}}

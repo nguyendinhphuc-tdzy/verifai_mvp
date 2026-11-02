@@ -977,6 +977,39 @@ def reanalyze(jid: str):
     _start_job(jid)
     return {'id':jid,'status':'queued'}
 
+class JobProductIn(BaseModel):
+    product_id:str=Field(min_length=1,max_length=64)
+    actor:str=Field(default='reviewer',min_length=1,max_length=100)
+
+@app.post('/api/jobs/{jid}/product')
+def change_job_product(jid: str, v: JobProductIn):
+    """Attach or change the Product Truth of an analysed video, then re-analyse
+    the stored video. Findings depend on the reference, so results computed
+    against the old SKU are never kept under the new one."""
+    with db() as c:
+        c.execute('BEGIN IMMEDIATE')
+        j=c.execute('SELECT status,stored_name,product_id,case_code FROM jobs WHERE id=?',(jid,)).fetchone()
+        if not j: raise HTTPException(404,'Job not found')
+        if j['status'] in ('queued','processing'): raise HTTPException(409,'Job đang chạy; đợi xong rồi đổi SKU')
+        new=c.execute('SELECT id,sku FROM products WHERE id=?',(v.product_id,)).fetchone()
+        if not new: raise HTTPException(404,'Product not found')
+        if j['product_id']==v.product_id: raise HTTPException(409,'Video đã gắn sản phẩm này')
+        if j['case_code']:
+            case=c.execute('SELECT product_id FROM dataset_cases WHERE code=?',(j['case_code'],)).fetchone()
+            if case and case['product_id'] and case['product_id']!=v.product_id:
+                raise HTTPException(409,'Dataset case liên kết Product Truth khác với sản phẩm đã chọn')
+        if not (UPLOAD/j['stored_name']).is_file(): raise HTTPException(404,'Uploaded video missing')
+        old=c.execute('SELECT sku FROM products WHERE id=?',(j['product_id'],)).fetchone()
+        c.execute('''UPDATE jobs SET product_id=?,status=?,decision=NULL,review_decision=NULL,reviewer=NULL,
+                     review_note=NULL,recovery_attempts=0 WHERE id=?''',(v.product_id,'queued',jid))
+        audit(c,jid,v.actor,'product_changed',{
+            'from_product_id':j['product_id'],'from_sku':old['sku'] if old else None,
+            'to_product_id':v.product_id,'to_sku':new['sku'],'previous_status':j['status'],
+            'previous_review_cleared':True,'reanalyze':True,
+            'note':'Nhãn đã gán trước đó được giữ trong lịch sử; gợi ý AI được tính lại theo SKU mới.'})
+    _start_job(jid)
+    return {'id':jid,'status':'queued','product_id':v.product_id,'sku':new['sku']}
+
 @app.get('/api/jobs')
 def list_jobs():
     with db() as c:
