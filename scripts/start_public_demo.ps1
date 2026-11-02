@@ -33,7 +33,13 @@ try {
     Write-Host ''
     Write-Host 'Dang mo Cloudflare Tunnel. Tim dong https://....trycloudflare.com ben duoi va gui link do.'
     Write-Host 'Dang nhap: ten bat ky, mat khau = VERIFAI_ACCESS_CODE.'
-    & cloudflared tunnel --url "http://127.0.0.1:$Port" --no-autoupdate
+    # Use a private, empty config: a user-level ~/.cloudflared/config.yml from
+    # another project may hold ingress rules (e.g. a catch-all http_status:404)
+    # that would hijack this quick tunnel. HTTP/2 over TCP is steadier than QUIC
+    # on home networks.
+    $cfg = Join-Path $env:TEMP 'verifai-cloudflared.yml'
+    Set-Content -Path $cfg -Value 'no-autoupdate: true' -Encoding ascii
+    & cloudflared tunnel --config $cfg --protocol http2 --url "http://127.0.0.1:$Port"
 }
 finally {
     if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -Force }
