@@ -44,3 +44,9 @@ def test_real_ocr_noise_from_original_videos_is_not_flagged():
     # Printed typos and other brands are still caught.
     assert [c.observed for c in check_brand_typo('MinniFeed', 'MiniFeed', 2)] == ['MinniFeed']
     assert [c.observed for c in check_brand_substitution('NutriMax', 'NutriGrow', 2)] == ['NutriMax']
+
+
+def test_number_one_claim_needs_a_standalone_phrase():
+    assert check_unapproved_claims_fuzzy('so 16m g0i to', [], []) == []  # OCR noise, VID_LOI31
+    assert [c.reason for c in check_unapproved_claims_fuzzy('Thương hiệu số 1 Việt Nam', [], [])] == \
+        ['superlative_not_in_approved_claims']

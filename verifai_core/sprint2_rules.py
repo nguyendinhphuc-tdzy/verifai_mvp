@@ -167,7 +167,7 @@ def _fuzzy_contains(haystack: str, needle: str, threshold: float) -> bool:
 
 _NEGATION_FOLDED = ('khong', 'chua', 'khongphai')
 # Absolute/superlative advertising wording that needs an approved-claim basis.
-SUPERLATIVE_MARKERS = ('vuottroi', 'tuyetdoi', 'hoantoan', 'chisau', 'gapdoi', 'so1',
+SUPERLATIVE_MARKERS = ('vuottroi', 'tuyetdoi', 'hoantoan', 'chisau', 'gapdoi',
                        'tot nhat', 'totnhat', 'duynhat', '100%', '999%', 'ngaylap tuc',
                        'ngaylaptuc', 'cam ket', 'camket', 'than ky', 'thanky')
 
@@ -196,6 +196,12 @@ def check_unapproved_claims_fuzzy(text: str, approved: list[str],
             return [RuleCandidate('CLAIM-02', text, '; '.join(approved), 'high_risk_phrase_fuzzy')]
     markers = [m.replace(' ', '') for m in SUPERLATIVE_MARKERS]
     hits = [folded.find(m) for m in markers if m in folded]
+    # "số 1" only as a standalone phrase ('so 16m g0i' is OCR noise).
+    spaced = re.sub(r'[^a-z0-9% ]', ' ', unicodedata.normalize('NFKD', str(text).replace('đ', 'd'))
+                    .encode('ascii', 'ignore').decode().casefold())
+    number_one = re.search(r'(?<![a-z0-9])so\s*1(?![0-9a-z])', spaced)
+    if number_one:
+        hits.append(folded.find('so1') if 'so1' in folded else 0)
     # A negation before the wording ("không chữa khỏi hoàn toàn") is a denial.
     negated = hits and any(n in folded[:min(hits)] for n in _NEGATION_FOLDED)
     if hits and not negated:

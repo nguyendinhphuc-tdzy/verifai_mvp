@@ -43,6 +43,68 @@ class VideoUnderstandingResult(BaseModel):
     issues: list[VideoIssue] = Field(default_factory=list, max_length=60)
 
 
+# Gemini rejects the constrained schema above with 400 INVALID_ARGUMENT
+# (verified 02/11/2026 on gemini-3.5-flash-lite: plain/JSON video requests
+# succeed, the same request with min/max/ge/le constraints fails). The wire
+# schema keeps the same shape without constraints; `to_strict` clamps the
+# reply and validates it against VideoUnderstandingResult.
+class _WireObservation(BaseModel):
+    timestamp_seconds: float
+    description: str
+    category: VideoCategory
+    confidence: float
+
+
+class _WireIssue(BaseModel):
+    timestamp_seconds: float
+    code: VideoIssueCode
+    description: str
+    visible_basis: str
+    confidence: float
+
+
+class VideoUnderstandingWire(BaseModel):
+    summary: str
+    timeline_summary: str
+    observations: list[_WireObservation]
+    issues: list[_WireIssue]
+
+
+def _clamp(value, low, high):
+    try:
+        return min(high, max(low, float(value)))
+    except (TypeError, ValueError):
+        return low
+
+
+def to_strict(raw: str) -> VideoUnderstandingResult:
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError('Gemini video reply is not a JSON object')
+    observations = []
+    for item in (data.get('observations') or [])[:100]:
+        if not isinstance(item, dict) or len(str(item.get('description', '')).strip()) < 3:
+            continue
+        observations.append({**item,
+                             'timestamp_seconds': _clamp(item.get('timestamp_seconds'), 0, 7200),
+                             'description': str(item['description']).strip()[:700],
+                             'confidence': _clamp(item.get('confidence'), 0, 1)})
+    issues = []
+    for item in (data.get('issues') or [])[:60]:
+        if (not isinstance(item, dict) or len(str(item.get('description', '')).strip()) < 5
+                or len(str(item.get('visible_basis', '')).strip()) < 10):
+            continue  # an issue without a concrete visible basis is dropped
+        issues.append({**item,
+                       'timestamp_seconds': _clamp(item.get('timestamp_seconds'), 0, 7200),
+                       'description': str(item['description']).strip()[:700],
+                       'visible_basis': str(item['visible_basis']).strip()[:700],
+                       'confidence': _clamp(item.get('confidence'), 0, 1)})
+    return VideoUnderstandingResult.model_validate({
+        'summary': str(data.get('summary') or '')[:1000],
+        'timeline_summary': str(data.get('timeline_summary') or '')[:2500],
+        'observations': observations, 'issues': issues})
+
+
 def video_prompt(product: dict) -> str:
     reference = {
         'sku':product.get('sku',''),
@@ -129,14 +191,14 @@ def analyze_native_video(adapter, path: Path | str, product: dict) -> VideoUnder
             contents=[uploaded, video_prompt(product)],
             config=types.GenerateContentConfig(
                 response_mime_type='application/json',
-                response_schema=VideoUnderstandingResult,
+                response_schema=VideoUnderstandingWire,
                 thinking_config=types.ThinkingConfig(thinking_level=thinking),
             ),
         )
         if not response.text:
             raise VLMError('Gemini không trả về nội dung phân tích video')
-        return VideoUnderstandingResult.model_validate_json(response.text)
-    except ValidationError as exc:
+        return to_strict(response.text)
+    except (ValidationError, ValueError) as exc:
         raise VLMError('Gemini video JSON không đúng schema: '+str(exc)[:160]) from exc
     except VLMError:
         raise
