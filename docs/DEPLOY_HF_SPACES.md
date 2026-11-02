@@ -1,6 +1,18 @@
-# Deploy VerifAI lên Hugging Face Spaces (miễn phí)
+# Deploy VerifAI lên Hugging Face Spaces
 
 Cập nhật: 02/11/2026.
+
+> **Thay đổi 02/11/2026:** khi tạo Space, Hugging Face hiển thị SDK **Docker là gói trả phí**,
+> và CPU Basic bị khóa với tài khoản free (ảnh chụp màn hình của PO). Phương án demo miễn phí hiện dùng là
+> **chạy trên máy + Cloudflare Quick Tunnel**:
+>
+> 1. Thêm `VERIFAI_ACCESS_CODE=<mã ít nhất 8 ký tự>` vào `.env`.
+> 2. `powershell -ExecutionPolicy Bypass -File scripts\start_public_demo.ps1`
+> 3. Gửi link `https://....trycloudflare.com` hiện trong cửa sổ; đăng nhập bằng tên bất kỳ,
+>    mật khẩu là mã truy cập. Máy phải bật suốt buổi demo; mỗi lần chạy lại sẽ có link mới.
+>
+> Dữ liệu demo nằm trong `data_demo/`, được nạp 8 sản phẩm từ `deploy/seed.sql`; DB thật không bị dùng.
+> Phần dưới đây vẫn đúng nếu sau này có gói Docker trả phí hoặc một host Docker khác.
 
 ## Vì sao không dùng Render free cho backend
 
