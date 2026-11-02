@@ -548,3 +548,26 @@ to unrelated commercial videos.
 - **Cloud demo:** `Dockerfile` for Hugging Face Spaces, opt-in `VERIFAI_PUBLIC_MODE` with a shared access code,
   product-only `deploy/seed.sql`, `.env` auto-loading. See [docs/DEPLOY_HF_SPACES.md](docs/DEPLOY_HF_SPACES.md).
 - **Batch evaluation:** `scripts/run_eval_batch.py` runs real videos through the API in an isolated data directory.
+
+## Đánh giá toàn bộ bộ dữ liệu video (`scripts/evaluate_dataset.py`)
+
+Một lệnh chạy toàn bộ video qua pipeline thật (OCR adaptive, ASR, Gemini, rule, đề xuất,
+nhãn gợi ý) và xuất **một sheet session_summary, mỗi video một dòng, không trùng**:
+
+```powershell
+python scripts/evaluate_dataset.py run `
+  --self-dir "C:\...\VIDEO TỰ TẠO" --public-dir "C:\...\VIDEO CÔNG KHAI" `
+  --work-dir eval_runs/full --sheet eval_runs/session_summary_full.csv
+```
+
+* Chạy song song `--shards` luồng (mặc định 3), video tự tạo trước, video công khai từ ngắn đến dài.
+  Mọi thứ chạy trên CPU của máy; máy phải bật suốt quá trình (80 video mất khoảng 3 đến 4 giờ).
+* **Chạy tiếp được:** dừng giữa chừng rồi chạy lại cùng lệnh, video đã xong được bỏ qua; video bị lỗi
+  Gemini tạm thời (503, rớt mạng) được chạy lại. `--only VID_LOI11 --force` chạy lại một số video.
+* `python scripts/evaluate_dataset.py export --work-dir eval_runs/full --sheet <file.csv>` chỉ xuất lại sheet.
+* SKU của từng video lấy từ `scripts/dataset_sku_map.json`. Video tự tạo không có trong bảng dùng SKU xoay vòng
+  và ghi "Suy đoán"; video công khai không có trong bảng dùng sản phẩm NOREF (chưa có Product Truth).
+* Sheet giữ 21 cột của session_summary, thêm: nhóm dữ liệu, loại lỗi, nguồn SKU, nhãn AI gợi ý, loại lỗi AI,
+  chi tiết finding, số frame OCR, video có âm thanh, kiểm tra nhãn AI, thời gian chạy. Cột reviewer để trống.
+* Kết quả lần chạy 02/11/2026 (80/80 video): bắt được 31/44 video lỗi; sai giá 8/8, claim 7/7, thiếu nhãn AI 6/6,
+  sai brand/thông tin 6/7, lỗi hiển thị 2/7, không nhất quán hình ảnh 2/9; 5/6 video gốc được Pass.

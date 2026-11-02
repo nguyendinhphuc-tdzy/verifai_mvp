@@ -1,0 +1,18 @@
+{
+  "_note": "Video code -> Product Truth SKU used for dataset evaluation. Links come from the PO's analysis sessions (10/2026). Codes not listed: self-created videos use SKU rotation (n-1) % 6 + 1 and are marked 'assumed'; public videos use the NOREF product (no Product Truth).",
+  "PUB002": "SKU008", "PUB023": "SKU008", "PUB027": "SKU008",
+  "VID_GOC01": "SKU001", "VID_GOC02": "SKU002", "VID_GOC03": "SKU003",
+  "VID_GOC04": "SKU004", "VID_GOC05": "SKU005", "VID_GOC06": "SKU006",
+  "VID_LOI01": "SKU001", "VID_LOI02": "SKU002", "VID_LOI03": "SKU003",
+  "VID_LOI04": "SKU004", "VID_LOI05": "SKU005", "VID_LOI06": "SKU006",
+  "VID_LOI07": "SKU001", "VID_LOI08": "SKU002", "VID_LOI09": "SKU003",
+  "VID_LOI10": "SKU004", "VID_LOI12": "SKU006", "VID_LOI13": "SKU001",
+  "VID_LOI14": "SKU002", "VID_LOI15": "SKU003", "VID_LOI16": "SKU004",
+  "VID_LOI17": "SKU005", "VID_LOI18": "SKU006", "VID_LOI19": "SKU001",
+  "VID_LOI20": "SKU002", "VID_LOI21": "SKU004", "VID_LOI23": "SKU001",
+  "VID_LOI24": "SKU002", "VID_LOI25": "SKU003", "VID_LOI26": "SKU004",
+  "VID_LOI27": "SKU005", "VID_LOI28": "SKU002", "VID_LOI29": "SKU001",
+  "VID_LOI30": "SKU006", "VID_LOI31": "SKU001", "VID_LOI32": "SKU002",
+  "VID_LOI33": "SKU003", "VID_LOI34": "SKU004", "VID_LOI35": "SKU005",
+  "VID_LOI36": "SKU006", "VID_LOI37": "SKU001", "VID_LOI38": "SKU002"
+}
