@@ -36,6 +36,14 @@ def main():
     import backend
     client = TestClient(backend.app)
     skus = {p['sku']: p['id'] for p in client.get('/api/products').json()}
+    if 'NOREF' not in skus and any(v.rpartition('=')[2].startswith('NOREF') for v in args.video):
+        # Public clips without a known product: no price/brand reference, so no
+        # fabricated mismatches; content, claim and visual checks still run.
+        created = client.post('/api/products', json={
+            'sku': 'NOREF', 'name': 'Video công khai - chưa có Product Truth', 'brand': '',
+            'price': None, 'claims': [], 'banned': []})
+        created.raise_for_status()
+        skus['NOREF'] = created.json()['id']
     report = {'health': client.get('/api/health').json(), 'videos': []}
     for spec in args.video:
         path, _, target = spec.rpartition('=')

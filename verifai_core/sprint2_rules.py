@@ -48,6 +48,9 @@ def _canonical(text: str) -> str:
 def _specs(text: str) -> set[tuple[str, str]]:
     result = set()
     normalized = _canonical(text)[:1500]
+    # OCR drops the 'ờ' of "tờ" ("Gói 100 t", "Gói 100 tà"); after "gói N"
+    # a lone t/tà/tò/tớ can only be the sheet count unit.
+    normalized = re.sub(r'(g[oó]i\s*\d+\s*)t[aàoòóớờ]?(?![\w])', r'\g<1>tờ', normalized)
     for match in _SPEC.finditer(normalized):
         # Ranges like "6-11kg" are not a single 11kg package weight.
         before = normalized[max(0, match.start()-12):match.start()]

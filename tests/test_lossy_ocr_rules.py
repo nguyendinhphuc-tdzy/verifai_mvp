@@ -50,3 +50,18 @@ def test_number_one_claim_needs_a_standalone_phrase():
     assert check_unapproved_claims_fuzzy('so 16m g0i to', [], []) == []  # OCR noise, VID_LOI31
     assert [c.reason for c in check_unapproved_claims_fuzzy('Thương hiệu số 1 Việt Nam', [], [])] == \
         ['superlative_not_in_approved_claims']
+
+
+def test_sheet_count_unit_survives_ocr_dropping_the_vowel():
+    """VID_LOI11: 'Gói 100 t' (OCR 0.97) on a pack whose reference is 'Gói 80 tờ'."""
+    from verifai_core.sprint2_rules import check_variant
+    for text in ('Gói 100 t', 'Gói 100 tà', 'Gói 100 tò'):
+        assert [(c.observed, c.expected) for c in check_variant(text, 'Gói 80 tờ')] == [('100tờ', '80tờ')]
+    assert check_variant('Gói 80 t', 'Gói 80 tờ') == []
+
+
+def test_ai_disclosure_not_matched_by_product_heading():
+    """VID_LOI44: Gemini text 'SAN PHAM MiniFeed ...' is not an AI disclosure."""
+    from verifai_core.ai_label import find_ai_disclosure
+    assert find_ai_disclosure(['Visible text on screen: SAN PHAM MiniFeed Binh sua 240ml']) is None
+    assert find_ai_disclosure(['SẢN PHẨM']) is None

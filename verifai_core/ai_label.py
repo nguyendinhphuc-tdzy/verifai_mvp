@@ -20,8 +20,10 @@ AI_LABEL_RULE_VERSION = 'ai-label-1.0'
 AI_GENERATED_VALUES = ('unknown', 'yes', 'no')
 
 _PHRASES = (
+    # Full disclosure phrases only: short ones like 'sanphamai' fuzzily matched
+    # "SAN PHAM MiniFeed" (VID_LOI44 false 'found', 02/11/2026).
     'noidungduoctaoboiai', 'noidungtaoboiai', 'duoctaoboiai', 'taoboiai',
-    'noidungai', 'videotaoboiai', 'hinhanhtaoboiai', 'sanphamai',
+    'videotaoboiai', 'hinhanhtaoboiai',
     'aigenerated', 'generatedbyai', 'generatedwithai', 'madewithai', 'createdwithai',
     'aigeneratedcontent', 'createdbyai',
 )
@@ -41,6 +43,8 @@ def _matches(folded: str) -> bool:
     for phrase in _PHRASES:
         if phrase in folded:
             return True
+        if len(phrase) < 10:
+            continue  # short phrases: exact containment only
         if len(folded) >= 8 and SequenceMatcher(None, folded, phrase).ratio() >= 0.80:
             return True
         # Phrase embedded in a longer OCR line: compare same-length windows.
