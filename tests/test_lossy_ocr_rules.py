@@ -32,3 +32,15 @@ def test_brand_substitution_but_not_crops_or_typos():
         assert check_brand_substitution(text, 'SoftDry', 2) == []
     assert check_brand_substitution('NutriGrov', 'NutriGrow', 2) == []  # typo -> TEXT-01
     assert check_brand_substitution('SoftCare', 'SoftDry', 1) == []     # one frame is not enough
+
+
+def test_real_ocr_noise_from_original_videos_is_not_flagged():
+    """Readings from clean VID_GOC01/02/04 on 02/11/2026 (moving packaging)."""
+    from verifai_core.sprint2_rules import check_brand_typo
+    assert check_brand_substitution('BabyGer', 'BabyGentle', 2) == []
+    for token in ('NutriGro', 'NutriGrov', 'NutriGroy'):
+        assert check_brand_typo(token, 'NutriGrow', 2) == []
+    assert check_brand_typo('iniFeed', 'MiniFeed', 2) == []
+    # Printed typos and other brands are still caught.
+    assert [c.observed for c in check_brand_typo('MinniFeed', 'MiniFeed', 2)] == ['MinniFeed']
+    assert [c.observed for c in check_brand_substitution('NutriMax', 'NutriGrow', 2)] == ['NutriMax']

@@ -67,3 +67,6 @@ logs/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+
+# Public demo data (scripts/start_public_demo.ps1)
+data_demo/

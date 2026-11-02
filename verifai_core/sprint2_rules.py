@@ -129,6 +129,10 @@ def check_brand_typo(text: str, brand: str, supporting_frames: int = 0) -> list[
         candidate = token.casefold()
         if candidate == truth:
             continue
+        # OCR on moving packaging crops words ('NutriGro', 'iniFeed') and
+        # misreads the final glyph ('NutriGrov'); neither is a printed typo.
+        if candidate in truth or (len(candidate) == len(truth) and candidate[:-1] == truth[:-1]):
+            continue
         exact = KNOWN_BRAND_TYPOS.get(candidate) == truth
         near = (abs(len(candidate) - len(truth)) <= 1 and
                 SequenceMatcher(None, candidate, truth).ratio() >= 0.83)
@@ -219,6 +223,11 @@ def check_brand_substitution(text: str, brand: str, supporting_frames: int = 0) 
             if SequenceMatcher(None, cand, truth).ratio() >= 0.83:
                 continue  # typo-level difference, handled by TEXT-01
             shared_prefix = len(_common_prefix(cand, truth))
+            rest_cand, rest_truth = cand[shared_prefix:], truth[shared_prefix:]
+            # 'BabyGer' vs 'BabyGentle': the differing part starts like the true
+            # one, so it is a truncated/misread reading, not another brand.
+            if len(rest_cand) < 3 or (rest_truth and rest_cand[0] == rest_truth[0]):
+                continue
             if shared_prefix >= 4 and not token.islower() and not token.isupper():
                 results.append(RuleCandidate('SKU-01', token, word, 'brand_name_substituted'))
     return results

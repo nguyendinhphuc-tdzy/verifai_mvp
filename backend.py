@@ -741,8 +741,11 @@ def _analyze_job(job_id):
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
             # Scenarios in Sprint-2 Sheet 2 informed these text candidates.
             # They are not labels or trained weights, and require reviewer signoff.
+            # OCR misreads digits on moving packaging ('900g' as '300g' at 0.83),
+            # so an OCR spec mismatch needs a confident reading on >= 2 frames.
             for mismatch in (check_variant(e.content, p.get('variant',''))
-                             if e.kind!='ocr' or e.score is None or e.score>=0.80
+                             if e.kind!='ocr' or (e.score is not None and e.score>=0.95
+                                                  and len(ocr_frames_seen)>=2)
                              else []):
                 flag(mismatch.code,'medium',e.timestamp,
                      f'Quy cách/dung tích quan sát "{mismatch.observed}" '
