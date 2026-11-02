@@ -531,3 +531,20 @@ to unrelated commercial videos.
   simulation). `all` stays available as the exhaustive reference. Details and limits:
   [docs/OCR_ADAPTIVE_S1-2.md](docs/OCR_ADAPTIVE_S1-2.md). Frames saved by full/adaptive OCR (`ocr-XXXXXXXX.jpg`) are now
   served to the UI (previously rejected by the frame route).
+- **Regenerate is reachable (02/11/2026):** previously every rule emitted `medium`, so the AI suggestion could never
+  be Regenerate (51 of 52 historical jobs were Needs Review). Strong deterministic evidence is now `high`: a wrong price
+  or restricted/high-risk claim read by OCR on >= 2 frames at score >= 0.90 or heard by ASR, a repeated brand
+  transposition or substitution (`SoftCare` for `SoftDry`). Regenerate still requires a reviewed or test-approved
+  Product Truth and complete OCR and ASR; Gemini-only findings never force it.
+- **AI disclosure label (`AI-LABEL-01`):** uploads declare `ai_generated` (`yes`/`no`/`unknown`). For `yes`, every OCR,
+  ASR and Gemini text item is searched for a disclosure such as "Nội dung được tạo bởi AI" (tolerant of OCR dropping
+  diacritics). Missing after a complete OCR scan is `high`; with incomplete OCR it is `medium`.
+- **Lossy OCR tolerance:** claim checks also match accent-free text (`Tăng chiu cao vưt tri` is still the high-risk
+  claim) and flag absolute wording not in Approved Claims as a weaker candidate.
+- **No audio track:** ASR reports `ok` with `audio_stream: false` instead of failing with `IndexError`.
+- **AI-suggested labels:** each completed job exposes `label_suggestion` (label, error types, reason). The session
+  reviewer accepts or overrides it; labels store `ai_suggested_label` and `label_source`. Because the reviewer sees the
+  suggestion first, `/api/metrics` reports these labels as reviewer agreement, not independent accuracy.
+- **Cloud demo:** `Dockerfile` for Hugging Face Spaces, opt-in `VERIFAI_PUBLIC_MODE` with a shared access code,
+  product-only `deploy/seed.sql`, `.env` auto-loading. See [docs/DEPLOY_HF_SPACES.md](docs/DEPLOY_HF_SPACES.md).
+- **Batch evaluation:** `scripts/run_eval_batch.py` runs real videos through the API in an isolated data directory.

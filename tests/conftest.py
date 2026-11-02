@@ -19,6 +19,7 @@ atexit.register(shutil.rmtree, _TEST_DATA, ignore_errors=True)
 
 # Never bill or call the live Gemini API from the offline suite. Tests that
 # exercise VLM paths enable it explicitly with monkeypatch and a mocked client.
+os.environ['VERIFAI_SKIP_DOTENV'] = '1'
 os.environ['VLM_ENABLED'] = '0'
 for _key in ('GEMINI_API_KEY', 'GOOGLE_API_KEY'):
     os.environ.pop(_key, None)

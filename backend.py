@@ -9,13 +9,15 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
+from verifai_core.envfile import load_env_file
+load_env_file(Path(__file__).resolve().parent/'.env')
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
 from verifai_core.product_import import ensure_product_import_schema, install_product_import_routes
 from verifai_core.recommendation import recommend_ai
 from verifai_core.local_security import local_only_middleware
 from verifai_core.session_export import install_export_routes
-from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, RULE_VERSION as SPRINT2_RULE_VERSION
-from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
+from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, check_unapproved_claims_fuzzy, check_brand_substitution, RULE_VERSION as SPRINT2_RULE_VERSION
+from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed, has_audio_stream
 from verifai_core.video_ocr import iter_all_video_frames
 from verifai_core.adaptive_ocr import AdaptiveOCRScanner, AdaptiveOCRConfig, OCREvent, ADAPTIVE_OCR_VERSION
 from verifai_core.video_understanding import analyze_native_video
@@ -28,6 +30,8 @@ from verifai_core.media_quality import video_stride, select_ocr_frames, OCRCover
 from verifai_core.vlm import VLMError, vlm_enabled, PROMPT_VERSION
 from verifai_core.gemini import GeminiVLM, DEFAULT_MODEL, GeminiVLM as _ProductionGeminiVLM
 from verifai_core.brand import detect_brand_inconsistencies, BRAND_RULE_VERSION
+from verifai_core.ai_label import find_ai_disclosure, AI_GENERATED_VALUES, AI_LABEL_RULE_VERSION
+from verifai_core.label_suggestion import suggest_label
 from verifai_core.vlm_health import GEMINI_OUTAGE_CIRCUIT
 from verifai_core.evaluation import predicted_error, sufficient_coverage, independent_consensus, calculate_metrics
 
@@ -52,6 +56,12 @@ def adaptive_ocr_config():
         fullres_recheck=os.environ.get('OCR_FULLRES_RECHECK','1')=='1')
 _ANALYSIS_SLOTS=threading.BoundedSemaphore(max(1,min(2,int(os.environ.get('MAX_CONCURRENT_JOBS','1')))))
 for p in (DATA,UPLOAD,FRAMES): p.mkdir(parents=True,exist_ok=True)
+# Cloud demo hosts have no persistent disk: start from a product-only seed.
+_SEED_DB=os.environ.get('VERIFAI_SEED_DB','').strip()
+if _SEED_DB and not DB.exists() and Path(_SEED_DB).is_file():
+    _seed=sqlite3.connect(DB)
+    _seed.executescript(Path(_SEED_DB).read_text(encoding='utf-8'))
+    _seed.close()
 @asynccontextmanager
 async def app_lifespan(_app):
     recover_interrupted_jobs()
@@ -94,7 +104,9 @@ def init():
             created_at TEXT NOT NULL);''')
         # Non-destructive migration: old v1 databases retain all jobs/reviews/labels.
         migrations = {
-            'jobs': {'recovery_attempts':'INTEGER NOT NULL DEFAULT 0'},
+            'jobs': {'recovery_attempts':'INTEGER NOT NULL DEFAULT 0',
+                     'ai_generated':"TEXT NOT NULL DEFAULT 'unknown'"},
+            'labels': {'ai_suggested_label':'TEXT','label_source':'TEXT'},
             'evidence': {
                 'end_timestamp': 'REAL', 'frame2': 'TEXT', 'source_model': 'TEXT',
                 'fingerprint': 'TEXT', 'metadata': "TEXT NOT NULL DEFAULT '{}'"
@@ -188,6 +200,9 @@ def reference_scope(status: str) -> str:
 
 @app.get('/')
 def home():return FileResponse(BASE/'static'/'index.html')
+@app.get('/healthz')
+def healthz():
+    return {'ok':True}
 @app.get('/api/health')
 def health():
     enabled = vlm_enabled()
@@ -333,6 +348,7 @@ def _analyze_job(job_id):
         c.execute('DELETE FROM evidence WHERE job_id=?',(job_id,))
     path=UPLOAD/j['stored_name']
     job_rights=(j['rights'] or 'unknown')
+    job_ai_generated=(j['ai_generated'] if 'ai_generated' in j.keys() else None) or 'unknown'
     vlm_rights_ok=job_rights in cloud_upload_rights()
     vlm_active=vlm_enabled() and vlm_rights_ok
     coverage={'ocr':'not_installed','asr':'not_installed','visual':'heuristic_screening',
@@ -655,12 +671,39 @@ def _analyze_job(job_id):
             brand_evidence=normalized[evidence_index]
             brand_evidence.metadata['brand_check']={
                 **detected, 'reference_status':p.get('reference_status','unverified')}
-            flag('SKU-01','medium',brand_evidence.timestamp,
+            flag('SKU-01','high' if brand_evidence.kind=='ocr' else 'medium',brand_evidence.timestamp,
                  f'Thương hiệu trong video “{detected["observed_brand"]}” '
                  f'khác thứ tự tên tham chiếu “{detected["reference_brand"]}”; '
                  'reviewer cần kiểm tra nhãn bao bì, chữ quảng cáo và Product Truth.',
                  source='brand_rule_v1',confidence=brand_evidence.score,
                  meta={**detected,'reference_status':p.get('reference_status','unverified')})
+        if job_ai_generated=='yes':
+            # Dataset group "Thiếu nhãn AI": a declared AI-generated video must
+            # display a disclosure. Absence is only conclusive with full OCR.
+            text_items=[e for e in normalized if e.kind in ('ocr','asr')
+                        or (e.kind in ('vlm_observation','vlm_video_observation')
+                            and e.metadata.get('category')=='visible_text')]
+            disclosure=find_ai_disclosure(e.content for e in text_items)
+            full_ocr=coverage['ocr']=='ok' and bool(ocr_health_data.get('complete_video_scan'))
+            ai_label_meta={'rule_version':AI_LABEL_RULE_VERSION,'declared_ai_generated':True,
+                           'disclosure_found':disclosure,'complete_ocr_scan':full_ocr,
+                           'texts_checked':len(text_items)}
+            if disclosure is None and full_ocr:
+                flag('AI-LABEL-01','high',0,
+                     'Video được khai báo do AI tạo nhưng không tìm thấy nhãn công bố '
+                     '(ví dụ "Nội dung được tạo bởi AI") ở bất kỳ frame nào đã quét OCR '
+                     'hay lời nói. Cần bổ sung nhãn rồi xuất lại video.',
+                     source='ai_label_rule_v1',confidence=None,
+                     meta={**ai_label_meta,'absence_verified':True})
+            elif disclosure is None:
+                flag('AI-LABEL-01','medium',0,
+                     'Chưa tìm thấy nhãn công bố nội dung AI, nhưng OCR chưa quét đủ toàn bộ video; '
+                     'reviewer cần kiểm tra thủ công.',
+                     source='ai_label_rule_v1',meta={**ai_label_meta,'absence_verified':False})
+            details_ai_label={**ai_label_meta,'status':'found' if disclosure else 'missing'}
+        else:
+            details_ai_label={'rule_version':AI_LABEL_RULE_VERSION,'declared_ai_generated':job_ai_generated,
+                              'status':'not_required'}
         if coverage['ocr']!='ok' and coverage['asr']!='ok':
             flag('COVERAGE','medium',0,'OCR/ASR chưa khả dụng; chữ do Gemini đọc chỉ là bằng chứng ứng viên, cần xác minh độc lập.')
         for n,e in enumerate(normalized):
@@ -670,6 +713,14 @@ def _analyze_job(job_id):
                          and e.metadata.get('category')=='visible_text'
                          and e.score is not None and e.score>=0.80)
             if e.kind not in ('ocr','asr') and not is_vlm_text: continue
+            # Deterministic text read by OCR on >=2 frames at score>=0.90, or
+            # heard by ASR, is strong enough to recommend Regenerate. Gemini
+            # text never is (it stays a reviewer candidate).
+            ocr_frames_seen={str(x.get('frame')) for x in e.metadata.get('sources',[])
+                             if isinstance(x,dict) and x.get('frame')} or ({e.frame} if e.frame else set())
+            strong=(e.kind=='asr' or (e.kind=='ocr' and e.score is not None and e.score>=0.90
+                                      and len(ocr_frames_seen)>=2))
+            strong_severity='high' if strong else 'medium'
             claim_mentions=find_restricted_claims(e.content,p['banned'])
             if claim_mentions:
                 e.metadata['claim_v3']={'version':CLAIM_RULE_VERSION,
@@ -679,7 +730,7 @@ def _analyze_job(job_id):
             for claim in claim_mentions:
                 if claim.state!='asserted':
                     continue
-                flag('CLAIM-01','medium',e.timestamp,
+                flag('CLAIM-01',strong_severity,e.timestamp,
                      f'Có cụm claim hạn chế “{claim.phrase}” trong nội dung; '
                      'reviewer cần xác minh ngữ cảnh và nguồn Product Truth.',
                      source='claim_rule_vlm' if is_vlm_text else 'claim_rule_v3',confidence=e.score,
@@ -702,13 +753,25 @@ def _analyze_job(job_id):
                            'reference_variant':p.get('variant',''),
                            'rule_version':SPRINT2_RULE_VERSION,
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
-            for claim in check_unapproved_high_risk_claims(e.content,p['claims'],p['banned']):
-                flag(claim.code,'medium',e.timestamp,
+            exact_claims=check_unapproved_high_risk_claims(e.content,p['claims'],p['banned'])
+            for claim in exact_claims:
+                flag(claim.code,strong_severity,e.timestamp,
                      f'Phát hiện claim có rủi ro chưa nằm trong Approved Claims: "{claim.observed}". '
                      'Không mặc định vi phạm; reviewer cần xác minh nội dung và nguồn.',
                      source='claim_candidate_v1',confidence=e.score,
                      meta={'canonical_index':n,'rule_version':SPRINT2_RULE_VERSION,
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            if not exact_claims and not claim_mentions:
+                # OCR often drops Vietnamese diacritics; match accent-free text.
+                for claim in check_unapproved_claims_fuzzy(e.content,p['claims'],p['banned']):
+                    curated=claim.reason=='high_risk_phrase_fuzzy'
+                    flag(claim.code,strong_severity if curated else 'medium',e.timestamp,
+                         f'Claim chưa nằm trong Approved Claims: "{claim.observed}"'
+                         +(' (khớp cụm rủi ro cao).' if curated else ' (cách nói tuyệt đối hóa).')
+                         +' Reviewer cần xác minh nguồn chứng minh.',
+                         source='claim_fuzzy_v1',confidence=e.score,
+                         meta={'canonical_index':n,'reason':claim.reason,'rule_version':SPRINT2_RULE_VERSION,
+                               'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
             if e.kind=='ocr':
                 source_frames={str(x.get('frame')) for x in e.metadata.get('sources',[])
                                if isinstance(x,dict) and x.get('frame')}
@@ -722,11 +785,20 @@ def _analyze_job(job_id):
                              source='text_typo_v1',confidence=e.score,
                              meta={'canonical_index':n,'rule_version':SPRINT2_RULE_VERSION,
                                    'supporting_frames':sorted(source_frames)})
+                    for sub in check_brand_substitution(e.content,p.get('brand',''),
+                                                        supporting_frames=len(source_frames)):
+                        flag(sub.code,strong_severity,e.timestamp,
+                             f'Video hiển thị thương hiệu "{sub.observed}" thay vì "{sub.expected}" '
+                             f'(đọc trên {len(source_frames)} frame). Cần kiểm tra bao bì và Product Truth.',
+                             source='brand_substitution_v1',confidence=e.score,
+                             meta={'canonical_index':n,'observed_brand':sub.observed,
+                                   'reference_brand':sub.expected,'rule_version':SPRINT2_RULE_VERSION,
+                                   'supporting_frames':sorted(source_frames)})
             price_check = assess_price(e.content, p['price'])
             if price_check.mentions:
                 e.metadata['price_v3'] = price_check.to_dict()
             if price_check.status == 'MISMATCH':
-                flag('PRICE-01','medium',e.timestamp,
+                flag('PRICE-01',strong_severity,e.timestamp,
                      f'Giá quan sát {price_check.compared_vnd:,} ₫ khác giá tham chiếu '
                      f'{p["price"]:,} ₫; cần kiểm tra sản phẩm, giá khuyến mãi và bối cảnh.',
                      source='price_rule_vlm' if is_vlm_text else 'price_rule_v3',confidence=e.score,
@@ -744,6 +816,7 @@ def _analyze_job(job_id):
                  'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
                  'frame_count':total,'frame_count_source':frame_count_source,
                  'coverage':coverage,'elapsed_seconds':round(time.monotonic()-t0,2),
+                 'ai_label':details_ai_label,
                  'perception_quality':{
                      'sampling_version':SAMPLING_VERSION,
                      'sampling_stride_frames':interval,
@@ -753,7 +826,8 @@ def _analyze_job(job_id):
                      'asr':{'status':coverage['asr'],
                             'segments':len(speeches),
                             'segments_with_end':sum(seg.get('end') is not None for seg in speeches),
-                            'speech_observed':bool(speeches)},
+                            'speech_observed':bool(speeches),
+                            'audio_stream':has_audio_stream(path)},
                  },
                  'rule_version':'rules-0.4','price_parser_version':PRICE_PARSER_VERSION,
                  'claim_rule_version':CLAIM_RULE_VERSION,
@@ -850,7 +924,7 @@ def recover_interrupted_jobs():
     return resumed
 
 @app.post('/api/jobs')
-async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source_url:str=Form(''),rights:str=Form('unknown'),case_code:str=Form('')):
+async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source_url:str=Form(''),rights:str=Form('unknown'),case_code:str=Form(''),ai_generated:str=Form('unknown')):
     with db() as c:
         if not c.execute('SELECT 1 FROM products WHERE id=?',(product_id,)).fetchone():raise HTTPException(404,'Product not found')
     case_code=case_code.strip().upper()
@@ -863,6 +937,9 @@ async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source
     rights=(rights or '').strip() or 'unknown'
     if rights not in RIGHTS_VALUES:
         raise HTTPException(400,'rights phải là một trong: '+', '.join(RIGHTS_VALUES))
+    ai_generated=(ai_generated or '').strip().lower() or 'unknown'
+    if ai_generated not in AI_GENERATED_VALUES:
+        raise HTTPException(400,'ai_generated phải là một trong: '+', '.join(AI_GENERATED_VALUES))
     ext=Path(file.filename or '').suffix.lower()
     if ext not in ('.mp4','.mov','.mkv','.webm'):raise HTTPException(400,'Chỉ nhận MP4/MOV/MKV/WEBM')
     jid=uuid.uuid4().hex[:12];stored=f'{jid}{ext}';target=UPLOAD/stored
@@ -875,11 +952,11 @@ async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source
             out.write(chunk)
     if not size:target.unlink(missing_ok=True);raise HTTPException(400,'Video rỗng')
     with db() as c:
-        c.execute('INSERT INTO jobs(id,filename,stored_name,product_id,status,source_url,rights,created_at,details,case_code) VALUES(?,?,?,?,?,?,?,?,?,?)',(jid,Path(file.filename).name,stored,product_id,'queued',source_url[:500],rights,utc(),'{}',case_code or None))
+        c.execute('INSERT INTO jobs(id,filename,stored_name,product_id,status,source_url,rights,created_at,details,case_code,ai_generated) VALUES(?,?,?,?,?,?,?,?,?,?,?)',(jid,Path(file.filename).name,stored,product_id,'queued',source_url[:500],rights,utc(),'{}',case_code or None,ai_generated))
         if case_code:
             c.execute('UPDATE dataset_cases SET product_id=COALESCE(product_id,?),updated_at=? WHERE code=?',
                       (product_id,utc(),case_code))
-        audit(c,jid,'system','uploaded',{'size_bytes':size,'sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'source_url':source_url,'rights':rights})
+        audit(c,jid,'system','uploaded',{'size_bytes':size,'sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'source_url':source_url,'rights':rights,'ai_generated':ai_generated})
     _start_job(jid)
     return {'id':jid,'status':'queued'}
 
@@ -934,6 +1011,7 @@ def get_job(jid:str):
         d['labels']=[dict(r) for r in c.execute('SELECT * FROM labels WHERE job_id=? ORDER BY id DESC',(jid,))]
         d['ai_recommendation']=(recommend_ai(d['details'].get('verification'),d['findings'])
                                  if d['status']=='completed' else None)
+        d['label_suggestion']=suggest_label(d['ai_recommendation'],d['findings'])
         return d
 @app.get('/api/jobs/{jid}/verification')
 def get_verification(jid: str):
@@ -998,14 +1076,28 @@ class LabelIn(BaseModel):
     annotator:str=Field(min_length=1,max_length=100)
     label:str
     notes:str=''
+    error_types:list[str]=Field(default_factory=list)
 @app.post('/api/jobs/{jid}/labels')
 def label_job(jid:str,v:LabelIn):
     if v.label not in ('clean','error','uncertain'):raise HTTPException(400,'Invalid label')
     with db() as c:
         if not c.execute('SELECT 1 FROM jobs WHERE id=?',(jid,)).fetchone():raise HTTPException(404,'Job not found')
-        c.execute('INSERT INTO labels(job_id,annotator,label,notes,created_at) VALUES(?,?,?,?,?)',(jid,v.annotator,v.label,v.notes,utc()))
-        audit(c,jid,v.annotator,'ground_truth_label',{'label':v.label,'notes':v.notes})
-    return {'ok':True}
+    # Record what the AI suggested at labeling time, so agreement is auditable.
+    job=get_job(jid)
+    suggestion=job.get('label_suggestion') or {}
+    suggested=suggestion.get('label')
+    source=('accepted_ai_suggestion' if suggested==v.label else
+            'reviewer_override' if suggested else 'reviewer_only')
+    notes=v.notes
+    if v.error_types:
+        notes=(notes+' | ' if notes else '')+'Loại lỗi: '+', '.join(t[:60] for t in v.error_types[:8])
+    with db() as c:
+        c.execute('INSERT INTO labels(job_id,annotator,label,notes,created_at,ai_suggested_label,label_source) VALUES(?,?,?,?,?,?,?)',
+                  (jid,v.annotator,v.label,notes,utc(),suggested,source))
+        audit(c,jid,v.annotator,'ground_truth_label',{'label':v.label,'notes':notes,
+              'ai_suggested_label':suggested,'label_source':source,
+              'ai_suggestion_codes':suggestion.get('codes',[])})
+    return {'ok':True,'label_source':source,'ai_suggested_label':suggested}
 @app.get('/api/metrics')
 def metrics():
     """Actual-only candidate metrics; same policy as /api/dataset/summary."""
@@ -1014,21 +1106,39 @@ def metrics():
         completed=[j for j in jobs if j['status']=='completed']
         evaluated=[]
         coverage_excluded=0
+        reviewer_truth=consensus_truth=accepted=overridden=0
         for j in completed:
             coverage=json.loads(j['details'] or '{}').get('coverage',{})
             if not sufficient_coverage(coverage):
                 coverage_excluded+=1
                 continue
-            labels=[dict(r) for r in c.execute('SELECT annotator,label FROM labels WHERE job_id=?',(j['id'],))]
+            labels=[dict(r) for r in c.execute('SELECT annotator,label,label_source FROM labels WHERE job_id=? ORDER BY id',(j['id'],))]
             truth=independent_consensus(labels)
-            if truth is None:continue
+            if truth is None:
+                # PO decision 02/11/2026: the session reviewer confirms the AI
+                # suggestion. Use the reviewer's latest clean/error label, but
+                # report it separately: it is not independent of the AI.
+                latest=[l for l in labels if l['label'] in ('clean','error')]
+                if not latest:continue
+                truth=latest[-1]['label']
+                reviewer_truth+=1
+            else:
+                consensus_truth+=1
+            if any(l.get('label_source')=='accepted_ai_suggestion' for l in labels):accepted+=1
+            if any(l.get('label_source')=='reviewer_override' for l in labels):overridden+=1
             findings=[dict(r) for r in c.execute('SELECT code,severity FROM findings WHERE job_id=?',(j['id'],))]
             evaluated.append((truth=='error',predicted_error(findings)))
         result=calculate_metrics(evaluated)
         result.update({'total':len(jobs),'completed':len(completed),
                        'reviewed':sum(bool(j['review_decision']) for j in jobs),
                        'excluded_insufficient_coverage':coverage_excluded,
-                       'note':'Actual-only candidate detection; requires >=2 agreeing annotators and available OCR/ASR/VLM. Dataset endpoint adds case-link constraints.'})
+                       'truth_from_independent_consensus':consensus_truth,
+                       'truth_from_session_reviewer':reviewer_truth,
+                       'reviewer_accepted_ai_suggestion':accepted,
+                       'reviewer_overrode_ai_suggestion':overridden,
+                       'note':('Truth = >=2 agreeing annotators when available, else the session reviewer label. '
+                               'Reviewer labels are given after seeing the AI suggestion, so they measure '
+                               'reviewer agreement with the AI, not independent accuracy.')})
         return result
 
 

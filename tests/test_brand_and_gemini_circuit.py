@@ -116,7 +116,8 @@ def test_brand_candidate_is_evidence_linked_in_real_api(tmp_path,monkeypatch):
     brands=[f for f in job['findings'] if f['code']=='SKU-01']
     assert len(brands)==1,job['findings']
     finding=brands[0]
-    assert finding['severity']=='medium' and finding['source']=='brand_rule_v1'
+    # Repeated OCR brand transposition (>=2 frames) is strong deterministic evidence.
+    assert finding['severity']=='high' and finding['source']=='brand_rule_v1'
     assert finding['metadata']['observed_brand']=='SkinBaby'
     assert finding['metadata']['supporting_frame_count']>=2
     ev=next(e for e in job['evidence'] if e['id']==finding['evidence_id'])

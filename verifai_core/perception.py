@@ -21,6 +21,19 @@ def ocr_installed() -> bool:
         return False
 
 
+def has_audio_stream(path: Path | str) -> bool | None:
+    """True/False when the container could be probed, None when unknown."""
+    try:
+        import av
+    except ImportError:
+        return None
+    try:
+        with av.open(str(path)) as container:
+            return len(container.streams.audio) > 0
+    except Exception:
+        return None
+
+
 def asr_installed() -> bool:
     try:
         return importlib.util.find_spec('faster_whisper') is not None
@@ -117,6 +130,10 @@ class ASRService:
     def extract(self, path: Path | str) -> tuple[list[dict], str]:
         if not asr_installed():
             return [], 'not_installed'
+        if has_audio_stream(path) is False:
+            # No audio track: there is nothing to hear, so the ASR check is
+            # complete with zero speech (faster-whisper would raise IndexError).
+            return [], 'ok'
         try:
             from faster_whisper import WhisperModel
             with self.lock:
