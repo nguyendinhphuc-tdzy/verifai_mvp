@@ -223,6 +223,10 @@ def export(args) -> dict:
     work = Path(args.work_dir).resolve()
     manifest = {m['code']: m for m in json.loads((work / 'manifest.json').read_text(encoding='utf-8'))}
     os.environ['VERIFAI_SKIP_DOTENV'] = '1'
+    # `import backend` runs init() (schema migration) on VERIFAI_DATA at import
+    # time. Point it at this run's own directory, never the default data/ DB.
+    os.environ['VERIFAI_DATA'] = str(work / '_export_scratch')
+    os.environ.pop('VERIFAI_SEED_DB', None)
     sys.path.insert(0, str(ROOT))
     import backend
     from verifai_core.session_export import SUMMARY_COLUMNS
