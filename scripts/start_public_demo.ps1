@@ -39,7 +39,18 @@ try {
     # on home networks.
     $cfg = Join-Path $env:TEMP 'verifai-cloudflared.yml'
     Set-Content -Path $cfg -Value 'no-autoupdate: true' -Encoding ascii
-    & cloudflared tunnel --config $cfg --protocol http2 --url "http://127.0.0.1:$Port"
+    # A brief network drop (Wi-Fi reconnect, DNS not ready) makes cloudflared
+    # exit with "lookup api.trycloudflare.com: no such host". Retry instead of
+    # stopping the app; Ctrl+C still stops everything.
+    $maxAttempts = 10
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        & cloudflared tunnel --config $cfg --protocol http2 --url "http://127.0.0.1:$Port"
+        if ($LASTEXITCODE -eq 0) { break }
+        if ($attempt -lt $maxAttempts) {
+            Write-Host "Tunnel loi (lan $attempt/$maxAttempts, ma $LASTEXITCODE). Kiem tra mang; thu lai sau 10 giay..."
+            Start-Sleep -Seconds 10
+        }
+    }
 }
 finally {
     if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -Force }
