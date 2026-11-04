@@ -261,6 +261,20 @@ VID_LOI26 89 s → 62 s (mirror check 12.6 s → 2.3 s). VID_LOI30/LOI32 are sti
 flagged VIS-04 and VID_GOC01 is not. OCR is now ~90% of the time; avoid running
 more than 2-3 videos at once on one CPU (8 parallel videos made each 4-6x slower).
 
+**GPU OCR (NVIDIA, tested on RTX 4050 Laptop, driver CUDA 13.1):**
+
+```powershell
+& 'C:\Users\PC\AppData\Local\Programs\Python\Python311\python.exe' -m venv --system-site-packages .venv-gpu
+.venv-gpu\Scripts\python.exe -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+```
+
+`scripts\start_public_demo.ps1` uses `.venv-gpu` automatically when it exists;
+delete the folder to return to CPU. `OCR_DEVICE=cpu|gpu:0` forces a device.
+Same model and frames: 1.05 s → 0.095 s per OCR frame; text identical except one
+already-garbled line. End to end, Gemini off: LOI26 62 s → 13 s, LOI30 152 s → 25 s,
+LOI32 58 s → 11 s, GOC01 118 s → 15 s, with the same findings (VIS-04 on LOI30/32,
+TEXT-02 on LOI26, nothing new on GOC01). Model warm-up 36 s → 18 s.
+
 In-process worker threads can still hang in native inference; no reliable
 in-place cancellation is provided. Stop and restart the **single-worker**
 Uvicorn process to recover interrupted jobs; after repeated interruptions,

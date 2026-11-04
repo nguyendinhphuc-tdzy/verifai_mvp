@@ -8,6 +8,15 @@ $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 $Python = 'C:\Users\PC\AppData\Local\Programs\Python\Python311\python.exe'
 if (-not (Test-Path $Python)) { $Python = 'python' }
+# GPU OCR (about 7x faster per video): .venv-gpu = Python 3.11 venv with
+# --system-site-packages plus paddlepaddle-gpu. Delete the folder to go back to CPU.
+$GpuPython = Join-Path $Root '.venv-gpu\Scripts\python.exe'
+if (Test-Path $GpuPython) {
+    $Python = $GpuPython
+    Write-Host 'OCR chay tren GPU (.venv-gpu)'
+} else {
+    Write-Host 'OCR chay tren CPU (khong co .venv-gpu)'
+}
 $Port = 8000
 
 $codeLine = Get-Content .env -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\s*VERIFAI_ACCESS_CODE\s*=\s*(.+)$' } | Select-Object -First 1

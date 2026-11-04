@@ -87,12 +87,16 @@ class OCRService:
         if self.model is None:
             # PP-OCRv5 supports Vietnamese; setting the language is
             # essential for text like "Giá", "sữa", "khăn ướt".
+            # OCR_DEVICE: 'cpu' or 'gpu:0'. Unset keeps Paddle's default (GPU when
+            # a CUDA build of paddlepaddle sees a GPU, otherwise CPU).
+            device = os.environ.get('OCR_DEVICE', '').strip()
             self.model = PaddleOCR(
                 lang=os.environ.get('OCR_LANG', 'vi'),
                 ocr_version='PP-OCRv5',
                 use_doc_orientation_classify=False,
                 use_doc_unwarping=False,
                 use_textline_orientation=False,
+                **({'device': device} if device else {}),
             )
 
     def warm(self) -> str:
