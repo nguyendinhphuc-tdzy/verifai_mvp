@@ -109,3 +109,35 @@ def test_warm_models_loads_ocr_then_asr(monkeypatch):
     backend.warm_models()
     assert order == ['ocr', 'asr']
     assert backend.MODEL_WARMUP['status'] == 'done' and backend.MODEL_WARMUP['ocr'] == 'ok'
+
+
+def test_prefetched_colour_result_survives_full_video_503(tmp_path, monkeypatch):
+    import test_unknown_frame_count as helper
+    import backend
+    from verifai_core.vlm import VLMError
+    monkeypatch.setenv('VLM_COLOR_CHECK', '1')
+
+    def color(client, model, path):
+        return {'status': 'ok', 'times': [0.5, 2.5],
+                'issues': [{'object': 'sữa tắm', 'from_color': 'trắng', 'to_color': 'xanh dương',
+                            'visible_basis': 'dòng sữa trên tay', 'confidence': 0.95, 'timestamp': 2.5}]}
+    monkeypatch.setattr(backend, 'check_color_consistency', color)
+    monkeypatch.setattr(backend._ProductionGeminiVLM, '_get_client', lambda self: object(), raising=False)
+    original = backend._start_vlm_prefetch
+
+    def prefetch(path, product):
+        started = original(path, product)
+
+        def busy(*args):
+            raise VLMError('Lỗi Gemini video: 503 UNAVAILABLE')
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(1) as pool:
+            started['futures']['native'] = pool.submit(busy)
+        return started
+    monkeypatch.setattr(backend, '_start_vlm_prefetch', prefetch)
+    job = helper._run(tmp_path, monkeypatch)
+    assert job['status'] == 'completed', job['details']
+    assert job['details']['coverage']['vlm'] == 'error'  # still fail-closed
+    assert job['details']['vlm']['color_check']['status'] == 'ok'
+    assert [f['code'] for f in job['findings'] if f['code'] == 'VIS-02'] == ['VIS-02']
+    assert any('503' in e for e in job['details']['vlm']['errors'])

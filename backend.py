@@ -683,36 +683,46 @@ def _analyze_job(job_id):
                     _set_progress(job_id,'vlm',current='native full video',done=0,total=1)
                     attempted_calls=1
                     native_request_started=True
-                    result=(_prefetched(vlm_prefetch,'native',timings) if vlm_prefetch
-                            else analyze_native_video(client,path,p))
-                    vlm_calls+=1
-                    if circuit_enabled:
-                        GEMINI_OUTAGE_CIRCUIT.success()
-                    native_video_summary=result.summary
-                    native_timeline_summary=result.timeline_summary
-                    for obs in result.observations:
-                        if obs.timestamp_seconds>duration+1:
-                            continue
-                        evidence('vlm_video_observation',obs.timestamp_seconds,
-                                 obs.description,obs.confidence,source=client.model,
-                                 meta={'category':obs.category,'task':'video',
-                                       'timestamp_source':'model_reported',
-                                       'confidence_kind':'model_self_reported',
-                                       'prompt_version':'gemini-native-video-v1'})
-                    for issue in result.issues:
-                        if issue.timestamp_seconds>duration+1:
-                            continue
-                        uid=evidence('vlm_issue',issue.timestamp_seconds,
-                                     issue.visible_basis+' — '+issue.description,
-                                     issue.confidence,source=client.model,
-                                     meta={'code':issue.code,'task':'video',
+                    native_error=None
+                    try:
+                        result=(_prefetched(vlm_prefetch,'native',timings) if vlm_prefetch
+                                else analyze_native_video(client,path,p))
+                    except (VLMError, ValueError) as exc:
+                        # Sequential path: fail as before (colour/text never called).
+                        # Prefetched path: colour/text already ran in parallel, so keep
+                        # their results and re-raise after them (coverage stays 'error').
+                        if not vlm_prefetch:
+                            raise
+                        native_error=exc
+                    if native_error is None:
+                        vlm_calls+=1
+                        if circuit_enabled:
+                            GEMINI_OUTAGE_CIRCUIT.success()
+                        native_video_summary=result.summary
+                        native_timeline_summary=result.timeline_summary
+                        for obs in result.observations:
+                            if obs.timestamp_seconds>duration+1:
+                                continue
+                            evidence('vlm_video_observation',obs.timestamp_seconds,
+                                     obs.description,obs.confidence,source=client.model,
+                                     meta={'category':obs.category,'task':'video',
                                            'timestamp_source':'model_reported',
-                                           'visible_basis':issue.visible_basis,
-                                           'confidence_kind':'model_self_reported'})
-                        if issue.confidence>=0.70:
-                            flag(issue.code,'medium',issue.timestamp_seconds,
-                                 issue.description,uid,'vlm',issue.confidence,
-                                 {'task':'video','timestamp_source':'model_reported'})
+                                           'confidence_kind':'model_self_reported',
+                                           'prompt_version':'gemini-native-video-v1'})
+                        for issue in result.issues:
+                            if issue.timestamp_seconds>duration+1:
+                                continue
+                            uid=evidence('vlm_issue',issue.timestamp_seconds,
+                                         issue.visible_basis+' — '+issue.description,
+                                         issue.confidence,source=client.model,
+                                         meta={'code':issue.code,'task':'video',
+                                               'timestamp_source':'model_reported',
+                                               'visible_basis':issue.visible_basis,
+                                               'confidence_kind':'model_self_reported'})
+                            if issue.confidence>=0.70:
+                                flag(issue.code,'medium',issue.timestamp_seconds,
+                                     issue.description,uid,'vlm',issue.confidence,
+                                     {'task':'video','timestamp_source':'model_reported'})
                     _set_progress(job_id,'vlm',done=1,total=1,current='native full video')
                     if os.environ.get('VLM_COLOR_CHECK','1')=='1':
                         # Whole-video Gemini misses mid-video colour changes;
@@ -761,6 +771,8 @@ def _analyze_job(job_id):
                                       'check_version':TEXT_CHECK_VERSION})
                         except Exception as exc:
                             text_check={'status':'error','error':str(exc)[:180],'issues':[]}
+                    if native_error is not None:
+                        raise native_error
                 requests=([('single',[f],f'frame {f["at"]}') for f in frame_selection]
                           if not video_mode else [])
                 lookup={f['frame']:f for f in sampled}
