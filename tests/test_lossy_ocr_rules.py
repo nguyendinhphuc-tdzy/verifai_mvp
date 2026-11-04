@@ -65,3 +65,17 @@ def test_ai_disclosure_not_matched_by_product_heading():
     from verifai_core.ai_label import find_ai_disclosure
     assert find_ai_disclosure(['Visible text on screen: SAN PHAM MiniFeed Binh sua 240ml']) is None
     assert find_ai_disclosure(['SẢN PHẨM']) is None
+
+
+def test_product_name_spelling_on_real_ocr_readings():
+    """VID_LOI26/27 (edited 04/11/2026) and VID_LOI13; originals must stay clean."""
+    from verifai_core.sprint2_rules import check_product_name
+    flagged = [('Sũa btt', 'Sữa bột'), ('Sa btt', 'Sữa bột'), ('Khăn ưtt', 'Khăn ướt'),
+               ('Khăn ưótt', 'Khăn ướt'), ('Sa tm toàn thân', 'Sữa tắm gội toàn thân')]
+    for text, name in flagged:
+        assert [c.code for c in check_product_name(text, name)] == ['TEXT-02'], text
+    clean = [('Sa bt', 'Sữa bột'), ('Khăn ưt', 'Khăn ướt'), ('Khăn ưót', 'Khăn ướt'),
+             ('Sa tm gi toàn thân', 'Sữa tắm gội toàn thân'), ('Sa tm gi t', 'Sữa tắm gội toàn thân'),
+             ('tm toàn', 'Sữa tắm gội toàn thân'), ('Bình sũa', 'Bình sữa'), ('Hp 900g, 0-6 tháng', 'Sữa bột')]
+    for text, name in clean:
+        assert check_product_name(text, name) == [], text

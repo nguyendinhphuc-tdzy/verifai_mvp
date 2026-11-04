@@ -16,11 +16,12 @@ from verifai_core.product_import import ensure_product_import_schema, install_pr
 from verifai_core.recommendation import recommend_ai
 from verifai_core.local_security import local_only_middleware
 from verifai_core.session_export import install_export_routes
-from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, check_unapproved_claims_fuzzy, check_brand_substitution, RULE_VERSION as SPRINT2_RULE_VERSION
+from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, check_unapproved_claims_fuzzy, check_brand_substitution, check_product_name, RULE_VERSION as SPRINT2_RULE_VERSION
 from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed, has_audio_stream
 from verifai_core.video_ocr import iter_all_video_frames
 from verifai_core.adaptive_ocr import AdaptiveOCRScanner, AdaptiveOCRConfig, OCREvent, ADAPTIVE_OCR_VERSION
 from verifai_core.video_understanding import analyze_native_video
+from verifai_core.color_consistency import check_color_consistency, COLOR_CHECK_VERSION
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
 from verifai_core.claims import CLAIM_RULE_VERSION, find_restricted_claims, validate_reference_claims
@@ -597,6 +598,30 @@ def _analyze_job(job_id):
                                  issue.description,uid,'vlm',issue.confidence,
                                  {'task':'video','timestamp_source':'model_reported'})
                     _set_progress(job_id,'vlm',done=1,total=1,current='native full video')
+                    if os.environ.get('VLM_COLOR_CHECK','1')=='1':
+                        # Whole-video Gemini misses mid-video colour changes;
+                        # evenly spaced stills in one call catch them.
+                        _set_progress(job_id,'vlm',current='color consistency',done=1,total=1)
+                        try:
+                            color_check=check_color_consistency(client._get_client(),client.model,path)
+                            vlm_calls+=1
+                            for issue in color_check['issues']:
+                                uid=evidence('vlm_issue',issue['timestamp'],
+                                             f"{issue['object']}: {issue['from_color']} → {issue['to_color']}. "
+                                             f"{issue['visible_basis']}",issue['confidence'],source=client.model,
+                                             meta={'code':'VIS-02','task':'color_consistency',
+                                                   'frames_seconds':color_check['times'],
+                                                   'confidence_kind':'model_self_reported',
+                                                   'check_version':COLOR_CHECK_VERSION})
+                                flag('VIS-02','medium',issue['timestamp'],
+                                     f"Màu không nhất quán: {issue['object']} đổi từ {issue['from_color']} "
+                                     f"sang {issue['to_color']}. Reviewer cần xem lại các khung hình.",
+                                     uid,'vlm_color_check',issue['confidence'],
+                                     {'task':'color_consistency','frames_seconds':color_check['times'],
+                                      'check_version':COLOR_CHECK_VERSION})
+                        except Exception as exc:
+                            # Optional extra check: record, never fail the job.
+                            color_check={'status':'error','error':str(exc)[:180],'issues':[]}
                 requests=([('single',[f],f'frame {f["at"]}') for f in frame_selection]
                           if not video_mode else [])
                 lookup={f['frame']:f for f in sampled}
@@ -775,6 +800,17 @@ def _analyze_job(job_id):
                          source='claim_fuzzy_v1',confidence=e.score,
                          meta={'canonical_index':n,'reason':claim.reason,'rule_version':SPRINT2_RULE_VERSION,
                                'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            if (e.kind=='ocr' and e.score is not None and e.score>=0.85
+                    and len(ocr_frames_seen)>=2):
+                # Spelling of the product name line (consonant skeletons survive
+                # PaddleOCR's dropped accented vowels: 'Sũa btt' vs 'Sữa bột').
+                for typo in check_product_name(e.content, p.get('name','')):
+                    flag(typo.code,'medium',e.timestamp,
+                         f'Tên sản phẩm hiển thị "{typo.observed}" sai chính tả so với tham chiếu '
+                         f'"{typo.expected}" (đọc trên {len(ocr_frames_seen)} frame). Cần kiểm tra chữ trên video.',
+                         source='product_name_rule_v1',confidence=e.score,
+                         meta={'canonical_index':n,'reason':typo.reason,'reference_name':p.get('name',''),
+                               'rule_version':SPRINT2_RULE_VERSION,'supporting_frames':sorted(ocr_frames_seen)})
             if e.kind=='ocr':
                 source_frames={str(x.get('frame')) for x in e.metadata.get('sources',[])
                                if isinstance(x,dict) and x.get('frame')}
@@ -848,6 +884,7 @@ def _analyze_job(job_id):
                          'input_mode':'video' if locals().get('video_mode',False) else 'frames',
                          'video_summary':locals().get('native_video_summary',''),
                          'timeline_summary':locals().get('native_timeline_summary',''),
+                         'color_check':locals().get('color_check',{'status':'not_run'}),
                         'calls_succeeded':vlm_calls,
                          'calls_attempted':locals().get('attempted_calls',0),
                          'calls_skipped':locals().get('skipped_calls',0),

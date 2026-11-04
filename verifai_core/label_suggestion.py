@@ -15,6 +15,7 @@ LABEL_SUGGESTION_VERSION = 'label-suggestion-1.0'
 NON_CONTENT_CODES = frozenset({'COVERAGE', 'EVIDENCE-LOW', 'VIS-SCREEN', 'VIS-06'})
 
 ERROR_TYPES = {
+    'TEXT-02': 'Lỗi hiển thị (chính tả tên sản phẩm)',
     'PRICE': 'Sai giá',
     'SKU': 'Sai tên brand / thông tin sản phẩm',
     'TEXT': 'Sai tên brand / thông tin sản phẩm',

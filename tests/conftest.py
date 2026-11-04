@@ -21,6 +21,7 @@ atexit.register(shutil.rmtree, _TEST_DATA, ignore_errors=True)
 # exercise VLM paths enable it explicitly with monkeypatch and a mocked client.
 os.environ['VERIFAI_SKIP_DOTENV'] = '1'
 os.environ['VLM_ENABLED'] = '0'
+os.environ['VLM_COLOR_CHECK'] = '0'  # enabled explicitly where tested
 for _key in ('GEMINI_API_KEY', 'GOOGLE_API_KEY'):
     os.environ.pop(_key, None)
 

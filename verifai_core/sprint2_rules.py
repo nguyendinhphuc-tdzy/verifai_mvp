@@ -249,3 +249,41 @@ def _common_prefix(a: str, b: str) -> str:
             break
         out.append(x)
     return ''.join(out)
+
+
+# --- Product-name spelling on lossy OCR (04/11/2026) -------------------------
+# PaddleOCR drops accented VOWELS ("Sữa bột" -> "Sa bt") but keeps consonants,
+# so names are compared on per-word consonant skeletons:
+#   "Sữa bộtt" -> ["s", "btt"]  vs  "Sữa bột" -> ["s", "bt"]   (VID_LOI26)
+#   "Sa tm toàn thân" -> ["s","tm","tn","thn"] vs ["s","tm","g","tn","thn"] (VID_LOI13)
+_VOWELS = set('aeiouy')
+
+
+def _skeleton_words(text: str) -> list[str]:
+    folded = unicodedata.normalize('NFKD', str(text or '').replace('đ', 'd').replace('Đ', 'D'))
+    folded = ''.join(ch for ch in folded if not unicodedata.combining(ch)).casefold()
+    words = re.findall(r'[a-z]+', folded)
+    return [''.join(ch for ch in w if ch not in _VOWELS) for w in words]
+
+
+def _one_consonant_inserted(observed: str, truth: str) -> bool:
+    return (len(observed) == len(truth) + 1 and truth != ''
+            and any(observed[:i] + observed[i + 1:] == truth for i in range(len(observed))))
+
+
+def check_product_name(text: str, name: str) -> list[RuleCandidate]:
+    """TEXT-02 candidates: the product name line with an extra letter in one
+    word, or with an interior word missing. Truncated readings (first/last word
+    cut off by motion) and different lines are ignored."""
+    truth, seen = _skeleton_words(name), _skeleton_words(text)
+    if len(truth) < 2 or any(not w for w in truth):
+        return []
+    if len(seen) == len(truth):
+        diffs = [i for i in range(len(truth)) if seen[i] != truth[i]]
+        if len(diffs) == 1 and _one_consonant_inserted(seen[diffs[0]], truth[diffs[0]]):
+            return [RuleCandidate('TEXT-02', text, name, 'product_name_extra_letter')]
+    elif len(truth) >= 3 and len(seen) == len(truth) - 1:
+        for j in range(1, len(truth) - 1):
+            if truth[:j] + truth[j + 1:] == seen:
+                return [RuleCandidate('TEXT-02', text, name, 'product_name_word_missing')]
+    return []
