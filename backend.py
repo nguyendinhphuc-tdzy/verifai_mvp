@@ -21,7 +21,11 @@ from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_i
 from verifai_core.video_ocr import iter_all_video_frames
 from verifai_core.adaptive_ocr import AdaptiveOCRScanner, AdaptiveOCRConfig, OCREvent, ADAPTIVE_OCR_VERSION
 from verifai_core.video_understanding import analyze_native_video
-from verifai_core.color_consistency import check_color_consistency, COLOR_CHECK_VERSION
+from verifai_core.color_consistency import check_color_consistency, COLOR_CHECK_VERSION, check_text_rendering, TEXT_CHECK_VERSION
+from verifai_core.frame_anomaly import detect_mirror, detect_pixelation, FRAME_ANOMALY_VERSION
+from verifai_core.infant_nutrition import (CATEGORIES as PRODUCT_CATEGORIES, advertising_restriction,
+                                           breastmilk_comparison, has_age_information, INFANT_RULE_VERSION)
+from verifai_core.rule_registry import RULES, RULES_VERSION, rule_for
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
 from verifai_core.claims import CLAIM_RULE_VERSION, find_restricted_claims, validate_reference_claims
@@ -105,6 +109,7 @@ def init():
             created_at TEXT NOT NULL);''')
         # Non-destructive migration: old v1 databases retain all jobs/reviews/labels.
         migrations = {
+            'product_truth_meta': {'category':"TEXT NOT NULL DEFAULT 'general'",'target_age':"TEXT NOT NULL DEFAULT ''"},
             'jobs': {'recovery_attempts':'INTEGER NOT NULL DEFAULT 0',
                      'ai_generated':"TEXT NOT NULL DEFAULT 'unknown'"},
             'labels': {'ai_suggested_label':'TEXT','label_source':'TEXT'},
@@ -138,7 +143,7 @@ def product_dict(r):
             meta=c.execute('SELECT * FROM product_truth_meta WHERE product_id=?',(d['id'],)).fetchone()
         d.update(dict(meta) if meta else {
             'reference_url':'','reference_note':'','reference_status':'unverified',
-            'revision':1,'updated_at':d['created_at']})
+            'revision':1,'updated_at':d['created_at'],'category':'general','target_age':''})
         with db() as c:
             prof=c.execute('SELECT video_code,variant,expected_video_description,source_class,owner,notes,imported_at FROM product_import_profiles WHERE product_id=?',(d['id'],)).fetchone()
         if prof:
@@ -160,6 +165,8 @@ class ProductIn(BaseModel):
     reference_url:str=Field(default='',max_length=500)
     reference_note:str=Field(default='',max_length=800)
     reference_status:str=Field(default='unverified')
+    category:str=Field(default='general')
+    target_age:str=Field(default='',max_length=60)
 
     @model_validator(mode='after')
     def validate_product_truth(self):
@@ -170,6 +177,9 @@ class ProductIn(BaseModel):
         self.reference_note=self.reference_note.strip()
         if not self.sku or not self.name:
             raise ValueError('SKU và tên sản phẩm không được để trống')
+        if self.category not in PRODUCT_CATEGORIES:
+            raise ValueError('category phải là một trong: '+', '.join(PRODUCT_CATEGORIES))
+        self.target_age=self.target_age.strip()
         if self.reference_status not in ('unverified','reviewed','test_reference_approved'):
             raise ValueError('reference_status phải là unverified, reviewed hoặc test_reference_approved')
         if self.reference_url:
@@ -191,7 +201,7 @@ def _assert_sku_available(conn, sku, skip_id=None):
 
 def _product_snapshot(v):
     return {key:getattr(v,key) for key in ('sku','name','brand','price','claims','banned',
-            'reference_url','reference_note','reference_status')}
+            'reference_url','reference_note','reference_status','category','target_age')}
 
 def reference_scope(status: str) -> str:
     """Never conflate benchmark approval with externally verified commerce data."""
@@ -201,6 +211,11 @@ def reference_scope(status: str) -> str:
 
 @app.get('/')
 def home():return FileResponse(BASE/'static'/'index.html')
+@app.get('/api/rules')
+def list_rules():
+    return {'version':RULES_VERSION,'rules':RULES,
+            'note':'Căn cứ do nhóm tổng hợp; cần pháp chế kiểm tra. App không kết luận vi phạm pháp luật.'}
+
 @app.get('/healthz')
 def healthz():
     return {'ok':True}
@@ -225,9 +240,9 @@ def create_product(v:ProductIn):
                      VALUES(?,?,?,?,?,?,?,?)''',
                   (pid,v.sku,v.name,v.brand,v.price,json.dumps(v.claims,ensure_ascii=False),
                    json.dumps(v.banned,ensure_ascii=False),now))
-        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at)
-                     VALUES(?,?,?,?,?,?)''',
-                  (pid,v.reference_url,v.reference_note,v.reference_status,1,now))
+        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at,category,target_age)
+                     VALUES(?,?,?,?,?,?,?,?)''',
+                  (pid,v.reference_url,v.reference_note,v.reference_status,1,now,v.category,v.target_age))
         c.execute('''INSERT INTO product_truth_audits(product_id,event,revision,snapshot,created_at)
                      VALUES(?,?,?,?,?)''',
                   (pid,'created',1,json.dumps(_product_snapshot(v),ensure_ascii=False),now))
@@ -260,12 +275,12 @@ def update_product(pid:str,v:ProductUpdateIn):
         c.execute('''UPDATE products SET sku=?,name=?,brand=?,price=?,claims=?,banned=? WHERE id=?''',
                   (v.sku,v.name,v.brand,v.price,json.dumps(v.claims,ensure_ascii=False),
                    json.dumps(v.banned,ensure_ascii=False),pid))
-        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at)
-                     VALUES(?,?,?,?,?,?) ON CONFLICT(product_id) DO UPDATE SET
+        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at,category,target_age)
+                     VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(product_id) DO UPDATE SET
                      reference_url=excluded.reference_url, reference_note=excluded.reference_note,
                      reference_status=excluded.reference_status,revision=excluded.revision,
-                     updated_at=excluded.updated_at''',
-                  (pid,v.reference_url,v.reference_note,v.reference_status,new_revision,now))
+                     updated_at=excluded.updated_at,category=excluded.category,target_age=excluded.target_age''',
+                  (pid,v.reference_url,v.reference_note,v.reference_status,new_revision,now,v.category,v.target_age))
         c.execute('''INSERT INTO product_truth_audits(product_id,event,revision,snapshot,created_at)
                      VALUES(?,?,?,?,?)''',
                   (pid,'updated',new_revision,json.dumps(_product_snapshot(v),ensure_ascii=False),now))
@@ -476,6 +491,37 @@ def _analyze_job(job_id):
         if scanner:
             timings['ocr_fullres_calls']=scanner.stats.fullres_calls
         timings['ocr_avg_seconds_per_frame']=round(timings['ocr_seconds']/ocr_calls,3) if ocr_calls else None
+        anomaly_start=time.monotonic()
+        frame_anomaly={'version':FRAME_ANOMALY_VERSION}
+        if os.environ.get('FRAME_ANOMALY_CHECK','1')=='1':
+            _set_progress(job_id,'visual',current='frame anomalies')
+            try:
+                frame_anomaly['pixelation']=detect_pixelation(path)
+                if ocr_enabled and coverage['ocr'] in ('ok','partial'):
+                    frame_anomaly['mirror']=detect_mirror(path,frame_ocr,p.get('brand',''))
+            except Exception as exc:  # optional check: record, never fail the job
+                frame_anomaly['error']=str(exc)[:180]
+            mirror=frame_anomaly.get('mirror') or {}
+            if mirror.get('flagged'):
+                uid=evidence('visual_signal',mirror['first_at'],
+                             'Chữ chỉ đọc được khi lật ngang khung hình: '+', '.join(
+                                 t for h in mirror['hits'] for t in h['texts'])[:300],
+                             None,source='frame_anomaly_v1',
+                             meta={'task':'mirror','hits':mirror['hits'],'version':FRAME_ANOMALY_VERSION})
+                flag('VIS-04','high',mirror['first_at'],
+                     f'Khung hình bị lật gương từ khoảng giây {mirror["first_at"]}: tên thương hiệu/nhãn AI chỉ đọc '
+                     f'được khi lật ngang lại ({len(mirror["hits"])} khung). Cần xuất lại video.',
+                     uid,'frame_anomaly_v1',None,{'hits':mirror['hits'],'version':FRAME_ANOMALY_VERSION})
+            pixel=frame_anomaly.get('pixelation') or {}
+            if pixel.get('flagged'):
+                uid=evidence('visual_signal',pixel['first_at'],
+                             f'Độ nét giảm dưới 10% mức đầu video và xuất hiện ô vuông lặp đều từ giây {pixel["first_at"]}',
+                             None,source='frame_anomaly_v1',meta={'task':'pixelation',**pixel})
+                flag('VIS-05','high',pixel['first_at'],
+                     f'Hình bị vỡ ô/mờ bất thường từ khoảng giây {pixel["first_at"]} '
+                     f'(độ nét tụt dưới 10% so với đầu video, kéo dài {pixel.get("longest_run")} mẫu). Cần xuất lại video.',
+                     uid,'frame_anomaly_v1',None,{**pixel,'version':FRAME_ANOMALY_VERSION})
+        timings['anomaly_seconds']=round(time.monotonic()-anomaly_start,3)
         _set_progress(job_id,'asr')
         stage_start=time.monotonic()
         speeches,coverage['asr']=transcribe(path) if os.getenv('ASR_ENABLED','1') == '1' else ([], 'disabled')
@@ -622,6 +668,27 @@ def _analyze_job(job_id):
                         except Exception as exc:
                             # Optional extra check: record, never fail the job.
                             color_check={'status':'error','error':str(exc)[:180],'issues':[]}
+                    if os.environ.get('VLM_TEXT_CHECK','1')=='1':
+                        _set_progress(job_id,'vlm',current='text rendering',done=1,total=1)
+                        try:
+                            text_check=check_text_rendering(client._get_client(),client.model,path)
+                            vlm_calls+=1
+                            for issue in text_check['issues']:
+                                uid=evidence('vlm_issue',issue['timestamp'],
+                                             f"Chữ hiển thị lỗi: “{issue['text']}”. {issue['problem']}",
+                                             issue['confidence'],source=client.model,
+                                             meta={'code':'TEXT-03','task':'text_rendering',
+                                                   'frames_seconds':text_check['times'],
+                                                   'confidence_kind':'model_self_reported',
+                                                   'check_version':TEXT_CHECK_VERSION})
+                                flag('TEXT-03','medium',issue['timestamp'],
+                                     f"Chữ hiển thị có thể bị lỗi: “{issue['text']}” ({issue['problem']}). "
+                                     'Reviewer cần xem lại khung hình.',
+                                     uid,'vlm_text_check',issue['confidence'],
+                                     {'task':'text_rendering','frames_seconds':text_check['times'],
+                                      'check_version':TEXT_CHECK_VERSION})
+                        except Exception as exc:
+                            text_check={'status':'error','error':str(exc)[:180],'issues':[]}
                 requests=([('single',[f],f'frame {f["at"]}') for f in frame_selection]
                           if not video_mode else [])
                 lookup={f['frame']:f for f in sampled}
@@ -729,6 +796,20 @@ def _analyze_job(job_id):
         else:
             details_ai_label={'rule_version':AI_LABEL_RULE_VERSION,'declared_ai_generated':job_ai_generated,
                               'status':'not_required'}
+        # RULE02 (Nghị định 100/2014/NĐ-CP Điều 6): product-level restriction.
+        restriction=advertising_restriction(p.get('category') or 'general',p.get('target_age') or '')
+        if restriction:
+            flag('INFANT-01','medium',0,restriction['detail']+' Pháp chế cần xác nhận trước khi đăng.',
+                 source='infant_rule_v1',meta={**restriction,'category':p.get('category'),
+                 'target_age':p.get('target_age'),'rule_version':INFANT_RULE_VERSION})
+        if (p.get('category')=='infant_formula' and coverage['ocr']=='ok'
+                and bool(ocr_health_data.get('complete_video_scan'))):
+            age_texts=[e.content for e in normalized if e.kind in ('ocr','asr')]
+            if not has_age_information(age_texts):
+                flag('INFANT-03','medium',0,'Video sữa/sản phẩm dinh dưỡng trẻ nhỏ không hiển thị độ tuổi khuyến nghị '
+                     '(đã quét toàn bộ OCR và lời nói).',source='infant_rule_v1',
+                     meta={'texts_checked':len(age_texts),'rule_version':INFANT_RULE_VERSION})
+        frame_anomaly_details=locals().get('frame_anomaly',{})
         if coverage['ocr']!='ok' and coverage['asr']!='ok':
             flag('COVERAGE','medium',0,'OCR/ASR chưa khả dụng; chữ do Gemini đọc chỉ là bằng chứng ứng viên, cần xác minh độc lập.')
         for n,e in enumerate(normalized):
@@ -780,6 +861,14 @@ def _analyze_job(job_id):
                      meta={'canonical_index':n,'reason':mismatch.reason,
                            'reference_variant':p.get('variant',''),
                            'rule_version':SPRINT2_RULE_VERSION,
+                           'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            milk=breastmilk_comparison(e.content)
+            if milk:
+                flag('INFANT-02',strong_severity,e.timestamp,
+                     f'Nội dung so sánh với sữa mẹ/ti mẹ: “{e.content[:120]}”. Không được quảng cáo sản phẩm '
+                     'dinh dưỡng trẻ nhỏ/bình bú như thay thế hoặc tương đương sữa mẹ.',
+                     source='infant_rule_v1',confidence=e.score,
+                     meta={'canonical_index':n,'phrase':milk,'rule_version':INFANT_RULE_VERSION,
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
             exact_claims=check_unapproved_high_risk_claims(e.content,p['claims'],p['banned'])
             for claim in exact_claims:
@@ -856,6 +945,8 @@ def _analyze_job(job_id):
                  'frame_count':total,'frame_count_source':frame_count_source,
                  'coverage':coverage,'elapsed_seconds':round(time.monotonic()-t0,2),
                  'ai_label':details_ai_label,
+                 'frame_anomaly':frame_anomaly_details,
+                 'rules_version':RULES_VERSION,
                  'perception_quality':{
                      'sampling_version':SAMPLING_VERSION,
                      'sampling_stride_frames':interval,
@@ -872,7 +963,7 @@ def _analyze_job(job_id):
                  'claim_rule_version':CLAIM_RULE_VERSION,
                  'product_truth_snapshot':{key:p.get(key) for key in
                      ('sku','name','brand','price','variant','expected_video_description',
-                      'claims','banned','reference_url','reference_note','reference_status','revision')},'normalization_version':'evidence-2.0',
+                      'claims','banned','reference_url','reference_note','reference_status','revision','category','target_age')},'normalization_version':'evidence-2.0',
                  'frame_timeline':[{'at':f['at'],'frame':f['frame'],'blur':f['blur']} for f in sampled],
                  'normalization':{'raw_count':len(raw),'canonical_count':len(normalized),
                                   'merged_count':len(raw)-len(normalized)},
@@ -885,6 +976,7 @@ def _analyze_job(job_id):
                          'video_summary':locals().get('native_video_summary',''),
                          'timeline_summary':locals().get('native_timeline_summary',''),
                          'color_check':locals().get('color_check',{'status':'not_run'}),
+                         'text_check':locals().get('text_check',{'status':'not_run'}),
                         'calls_succeeded':vlm_calls,
                          'calls_attempted':locals().get('attempted_calls',0),
                          'calls_skipped':locals().get('skipped_calls',0),
@@ -1080,6 +1172,7 @@ def get_job(jid:str):
         for f in d['findings']:
             f['metadata']=json.loads(f.get('metadata') or '{}')
             f['evidence_refs']=json.loads(f.get('evidence_refs') or '[]')
+            f['rule']=rule_for(f['code'])
         d['audits']=[dict(r) for r in c.execute('SELECT * FROM audits WHERE job_id=? ORDER BY id DESC',(jid,))]
         d['labels']=[dict(r) for r in c.execute('SELECT * FROM labels WHERE job_id=? ORDER BY id DESC',(jid,))]
         d['ai_recommendation']=(recommend_ai(d['details'].get('verification'),d['findings'])

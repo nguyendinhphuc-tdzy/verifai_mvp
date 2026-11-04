@@ -12,6 +12,7 @@ never forces Regenerate.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import cv2
@@ -98,3 +99,65 @@ def check_color_consistency(client, model: str, path: Path | str, n: int = 5) ->
                                            thinking_config=types.ThinkingConfig(thinking_level='low')))
     issues = parse_inconsistencies(response.text or '{}', times)
     return {'status': 'ok', 'times': times, 'issues': issues}
+
+
+# --- RULE06: garbled / nonsense on-screen text (04/11/2026) -----------------
+# Separate call: merging this question into the colour prompt made the colour
+# check miss VID_LOI34. Experiment (04/11/2026): caught PUB005/006/007/026/029
+# (GT text errors); false positives on GOC05 (upside-down lid text, now
+# filtered) and PUB004 (GT says clean). Reviewer candidate only (TEXT-03).
+TEXT_CHECK_VERSION = 'text-render-1.0'
+TEXT_MIN_CONFIDENCE = 0.90
+TEXT_PROMPT = """Các ảnh là {n} khung hình theo thứ tự thời gian của CÙNG MỘT video quảng cáo (thời điểm: {times} giây).
+Nhiệm vụ DUY NHẤT: kiểm tra LỖI HIỂN THỊ CHỮ (chữ in trên bao bì, nhãn, logo, chữ phủ trên video).
+Báo khi chữ bị lỗi hiển thị rõ ràng: từ vô nghĩa/ký tự lộn xộn không thuộc ngôn ngữ nào
+(ví dụ "Comable Bomonlas"), chữ bị biến dạng đọc không ra, hoặc tên thương hiệu/chữ trên CÙNG
+một bao bì bị viết khác nhau giữa các khung. KHÔNG báo: tên thương hiệu/từ tiếng nước ngoài
+có thật mà bạn không biết, chữ quá nhỏ/mờ do camera, chữ bị che một phần, chữ bị ngược/nghiêng do
+góc nhìn tự nhiên (ví dụ chữ trên nắp hộp đang mở), chữ in đúng nhưng hiếm gặp.
+Nếu không có lỗi chắc chắn, trả "text_issues": [].
+Trả JSON: {{"text_issues": [{{"text": str, "frame": int, "problem": str, "confidence": number}}]}}"""
+_NOT_A_PROBLEM = re.compile(r'không (có )?lỗi|ổn định|rõ ràng, đúng|no (issue|error)|is clear', re.I)
+_ORIENTATION = re.compile(r'ngược|lật|upside|flipped|mirror|nắp|lid', re.I)
+
+
+def parse_text_issues(raw: str, times: list[float]) -> list[dict]:
+    data = json.loads(raw)
+    items = data.get('text_issues') if isinstance(data, dict) else None
+    found, seen = [], set()
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            confidence = min(1.0, max(0.0, float(item.get('confidence') or 0)))
+        except (TypeError, ValueError):
+            continue
+        text = str(item.get('text') or '').strip()
+        problem = str(item.get('problem') or '').strip()
+        if (confidence < TEXT_MIN_CONFIDENCE or not text or not problem
+                or _NOT_A_PROBLEM.search(problem) or _ORIENTATION.search(problem + ' ' + text)):
+            continue
+        if text.casefold() in seen:
+            continue
+        seen.add(text.casefold())
+        try:
+            frame = int(item.get('frame'))
+        except (TypeError, ValueError):
+            frame = 1
+        index = min(max(frame - 1 if frame >= 1 else frame, 0), len(times) - 1) if times else 0
+        found.append({'text': text[:160], 'problem': problem[:240], 'confidence': round(confidence, 2),
+                      'timestamp': times[index] if times else 0.0})
+    return found
+
+
+def check_text_rendering(client, model: str, path: Path | str, n: int = 5) -> dict:
+    from google.genai import types
+    images, times = sample_frames(path, n, long_edge=1024)
+    if len(images) < 2:
+        return {'status': 'skipped_too_few_frames', 'times': times, 'issues': []}
+    parts = [types.Part.from_bytes(data=b, mime_type='image/jpeg') for b in images]
+    response = client.models.generate_content(
+        model=model, contents=parts + [TEXT_PROMPT.format(n=len(images), times=times)],
+        config=types.GenerateContentConfig(response_mime_type='application/json',
+                                           thinking_config=types.ThinkingConfig(thinking_level='low')))
+    return {'status': 'ok', 'times': times, 'issues': parse_text_issues(response.text or '{}', times)}

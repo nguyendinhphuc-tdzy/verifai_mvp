@@ -45,7 +45,7 @@ SKU_SOURCE_NAMES = {'mapped': 'Theo bảng SKU', 'assumed_rotation': 'Suy đoán
 LABEL_NAMES = {'clean': 'Không lỗi', 'error': 'Có lỗi', 'uncertain': 'Chưa chắc chắn'}
 EXTRA_COLUMNS = ('dataset_group', 'error_category', 'sku_source', 'ai_label_suggestion',
                  'ai_error_types', 'finding_details', 'ocr_frames_read', 'decoded_frames',
-                 'asr_audio_stream', 'ai_label_check', 'elapsed_seconds')
+                 'asr_audio_stream', 'ai_label_check', 'elapsed_seconds', 'rule_ids')
 
 
 # -- manifest -----------------------------------------------------------------
@@ -210,6 +210,7 @@ def _job_row(job: dict, meta: dict) -> dict:
         'asr_audio_stream': {True: 'Có', False: 'Không có âm thanh'}.get((quality.get('asr') or {}).get('audio_stream'), ''),
         'ai_label_check': (details.get('ai_label') or {}).get('status', ''),
         'elapsed_seconds': details.get('elapsed_seconds', ''),
+        'rule_ids': '; '.join(sorted({f['rule']['rule_id'] for f in findings if f.get('rule')})),
     }
 
 

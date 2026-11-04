@@ -571,3 +571,28 @@ python scripts/evaluate_dataset.py run `
   chi tiết finding, số frame OCR, video có âm thanh, kiểm tra nhãn AI, thời gian chạy. Cột reviewer để trống.
 * Kết quả lần chạy 02/11/2026 (80/80 video): bắt được 31/44 video lỗi; sai giá 8/8, claim 7/7, thiếu nhãn AI 6/6,
   sai brand/thông tin 6/7, lỗi hiển thị 2/7, không nhất quán hình ảnh 2/9; 5/6 video gốc được Pass.
+
+## RULE01–RULE10: căn cứ cho từng cảnh báo (04/11/2026)
+
+`verifai_core/rule_registry.py` ánh xạ mỗi mã cảnh báo sang RULE trong tài liệu "Bộ rule 1-10" của nhóm, kèm
+căn cứ pháp lý/chính sách và mức ưu tiên xử lý. Mỗi cảnh báo trên giao diện, `GET /api/jobs/{id}`
+(`findings[].rule`), `ai_findings.csv` và sheet đánh giá (`rule_ids`) đều có thông tin này; `GET /api/rules` trả toàn bộ bảng.
+**Căn cứ do nhóm tổng hợp, chưa được pháp chế kiểm tra; app không kết luận vi phạm pháp luật và không hiển thị mức phạt (RULE05).**
+Mức ưu tiên pháp lý tách riêng khỏi mức độ bằng chứng (quyết định Pass / Needs Review / Regenerate).
+
+| Rule | Mã cảnh báo | Cách phát hiện |
+|---|---|---|
+| RULE01 | CLAIM-01/02, CLAIM-VLM | claim bị hạn chế, cụm rủi ro cao, cách nói tuyệt đối hóa |
+| RULE02 | INFANT-01/02/03 | Product Truth có `category` + `target_age`: sản phẩm thuộc diện cấm quảng cáo theo NĐ 100/2014 Điều 6 (sữa thay thế sữa mẹ ≤ 24 tháng, bình bú/vú ngậm, thức ăn bổ sung ≤ 6 tháng); câu so sánh với sữa mẹ/ti mẹ (chịu được OCR mất dấu); thiếu độ tuổi khuyến nghị |
+| RULE03 | PRICE-01 | so giá với Product Truth |
+| RULE04 | SKU-01, TEXT-01, VARIANT-01 | thương hiệu, chính tả thương hiệu, quy cách |
+| RULE06 | TEXT-02, TEXT-03, VIS-03 | chính tả tên sản phẩm; Gemini tìm chữ vô nghĩa/biến dạng trên 5 khung (`VLM_TEXT_CHECK`) |
+| RULE07 | VIS-02, VIS-04, VIS-05 | Gemini so màu trên 5 khung; **lật gương**: chữ thương hiệu/nhãn AI chỉ đọc được khi lật ngang khung hình; **vỡ ô/mờ**: độ nét tụt < 10% kèm ô vuông lặp đều (`FRAME_ANOMALY_CHECK`) |
+| RULE08 | AI-LABEL-01 | nhãn "Nội dung được tạo bởi AI" khi video được khai báo do AI tạo |
+| RULE05, 09, 10 | — | chưa triển khai (RULE05 chỉ chú giải; 09/10 cần metadata nền tảng và C2PA) |
+
+Đã áp dụng RULE02 cho bộ dữ liệu: SKU002 (bình sữa) = bình bú/vú ngậm, SKU004 (sữa bột) = sữa thay thế sữa mẹ 0–6 tháng,
+nên **mọi video của hai SKU này (kể cả video gốc) sẽ ra Needs Review** theo quyết định của PO ngày 04/11/2026.
+Kiểm chứng trên dữ liệu thật: lật gương bắt đúng LOI30/LOI32, vỡ ô bắt đúng LOI35/LOI37, câu so sánh sữa mẹ chỉ bắt LOI20,
+không báo nhầm trong 84 video. Kiểm tra chữ vô nghĩa (Gemini) bắt 5/7 video công khai có lỗi chữ theo ground truth
+nhưng báo nhầm GOC05 và PUB004 trong thử nghiệm.

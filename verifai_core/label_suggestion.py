@@ -16,6 +16,10 @@ NON_CONTENT_CODES = frozenset({'COVERAGE', 'EVIDENCE-LOW', 'VIS-SCREEN', 'VIS-06
 
 ERROR_TYPES = {
     'TEXT-02': 'Lỗi hiển thị (chính tả tên sản phẩm)',
+    'TEXT-03': 'Lỗi hiển thị (chữ vô nghĩa/biến dạng)',
+    'VIS-04': 'Không nhất quán hình ảnh (lật gương)',
+    'VIS-05': 'Không nhất quán hình ảnh (vỡ ô/mờ)',
+    'INFANT': 'Quảng cáo sản phẩm dinh dưỡng trẻ nhỏ (NĐ 100/2014)',
     'PRICE': 'Sai giá',
     'SKU': 'Sai tên brand / thông tin sản phẩm',
     'TEXT': 'Sai tên brand / thông tin sản phẩm',

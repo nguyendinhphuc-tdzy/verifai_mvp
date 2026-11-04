@@ -22,6 +22,8 @@ atexit.register(shutil.rmtree, _TEST_DATA, ignore_errors=True)
 os.environ['VERIFAI_SKIP_DOTENV'] = '1'
 os.environ['VLM_ENABLED'] = '0'
 os.environ['VLM_COLOR_CHECK'] = '0'  # enabled explicitly where tested
+os.environ['VLM_TEXT_CHECK'] = '0'
+os.environ['FRAME_ANOMALY_CHECK'] = '0'
 for _key in ('GEMINI_API_KEY', 'GOOGLE_API_KEY'):
     os.environ.pop(_key, None)
 
