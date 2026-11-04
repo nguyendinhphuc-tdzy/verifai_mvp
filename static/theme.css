@@ -1,0 +1,191 @@
+/* VerifAI brand theme (04/11/2026), matching the team homepage
+   "Product UI concept · Web App": dark-green sidebar, cream canvas, white cards,
+   emerald primary, gold accents, lavender instead of red for Regenerate/high.
+   Loaded LAST; changes only presentation (no IDs, no behaviour). */
+:root{
+  --vf-sidebar:#10362e; --vf-sidebar-2:#0c2b24; --vf-sidebar-ink:#c7d8d2;
+  --vf-canvas:#f7f3eb; --vf-canvas-2:#f1e9dd; --vf-card:#ffffff; --vf-card-soft:#fbf7ef;
+  --vf-line:#e5ded2; --vf-line-2:#ddd2c0;
+  --vf-ink:#172b25; --vf-ink-2:#263a33; --vf-muted:#5b6c65; --vf-muted-2:#77857f;
+  --vf-emerald:#196e5a; --vf-emerald-2:#1f7a67; --vf-mint:#74d2b4;
+  --vf-gold:#e6b34a; --vf-gold-ink:#7d5a12;
+  --vf-lav:#8f7ce8; --vf-lav-soft:#eae5fb; --vf-lav-ink:#5d4b92;
+  --vf-pass-soft:#e2f5eb; --vf-pass-ink:#087750;
+  --vf-amber-soft:#fff0c9; --vf-amber-ink:#895a00;
+  --bg:var(--vf-canvas); --ink:var(--vf-ink); --muted:var(--vf-muted); --line:var(--vf-line);
+  --card:var(--vf-card); --primary:var(--vf-emerald); --pale:#e2efe9;
+  --shadow:0 10px 30px rgba(64,51,32,.06);
+}
+
+/* ---------- Base ---------- */
+html,body{background:var(--vf-canvas)}
+body{
+  color:var(--vf-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",Inter,sans-serif;
+  letter-spacing:-.008em;
+  background:
+    radial-gradient(circle at 92% -4%,rgba(31,122,103,.07),transparent 26rem),
+    linear-gradient(180deg,#f8f3ea 0%,#f3ece0 100%) fixed;
+}
+::selection{background:rgba(230,179,74,.32)}
+input,select,textarea{accent-color:var(--vf-emerald)}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid rgba(31,122,103,.35);outline-offset:2px}
+
+/* ---------- Sidebar ---------- */
+.side{
+  background:
+    radial-gradient(circle at 20% 0%,rgba(230,179,74,.10),transparent 16rem),
+    linear-gradient(180deg,var(--vf-sidebar) 0%,var(--vf-sidebar-2) 100%);
+  border-right:1px solid rgba(255,255,255,.06);
+  color:#fff;
+}
+.brand{color:#fffdf6;font-weight:800}
+.brand-ai{color:var(--vf-gold)}
+.brandmark{
+  background:linear-gradient(135deg,#e7b647,#67cfae);
+  color:#153027;font-weight:900;border-radius:11px;
+  box-shadow:0 8px 22px rgba(0,0,0,.18);
+}
+.nav-group{color:rgba(199,216,210,.55)}
+.nav button{color:var(--vf-sidebar-ink);background:transparent}
+.nav button .nicon{color:rgba(199,216,210,.6)}
+.nav button:hover:not(.active){background:rgba(255,255,255,.06);color:#fff}
+.nav button.active,.nav button[aria-current=page]{
+  background:rgba(255,255,255,.11);color:#fff;font-weight:750;
+  box-shadow:inset 3px 0 0 var(--vf-gold);
+}
+.nav button.active .nicon{color:var(--vf-gold)}
+.sidefoot{color:rgba(199,216,210,.75)}
+.sidefoot summary{color:var(--vf-sidebar-ink)}
+.sidefoot summary::before{color:var(--vf-mint)}
+.sidefoot .health-detail{color:#dce7e2}
+
+/* ---------- Header ---------- */
+.workspace-header{
+  background:rgba(247,243,235,.92);
+  border-bottom:1px solid var(--vf-line);
+}
+.header-eyebrow{color:var(--vf-gold-ink);text-transform:uppercase;letter-spacing:.08em;font-size:10.5px;font-weight:800}
+.header-title{color:var(--vf-ink);letter-spacing:-.03em}
+.header-quiet{color:var(--vf-muted-2)}
+
+/* ---------- Section heads ---------- */
+.sectionhead h2{color:var(--vf-ink);letter-spacing:-.03em}
+.sectionhead p,.section-intro,.upload-lead{color:var(--vf-muted)}
+
+/* ---------- Cards / panels ---------- */
+.panel,.stat,.finding,.detail-disclosure,.analysis-optional,.evidence-card{
+  background:var(--vf-card);
+  border:1px solid var(--vf-line);
+}
+.panel{border-radius:20px;box-shadow:var(--shadow)}
+.panel h3,.panel h4{color:var(--vf-ink)}
+.stats .stat,.section .stat,.kpi-grid .stat{
+  border-radius:18px;
+  background:linear-gradient(145deg,#fffdf8,#fbf6ec);
+  border:1px solid var(--vf-line);
+}
+.stat strong{color:var(--vf-ink)}
+.stat small{color:var(--vf-muted)}
+.muted,.panel .muted{color:var(--vf-muted)}
+.footnote{color:var(--vf-muted-2)}
+.notice{background:#fbf6ea;border:1px solid #eadfca;color:#5a5136}
+.work-empty{border:1.5px dashed var(--vf-line-2);background:rgba(255,255,255,.5);color:var(--vf-muted)}
+.work-empty h3{color:var(--vf-ink)}
+.empty{color:var(--vf-muted)}
+
+/* ---------- Buttons ---------- */
+.button{
+  background:var(--vf-emerald);border-color:var(--vf-emerald);color:#fff;
+  border-radius:12px;font-weight:720;
+}
+.button:hover:not(:disabled){background:#145c4b;border-color:#145c4b;box-shadow:0 8px 18px rgba(25,110,90,.18)}
+.button.secondary,.button.ghost{background:#ece7dc;border:1px solid #e0d8c9;color:#3f5149}
+.button.secondary:hover,.button.ghost:hover{background:#e4ddcf;border-color:#d6ccba;box-shadow:none}
+.button.green{background:var(--vf-emerald);border-color:var(--vf-emerald)}
+.mini{background:#fffdf8;border:1px solid var(--vf-line);color:#3f5149;border-radius:10px}
+.mini:hover:not(:disabled){background:#f4eee2;border-color:var(--vf-line-2)}
+.inline-action{color:var(--vf-emerald)}
+.inline-action:hover{color:#0f4d3f}
+
+/* Reviewer decision: Pass mint, Needs Review amber, Regenerate lavender (no red). */
+.review-decision{border-top:1px solid var(--vf-line)}
+.review-decision .button[onclick*="'Pass'"]{background:var(--vf-pass-soft);border-color:#bfe6d3;color:var(--vf-pass-ink)}
+.review-decision .button[onclick*="'Needs Review'"]{background:var(--vf-amber-soft);border-color:#ecd697;color:var(--vf-amber-ink)}
+.review-decision .button[onclick*="'Regenerate'"]{background:var(--vf-lav-soft);border-color:#d4caef;color:var(--vf-lav-ink)}
+.review-decision .button[onclick*="'Pass'"]:hover:not(:disabled){background:#d2efe0;box-shadow:0 6px 14px rgba(8,119,80,.12)}
+.review-decision .button[onclick*="'Needs Review'"]:hover:not(:disabled){background:#ffe8ad;box-shadow:0 6px 14px rgba(137,90,0,.12)}
+.review-decision .button[onclick*="'Regenerate'"]:hover:not(:disabled){background:#ddd5f8;box-shadow:0 6px 14px rgba(93,75,146,.14)}
+
+/* ---------- Inputs ---------- */
+.field label{color:var(--vf-ink-2)}
+.field input,.field select,.field textarea,.search{
+  background:#fffdf8;border:1px solid var(--vf-line-2);border-radius:11px;color:var(--vf-ink);
+}
+.field input:focus,.field textarea:focus,.field select:focus,.search:focus{
+  background:#fff;border-color:var(--vf-emerald-2);box-shadow:0 0 0 3px rgba(31,122,103,.12)}
+.upload-shell .dropzone,.dropzone{background:#fffaf1;border:1.5px dashed #d6c7ab;border-radius:18px}
+.dropzone:hover,.dropzone.drag{border-color:var(--vf-emerald-2);background:#f2efe3}
+
+/* ---------- Pills: decisions, severity, status ---------- */
+.pill{background:#efe8dc;color:#5e563f;font-weight:760}
+.pill.Pass,.pill.completed{background:var(--vf-pass-soft);color:var(--vf-pass-ink)}
+.pill.Needs\ Review,.pill.medium{background:var(--vf-amber-soft);color:var(--vf-amber-ink)}
+.pill.Regenerate,.pill.high,.pill.failed{background:var(--vf-lav-soft);color:var(--vf-lav-ink)}
+.pill.low{background:#e3eeea;color:#2f5f52}
+.pill.queued,.pill.processing{background:#e2efe9;color:#1d6858}
+
+/* ---------- Tables ---------- */
+.tablewrap{border:1px solid var(--vf-line);border-radius:16px;background:#fff}
+th{background:#f6efe2;color:#6d6650}
+td{color:var(--vf-ink-2);border-bottom:1px solid #efe8dc}
+tbody tr:hover td{background:#fbf6ec}
+
+/* ---------- Review workspace ---------- */
+.videopane{
+  background:
+    radial-gradient(circle at 30% 25%,rgba(103,207,174,.14),transparent 14rem),
+    radial-gradient(circle at 72% 20%,rgba(143,124,232,.12),transparent 17rem),
+    #152c2b;
+  border-radius:16px;color:#cfe0da;
+}
+.framegrid img{border:1px solid var(--vf-line);border-radius:10px}
+.framegrid img:hover{outline:2px solid var(--vf-emerald-2)}
+.finding{border-radius:14px}
+.finding:hover{background:var(--vf-card-soft)}
+.finding header b{color:var(--vf-ink)}
+.finding p{color:#43564e}
+.detail-disclosure summary{color:#41554c}
+.detail-disclosure summary::after{color:#a99c80}
+.disclosure-body{border-top:1px solid #efe8dc}
+.detail-disclosure[open]{background:var(--vf-card-soft)}
+.analysis-optional[open]{background:var(--vf-card-soft)}
+.log{background:#fbf6ec;border:1px solid var(--vf-line);color:#55675f}
+.progress{background:#e7e0d2}
+.progress i{background:linear-gradient(90deg,var(--vf-emerald-2),var(--vf-mint),var(--vf-gold))}
+
+/* ---------- Toasts ---------- */
+.toast{background:#123b32;color:#fffdf6;box-shadow:0 14px 34px rgba(12,43,36,.28)}
+
+/* ---------- Mobile sidebar ---------- */
+@media(max-width:870px){
+  .side{background:var(--vf-sidebar);border-bottom:1px solid rgba(255,255,255,.08)}
+  .nav button.active,.nav button[aria-current=page]{box-shadow:inset 0 -3px 0 var(--vf-gold)}
+}
+
+/* Fixes from the first visual pass */
+a.button,a.button:hover,a.mini{text-decoration:none}
+.queue-toolbar .row{flex-wrap:nowrap}
+.queue-toolbar select{min-width:150px}
+@media(max-width:560px){.queue-toolbar .row{flex-wrap:wrap}}
+/* "Needs Review" renders as two classes (Needs, Review). */
+.pill.Needs.Review{background:var(--vf-amber-soft);color:var(--vf-amber-ink)}
+/* Hash navigation (#analyze) must not hide the section title under the sticky header. */
+.section{scroll-margin-top:110px}
+/* Leftover blue accents from the old palette */
+.dropzone [style*="8295cc"]{color:var(--vf-emerald-2)!important}
+.analysis-helper{color:var(--vf-muted)}
+.footer-disclaimer{color:var(--vf-muted-2)}
+.analysis-required{color:#b0782a}
+#jobDetail{scroll-margin-top:100px}
