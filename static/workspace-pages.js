@@ -253,3 +253,59 @@
       : '<div class="todo-done">Không còn việc tồn đọng. Mọi video đã được duyệt.</div>');
   };
 })();
+
+/* ---------- UX polish after the sprint1 merge ---------- */
+(() => {
+  const q = id => document.getElementById(id);
+  const store = {
+    get(k) { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } },
+    set(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (_) {} }
+  };
+
+  // Change-product dialog for the review view (replaces the always-visible select).
+  const syncApply = () => {
+    const same = !currentJob || q('jobProductSelect').value === currentJob.product_id;
+    q('jobProductApply').disabled = same || q('jobProductSelect').disabled;
+  };
+  window.openJobProductDialog = () => {
+    if (!currentJob) return;
+    if (['queued', 'processing'].includes(currentJob.status)) { toast('Chờ phân tích xong rồi mới đổi sản phẩm'); return; }
+    renderJobProduct(currentJob);
+    const p = currentJob.product || {};
+    q('jobProductCurrent').textContent = `Đang gắn: ${p.sku || '—'} · ${p.name || ''}`;
+    syncApply();
+    q('jobProductDialog').showModal();
+    requestAnimationFrame(() => q('jobProductSelect').focus());
+  };
+  q('jobProductSelect').addEventListener('change', syncApply);
+  q('jobProductDialog').addEventListener('click', e => { if (e.target === q('jobProductDialog')) q('jobProductDialog').close(); });
+
+  // Inline error under a form field; returns undefined so callers can `return fieldError(...)`.
+  window.fieldError = (id, msg) => {
+    const el = q(id), field = el.closest('.field') || el.parentElement;
+    field.classList.add('invalid');
+    let note = field.querySelector('.field-error');
+    if (!note) { note = document.createElement('small'); note.className = 'field-error'; note.setAttribute('role', 'alert'); field.appendChild(note); }
+    note.textContent = msg;
+    el.setAttribute('aria-invalid', 'true');
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.focus({ preventScroll: true });
+  };
+  const clearError = id => {
+    const el = q(id), field = el.closest('.field') || el.parentElement;
+    field.classList.remove('invalid');
+    field.querySelector('.field-error')?.remove();
+    el.removeAttribute('aria-invalid');
+  };
+  ['rights', 'aiGenerated'].forEach(id => q(id)?.addEventListener('change', () => clearError(id)));
+
+  // Remember the usage-rights choice on this device (the AI-generated answer is per video, so it is not remembered).
+  const restoreRights = () => {
+    const saved = store.get('vfRights'), sel = q('rights');
+    if (saved && sel && !sel.value && [...sel.options].some(o => o.value === saved && !o.disabled)) sel.value = saved;
+  };
+  q('rights')?.addEventListener('change', e => store.set('vfRights', e.target.value));
+  const baseReset = window.resetAnalyzeWizard;
+  window.resetAnalyzeWizard = () => { baseReset(); restoreRights(); clearError('rights'); clearError('aiGenerated'); };
+  restoreRights();
+})();

@@ -386,3 +386,18 @@ html.drawer-lock body{overflow:hidden}
 }
 @media (max-width:640px){.pp-main{flex:1 1 calc(100% - 40px)}}
 .sr-only{width:1px!important;height:1px!important;min-height:0!important;padding:0!important;margin:-1px!important;border:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;position:absolute!important}
+
+/* ---------- Polish after the sprint1 merge ---------- */
+.review-top{align-items:center}
+.job-product-open{margin-top:4px;font-size:12.5px}
+.job-product-open:disabled{color:var(--faint);text-decoration:none;cursor:not-allowed}
+#jobProductDialog #jobProductControl{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:6px}
+#jobProductDialog #jobProductSelect{max-width:none;width:100%;min-height:44px;padding:10px 12px}
+#jobProductDialog .dlg-body>p:not(.footnote){font-size:13.5px;color:var(--ink-2)}
+#jobProductCurrent{margin:0 0 4px}
+.field.invalid select,.field.invalid input{border-color:#b8452f;box-shadow:0 0 0 3px rgba(184,69,47,.14)}
+.field-error{display:block;margin-top:6px;color:#9a3925;font-size:12.5px;font-weight:600}
+.review-bottom #acceptSuggestionBtn{min-height:38px}
+/* Toasts must not cover the product drawer's save bar. */
+@media (min-width:641px){html.drawer-lock .toasts{right:calc(min(520px,100vw) + 16px)}}
+@media (max-width:640px){html.drawer-lock .toasts{bottom:96px;left:12px;right:12px}}
