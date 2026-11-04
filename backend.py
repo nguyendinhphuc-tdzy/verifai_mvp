@@ -175,7 +175,9 @@ def reference_scope(status: str) -> str:
 
 
 @app.get('/')
-def home():return FileResponse(BASE/'static'/'index.html')
+def home():return FileResponse(BASE/'static'/'home.html')
+@app.get('/app')
+def workspace():return FileResponse(BASE/'static'/'index.html')
 @app.get('/api/health')
 def health():
     enabled = vlm_enabled()
