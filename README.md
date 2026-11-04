@@ -244,6 +244,23 @@ does not upload the file, and reports separate OCR and ASR times.
 visual frames (up to 60). This trades off speed against coverage.
 `MAX_CONCURRENT_JOBS` defaults to 1 for local CPU operation.
 
+**Speed-ups of 04/11/2026** (all on by default, each can be switched off):
+
+- `VLM_PREFETCH=1`: the three Gemini calls (native video, colour, text) start
+  right after frame sampling and run side by side, in parallel with local
+  OCR/ASR. Results are consumed at the VLM stage exactly as before. Timings
+  record `vlm_<call>_call_seconds` and `vlm_wall_seconds`.
+- Mirror check (VIS-04) reuses the full-video OCR text: a sample whose original
+  frame already reads both the brand and the AI label is skipped, and the
+  original frame is never OCR'd twice (`frame_anomaly.mirror.samples_skipped`).
+- `WARM_MODELS=1`: OCR then ASR load in a background thread at startup
+  (about 36 s on the team laptop), so the first video does not pay for it.
+
+Measured on the team laptop (CPU, one video at a time, Gemini unavailable):
+VID_LOI26 89 s → 62 s (mirror check 12.6 s → 2.3 s). VID_LOI30/LOI32 are still
+flagged VIS-04 and VID_GOC01 is not. OCR is now ~90% of the time; avoid running
+more than 2-3 videos at once on one CPU (8 parallel videos made each 4-6x slower).
+
 In-process worker threads can still hang in native inference; no reliable
 in-place cancellation is provided. Stop and restart the **single-worker**
 Uvicorn process to recover interrupted jobs; after repeated interruptions,

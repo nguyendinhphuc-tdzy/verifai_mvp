@@ -24,6 +24,7 @@ os.environ['VLM_ENABLED'] = '0'
 os.environ['VLM_COLOR_CHECK'] = '0'  # enabled explicitly where tested
 os.environ['VLM_TEXT_CHECK'] = '0'
 os.environ['FRAME_ANOMALY_CHECK'] = '0'
+os.environ['WARM_MODELS'] = '0'  # no real model load at TestClient startup
 for _key in ('GEMINI_API_KEY', 'GOOGLE_API_KEY'):
     os.environ.pop(_key, None)
 

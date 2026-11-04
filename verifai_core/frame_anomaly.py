@@ -40,11 +40,20 @@ def _video_info(cap) -> tuple[float, int]:
 
 
 def detect_mirror(path: Path | str, ocr: Callable, brand: str, samples: int = 10,
-                  min_score: float = 0.85) -> dict:
-    """OCR the horizontally flipped frame; hits = frames whose brand/AI label reads only when flipped."""
+                  min_score: float = 0.85,
+                  known_text_at: Callable[[float], list[str]] | None = None) -> dict:
+    """OCR the horizontally flipped frame; hits = frames whose brand/AI label reads only when flipped.
+
+    ``known_text_at(t)`` returns text the full-video OCR scan already read
+    (score >= 0.85) on the original frame shown at ``t``. It replaces the
+    second OCR of the original frame, and a sample whose original frame
+    already shows both the brand and the AI label is skipped: neither can
+    then read *only* when flipped, so it can never become a hit.
+    """
     target = _fold(brand) if brand and len(_fold(brand)) >= 5 else ''
     cap = cv2.VideoCapture(str(path))
     hits = []
+    skipped = 0
     try:
         fps, count = _video_info(cap)
         duration = count / fps if count else 0
@@ -53,6 +62,11 @@ def detect_mirror(path: Path | str, ocr: Callable, brand: str, samples: int = 10
             cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
             ok, img = cap.read()
             if not ok or img is None:
+                continue
+            known = known_text_at(t) if known_text_at is not None else None
+            if (known is not None and (not target or any(target in _fold(x) for x in known))
+                    and find_ai_disclosure(known)):
+                skipped += 1
                 continue
             h, w = img.shape[:2]
             scale = 800 / max(h, w)
@@ -68,11 +82,14 @@ def detect_mirror(path: Path | str, ocr: Callable, brand: str, samples: int = 10
             if not (readable or disclosure):
                 continue
             # Only a mirror if the same text does NOT read on the original frame.
-            original = img if scale >= 1 else cv2.resize(img, (int(w * scale), int(h * scale)),
-                                                         interpolation=cv2.INTER_AREA)
-            plain, plain_status = ocr(original)
-            plain_texts = [text for text, score in plain if score is None or score >= min_score] \
-                if plain_status == 'ok' else []
+            if known is not None:
+                plain_texts = known
+            else:
+                original = img if scale >= 1 else cv2.resize(img, (int(w * scale), int(h * scale)),
+                                                             interpolation=cv2.INTER_AREA)
+                plain, plain_status = ocr(original)
+                plain_texts = [text for text, score in plain if score is None or score >= min_score] \
+                    if plain_status == 'ok' else []
             if readable and any(target in _fold(x) for x in plain_texts):
                 readable = []
             if disclosure and find_ai_disclosure(plain_texts):
@@ -82,7 +99,8 @@ def detect_mirror(path: Path | str, ocr: Callable, brand: str, samples: int = 10
     finally:
         cap.release()
     return {'flagged': len(hits) >= MIN_RUN, 'hits': hits,
-            'first_at': hits[0]['at'] if hits else None, 'brand_checked': bool(target)}
+            'first_at': hits[0]['at'] if hits else None, 'brand_checked': bool(target),
+            'reused_scan_text': known_text_at is not None, 'samples_skipped': skipped}
 
 
 def _sharpness_and_period(img) -> tuple[float, int, float]:

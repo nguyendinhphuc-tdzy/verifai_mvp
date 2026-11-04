@@ -1,5 +1,6 @@
 """VerifAI feasibility MVP. Local-only, modular evidence-first analysis."""
 import json, os, re, sqlite3, threading, time, uuid, hashlib, subprocess, shutil
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import contextmanager, asynccontextmanager
@@ -69,6 +70,8 @@ if _SEED_DB and not DB.exists() and Path(_SEED_DB).is_file():
     _seed.close()
 @asynccontextmanager
 async def app_lifespan(_app):
+    if os.getenv('WARM_MODELS','1')=='1':
+        threading.Thread(target=warm_models,name='verifai-warmup',daemon=True).start()
     recover_interrupted_jobs()
     yield
 
@@ -298,6 +301,18 @@ def product_history(pid:str):
 # Separate, lazy-loaded OCR and ASR engines. Do not download models at startup.
 _ocr_service = OCRService()
 _asr_service = ASRService()
+MODEL_WARMUP={'status':'not_started'}
+
+def warm_models():
+    """Load OCR then ASR in the background so the first video does not wait.
+
+    Order matches a job (Paddle before CTranslate2). The services' locks make a
+    job that arrives meanwhile simply wait for the load already in progress.
+    """
+    started=time.monotonic(); MODEL_WARMUP.update(status='running')
+    result={'ocr':_ocr_service.warm() if os.getenv('OCR_ENABLED','1')=='1' else 'disabled',
+            'asr':_asr_service.warm() if os.getenv('ASR_ENABLED','1')=='1' else 'disabled'}
+    MODEL_WARMUP.update(status='done',seconds=round(time.monotonic()-started,1),**result)
 
 def _has_paddle():
     return ocr_installed()
@@ -338,6 +353,52 @@ def cloud_upload_rights():
     """
     raw=os.environ.get('VLM_CLOUD_RIGHTS','self_created,permission_granted,public_review_only')
     return {x.strip() for x in raw.split(',') if x.strip() in RIGHTS_VALUES}-{'unknown'}
+
+def _start_vlm_prefetch(path, product):
+    """Start the native-video Gemini calls before OCR (item 2, 04/11/2026).
+
+    Gemini runs on Google's servers, so it overlaps local OCR/ASR instead of
+    waiting for them, and its three calls run side by side. Results are only
+    *consumed* at the VLM stage, so evidence order, circuit accounting and
+    error handling stay exactly as in the sequential path. Returns None (the
+    stage then calls Gemini itself) whenever the sequential path would not use
+    native video or would refuse the call.
+    """
+    if os.getenv('VLM_PREFETCH','1')!='1':
+        return None
+    try:
+        client=GeminiVLM()
+        if not isinstance(client,_ProductionGeminiVLM) or not callable(getattr(client,'_get_client',None)):
+            return None
+        if os.environ.get('VLM_INPUT_MODE','video').strip().lower()!='video':
+            return None
+        if not client.check()['ready']:
+            return None
+        if os.getenv('VLM_CIRCUIT_ENABLED','1')=='1' and not GEMINI_OUTAGE_CIRCUIT.allow():
+            return None
+        sdk=client._get_client()  # create once; the three calls share it
+    except Exception:
+        return None
+    pool=ThreadPoolExecutor(max_workers=3,thread_name_prefix='verifai-vlm')
+
+    def timed(fn,*args):
+        start=time.monotonic(); value=fn(*args)
+        return value,round(time.monotonic()-start,2)
+    futures={'native':pool.submit(timed,analyze_native_video,client,path,product)}
+    if os.environ.get('VLM_COLOR_CHECK','1')=='1':
+        futures['color']=pool.submit(timed,check_color_consistency,sdk,client.model,path)
+    if os.environ.get('VLM_TEXT_CHECK','1')=='1':
+        futures['text']=pool.submit(timed,check_text_rendering,sdk,client.model,path)
+    pool.shutdown(wait=False)  # no new work; running calls finish on their own
+    return {'client':client,'futures':futures,'started':time.monotonic()}
+
+def _prefetched(prefetch, key, timings):
+    """Result of a prefetched call (re-raises its exception), or None if not prefetched."""
+    if not prefetch or key not in prefetch['futures']:
+        return None
+    value,seconds=prefetch['futures'][key].result()
+    timings[f'vlm_{key}_call_seconds']=seconds
+    return value
 
 def _container_frame_count(cap):
     """Frame count advertised by the container; <=0 means unknown."""
@@ -415,6 +476,8 @@ def _analyze_job(job_id):
             idx+=1
         cap.release();cap=None
         timings['sampling_seconds']=round(time.monotonic()-stage_start,3)
+        vlm_prefetch=_start_vlm_prefetch(path,p) if vlm_active else None
+        timings['vlm_prefetch']=bool(vlm_prefetch)
         # Video frame sampling and OCR frame selection have different purposes:
         # visual signals may need up to 60 frames, but OCR only needs a smaller
         # representative subset (default 12) to keep CPU latency bounded.
@@ -498,7 +561,13 @@ def _analyze_job(job_id):
             try:
                 frame_anomaly['pixelation']=detect_pixelation(path)
                 if ocr_enabled and coverage['ocr'] in ('ok','partial'):
-                    frame_anomaly['mirror']=detect_mirror(path,frame_ocr,p.get('brand',''))
+                    ocr_spans=[(e.at,(e.metadata or {}).get('segment_end_seconds',e.at),
+                                e.text,e.score) for e in raw if e.kind=='ocr']
+                    known_text=(lambda t:[text for start,end,text,score in ocr_spans
+                                          if start<=t<=end and (score is None or score>=0.85)])
+                    frame_anomaly['mirror']=detect_mirror(
+                        path,frame_ocr,p.get('brand',''),
+                        known_text_at=known_text if adaptive and ocr_health_data.get('complete_video_scan') else None)
             except Exception as exc:  # optional check: record, never fail the job
                 frame_anomaly['error']=str(exc)[:180]
             mirror=frame_anomaly.get('mirror') or {}
@@ -560,14 +629,14 @@ def _analyze_job(job_id):
                               f'"{job_rights}". Khai báo quyền rồi phân tích lại để dùng VLM.')
         elif vlm_enabled():
             try:
-                client=GeminiVLM()
+                client=vlm_prefetch['client'] if vlm_prefetch else GeminiVLM()
                 readiness=client.check()
                 if not readiness['ready']: raise VLMError(readiness['message'])
                 # Circuit only applies to the actual cloud adapter, not
                 # offline test mocks or other potential VLM backends.
                 circuit_enabled=(isinstance(client,_ProductionGeminiVLM)
                                  and os.getenv('VLM_CIRCUIT_ENABLED','1') == '1')
-                if circuit_enabled and not GEMINI_OUTAGE_CIRCUIT.allow():
+                if circuit_enabled and not vlm_prefetch and not GEMINI_OUTAGE_CIRCUIT.allow():
                     remaining=round(GEMINI_OUTAGE_CIRCUIT.remaining_seconds())
                     raise VLMError(
                         f'Gemini API tạm thời không sẵn sàng (503/504); '
@@ -614,7 +683,8 @@ def _analyze_job(job_id):
                     _set_progress(job_id,'vlm',current='native full video',done=0,total=1)
                     attempted_calls=1
                     native_request_started=True
-                    result=analyze_native_video(client,path,p)
+                    result=(_prefetched(vlm_prefetch,'native',timings) if vlm_prefetch
+                            else analyze_native_video(client,path,p))
                     vlm_calls+=1
                     if circuit_enabled:
                         GEMINI_OUTAGE_CIRCUIT.success()
@@ -649,7 +719,8 @@ def _analyze_job(job_id):
                         # evenly spaced stills in one call catch them.
                         _set_progress(job_id,'vlm',current='color consistency',done=1,total=1)
                         try:
-                            color_check=check_color_consistency(client._get_client(),client.model,path)
+                            color_check=(_prefetched(vlm_prefetch,'color',timings)
+                                         or check_color_consistency(client._get_client(),client.model,path))
                             vlm_calls+=1
                             for issue in color_check['issues']:
                                 uid=evidence('vlm_issue',issue['timestamp'],
@@ -671,7 +742,8 @@ def _analyze_job(job_id):
                     if os.environ.get('VLM_TEXT_CHECK','1')=='1':
                         _set_progress(job_id,'vlm',current='text rendering',done=1,total=1)
                         try:
-                            text_check=check_text_rendering(client._get_client(),client.model,path)
+                            text_check=(_prefetched(vlm_prefetch,'text',timings)
+                                        or check_text_rendering(client._get_client(),client.model,path))
                             vlm_calls+=1
                             for issue in text_check['issues']:
                                 uid=evidence('vlm_issue',issue['timestamp'],
@@ -754,6 +826,9 @@ def _analyze_job(job_id):
             coverage['vlm']='disabled'
 
         timings['vlm_seconds']=round(time.monotonic()-stage_start,3)
+        if vlm_prefetch:
+            # vlm_seconds is now only the wait after OCR/ASR; this is the real span.
+            timings['vlm_wall_seconds']=round(time.monotonic()-vlm_prefetch['started'],3)
         _set_progress(job_id,'finalizing')
         normalized,raw_map=normalize_evidence(raw)
         for detected in detect_brand_inconsistencies(normalized,p.get('brand','')):

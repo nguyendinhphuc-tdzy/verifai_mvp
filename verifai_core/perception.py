@@ -77,20 +77,37 @@ class OCRService:
         try:
             from paddleocr import PaddleOCR
             with self.lock:
-                if self.model is None:
-                    # PP-OCRv5 supports Vietnamese; setting the language is
-                    # essential for text like "Giá", "sữa", "khăn ướt".
-                    self.model = PaddleOCR(
-                        lang=os.environ.get('OCR_LANG', 'vi'),
-                        ocr_version='PP-OCRv5',
-                        use_doc_orientation_classify=False,
-                        use_doc_unwarping=False,
-                        use_textline_orientation=False,
-                    )
+                self._load(PaddleOCR)
                 results = self.model.predict(frame)
             return unpack_ocr_result(results), 'ok'
         except Exception as exc:  # optional native Paddle runtime may fail
             return [], f'error: {str(exc)[:180]}'
+
+    def _load(self, PaddleOCR) -> None:
+        if self.model is None:
+            # PP-OCRv5 supports Vietnamese; setting the language is
+            # essential for text like "Giá", "sữa", "khăn ướt".
+            self.model = PaddleOCR(
+                lang=os.environ.get('OCR_LANG', 'vi'),
+                ocr_version='PP-OCRv5',
+                use_doc_orientation_classify=False,
+                use_doc_unwarping=False,
+                use_textline_orientation=False,
+            )
+
+    def warm(self) -> str:
+        """Load the model and run one tiny inference so the first video does not pay for it."""
+        if not ocr_installed():
+            return 'not_installed'
+        try:
+            import numpy as np
+            from paddleocr import PaddleOCR
+            with self.lock:
+                self._load(PaddleOCR)
+                self.model.predict(np.full((64, 160, 3), 255, dtype=np.uint8))
+            return 'ok'
+        except Exception as exc:
+            return f'error: {str(exc)[:180]}'
 
 
 def unpack_asr_segments(segments: Any) -> list[dict]:
@@ -137,16 +154,9 @@ class ASRService:
         try:
             from faster_whisper import WhisperModel
             with self.lock:
-                if self.model is None:
-                    device = os.environ.get('WHISPER_DEVICE', 'cpu').lower()
-                    if device not in ('cpu', 'cuda'):
-                        return [], 'error: WHISPER_DEVICE must be cpu or cuda'
-                    compute = os.environ.get('WHISPER_COMPUTE_TYPE',
-                                             'int8' if device == 'cpu' else 'float16')
-                    self.model = WhisperModel(
-                        os.environ.get('WHISPER_MODEL', 'base'),
-                        device=device, compute_type=compute,
-                    )
+                error = self._load(WhisperModel)
+                if error:
+                    return [], error
                 segments, _ = self.model.transcribe(
                     str(path), beam_size=3, vad_filter=True,
                     language=os.environ.get('WHISPER_LANGUAGE', 'vi'),
@@ -156,3 +166,27 @@ class ASRService:
             return lines, 'ok'
         except Exception as exc:  # missing weights/codec/runtime
             return [], f'error: {str(exc)[:180]}'
+
+    def _load(self, WhisperModel) -> str | None:
+        if self.model is None:
+            device = os.environ.get('WHISPER_DEVICE', 'cpu').lower()
+            if device not in ('cpu', 'cuda'):
+                return 'error: WHISPER_DEVICE must be cpu or cuda'
+            compute = os.environ.get('WHISPER_COMPUTE_TYPE',
+                                     'int8' if device == 'cpu' else 'float16')
+            self.model = WhisperModel(
+                os.environ.get('WHISPER_MODEL', 'base'),
+                device=device, compute_type=compute,
+            )
+        return None
+
+    def warm(self) -> str:
+        """Load the Whisper weights ahead of the first video."""
+        if not asr_installed():
+            return 'not_installed'
+        try:
+            from faster_whisper import WhisperModel
+            with self.lock:
+                return self._load(WhisperModel) or 'ok'
+        except Exception as exc:
+            return f'error: {str(exc)[:180]}'
