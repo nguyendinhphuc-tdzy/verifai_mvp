@@ -213,7 +213,9 @@ def reference_scope(status: str) -> str:
 
 
 @app.get('/')
-def home():return FileResponse(BASE/'static'/'index.html')
+def home():return FileResponse(BASE/'static'/'home.html')
+@app.get('/app')
+def workspace():return FileResponse(BASE/'static'/'index.html')
 @app.get('/api/rules')
 def list_rules():
     return {'version':RULES_VERSION,'rules':RULES,

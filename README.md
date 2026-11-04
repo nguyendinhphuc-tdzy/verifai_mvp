@@ -25,7 +25,10 @@ pip install -r requirements.txt
 uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Open http://127.0.0.1:8000. API docs: http://127.0.0.1:8000/docs.
+Open http://127.0.0.1:8000 (home page) or http://127.0.0.1:8000/app (reviewer
+workspace). API docs: http://127.0.0.1:8000/docs. `tests/test_ui_feature_contract.py`
+fails if a UI change drops a control that a backend feature needs (usage rights,
+AI-generated flag, RULE02 product fields, SKU change, AI label suggestion, rule basis).
 
 With VLM disabled, OpenCV temporal checks still run, and potential visual changes appear as **VIS-SCREEN** low-severity review prompts. This does **not** imply AI-generated defects.
 
