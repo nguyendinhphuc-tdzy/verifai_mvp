@@ -42,4 +42,9 @@ def test_end_to_end(tmp_path, monkeypatch, stub_perception):
     metrics=client.get('/api/metrics').json()
     assert metrics['evaluated']==0  # single label is insufficient for actual evaluation
     assert metrics['prediction_policy']=='candidate-v1-2026-10'
-    assert client.get('/').status_code==200
+    home_page=client.get('/')
+    assert home_page.status_code==200
+    assert 'Vào không gian kiểm duyệt' in home_page.text and 'href="/app"' in home_page.text
+    workspace=client.get('/app')
+    assert workspace.status_code==200
+    assert 'Hàng đợi duyệt' in workspace.text

@@ -127,7 +127,9 @@ def test_native_video_cleans_up_failed_request(tmp_path,monkeypatch):
 def test_backend_routes_new_modes_and_keeps_video_evidence_separate():
     from pathlib import Path
     backend=(Path(__file__).resolve().parents[1]/'backend.py').read_text(encoding='utf-8')
-    assert "OCR_SCAN_MODE=os.environ.get('OCR_SCAN_MODE','all')" in backend
+    # PO decision 02/11/2026: adaptive full-coverage OCR is the default; 'all' stays available.
+    assert "OCR_SCAN_MODE=os.environ.get('OCR_SCAN_MODE','adaptive')" in backend
+    assert "OCR_SCAN_MODES=('adaptive','all','sampled')" in backend
     assert 'iter_all_video_frames(path)' in backend
     assert "VLM_INPUT_MODE','video'" in backend
     assert 'analyze_native_video(client,path,p)' in backend

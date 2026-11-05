@@ -11,6 +11,7 @@ dist/
 
 # Virtual Environments
 .venv/
+.venv-gpu/
 venv/
 env/
 ENV/
@@ -67,3 +68,9 @@ logs/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+
+# Public demo data (scripts/start_public_demo.ps1)
+data_demo/
+
+# Dataset evaluation runs (scripts/evaluate_dataset.py)
+eval_runs/

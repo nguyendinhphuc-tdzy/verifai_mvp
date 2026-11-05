@@ -29,6 +29,26 @@ def video_stride(fps: float, duration: float, max_frames: int = 60) -> int:
     return max(1, round(fps * spacing))
 
 
+def count_decodable_frames(path, limit: int) -> int:
+    """Count frames by grabbing them when container metadata is missing.
+
+    Stops after ``limit + 1`` frames so an over-long video is rejected without
+    decoding it completely. Returns 0 when nothing can be read.
+    """
+    if limit < 0:
+        raise ValueError('limit must be non-negative')
+    cap = cv2.VideoCapture(str(path))
+    try:
+        if not cap.isOpened():
+            return 0
+        count = 0
+        while count <= limit and cap.grab():
+            count += 1
+        return count
+    finally:
+        cap.release()
+
+
 def _spread_indices(n: int, count: int) -> list[int]:
     if n <= 0 or count <= 0:
         return []

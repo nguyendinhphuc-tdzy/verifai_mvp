@@ -44,7 +44,7 @@ def test_vlm_end_to_end_with_mock(tmp_path,monkeypatch,stub_perception):
         writer.write(image)
     writer.release()
     with vid.open('rb') as f:
-        resp=client.post('/api/jobs',data={'product_id':p['id']},files={'file':('clip.mp4',f,'video/mp4')})
+        resp=client.post('/api/jobs',data={'product_id':p['id'],'rights':'self_created'},files={'file':('clip.mp4',f,'video/mp4')})
     assert resp.status_code==200,resp.text
     jid=resp.json()['id']
     for _ in range(100):
@@ -99,7 +99,7 @@ def test_unavailable_vlm_degrades_to_review_without_fake_issues(tmp_path,monkeyp
     for i in range(15):writer.write(np.full((80,100,3),130,dtype=np.uint8))
     writer.release()
     with video.open('rb') as f:
-        jid=client.post('/api/jobs',data={'product_id':p['id']},files={'file':('short.mp4',f,'video/mp4')}).json()['id']
+        jid=client.post('/api/jobs',data={'product_id':p['id'],'rights':'self_created'},files={'file':('short.mp4',f,'video/mp4')}).json()['id']
     for _ in range(100):
         job=client.get('/api/jobs/'+jid).json()
         if job['status'] in ('completed','failed'):break

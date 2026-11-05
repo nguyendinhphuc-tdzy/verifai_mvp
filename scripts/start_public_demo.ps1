@@ -1,0 +1,77 @@
+# Public demo from this machine via a free Cloudflare quick tunnel.
+# Requires VERIFAI_ACCESS_CODE (>= 8 chars) in .env and cloudflared installed.
+#   powershell -ExecutionPolicy Bypass -File scripts\start_public_demo.ps1
+# Stop: Ctrl+C in this window (the app server is stopped too).
+# Keep this file ASCII-only: Windows PowerShell 5.1 reads BOM-less UTF-8 as ANSI.
+$ErrorActionPreference = 'Stop'
+$Root = Split-Path -Parent $PSScriptRoot
+Set-Location $Root
+$Python = 'C:\Users\PC\AppData\Local\Programs\Python\Python311\python.exe'
+if (-not (Test-Path $Python)) { $Python = 'python' }
+# GPU OCR (about 7x faster per video): .venv-gpu = Python 3.11 venv with
+# --system-site-packages plus paddlepaddle-gpu. Delete the folder to go back to CPU.
+$GpuPython = Join-Path $Root '.venv-gpu\Scripts\python.exe'
+if (Test-Path $GpuPython) {
+    $Python = $GpuPython
+    Write-Host 'OCR chay tren GPU (.venv-gpu)'
+} else {
+    Write-Host 'OCR chay tren CPU (khong co .venv-gpu)'
+}
+$Port = 8000
+
+$codeLine = Get-Content .env -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\s*VERIFAI_ACCESS_CODE\s*=\s*(.+)$' } | Select-Object -First 1
+if (-not $env:VERIFAI_ACCESS_CODE -and -not $codeLine) { throw 'Them dong VERIFAI_ACCESS_CODE=<ma it nhat 8 ky tu> vao file .env truoc.' }
+$code = if ($env:VERIFAI_ACCESS_CODE) { $env:VERIFAI_ACCESS_CODE } else { ($codeLine -replace '^\s*VERIFAI_ACCESS_CODE\s*=\s*', '').Trim().Trim('"').Trim("'") }
+if ($code.Length -lt 8) { throw 'VERIFAI_ACCESS_CODE phai co it nhat 8 ky tu.' }
+
+# An old server on the same port would answer /healthz and the tunnel would serve old code.
+$busy = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($busy) {
+    throw "Cong $Port dang bi tien trinh PID $($busy.OwningProcess) chiem (co the la ban demo cu). Chay: Stop-Process -Id $($busy.OwningProcess) -Force  roi chay lai script."
+}
+# Quick tunnels need outbound TCP 7844 to Cloudflare; some Wi-Fi/VPN/firewalls block it.
+$edge = Test-NetConnection 198.41.200.53 -Port 7844 -WarningAction SilentlyContinue
+if (-not $edge.TcpTestSucceeded) {
+    Write-Warning 'Mang hien tai chan cong 7844 toi Cloudflare: tunnel se khong ket noi duoc. Hay doi mang (vd. hotspot dien thoai) hoac tat VPN/tuong lua roi chay lai.'
+}
+
+$env:VERIFAI_PUBLIC_MODE = '1'
+$env:VERIFAI_DATA = Join-Path $Root 'data_demo'
+$env:VERIFAI_SEED_DB = Join-Path $Root 'deploy\seed.sql'
+
+Write-Host "Khoi dong VerifAI tai http://127.0.0.1:$Port (du lieu demo: data_demo)"
+$server = Start-Process -FilePath $Python -PassThru -NoNewWindow -ArgumentList @(
+    '-m', 'uvicorn', 'backend:app', '--host', '127.0.0.1', '--port', "$Port",
+    '--proxy-headers', '--forwarded-allow-ips', '127.0.0.1')
+try {
+    $ready = $false
+    foreach ($i in 1..60) {
+        Start-Sleep -Seconds 2
+        try { Invoke-RestMethod "http://127.0.0.1:$Port/healthz" -TimeoutSec 2 | Out-Null; $ready = $true; break } catch {}
+    }
+    if (-not $ready) { throw 'Server khong khoi dong duoc; xem log phia tren.' }
+    Write-Host ''
+    Write-Host 'Dang mo Cloudflare Tunnel. Tim dong https://....trycloudflare.com ben duoi va gui link do.'
+    Write-Host 'Dang nhap: ten bat ky, mat khau = VERIFAI_ACCESS_CODE.'
+    # Use a private, empty config: a user-level ~/.cloudflared/config.yml from
+    # another project may hold ingress rules (e.g. a catch-all http_status:404)
+    # that would hijack this quick tunnel. HTTP/2 over TCP is steadier than QUIC
+    # on home networks.
+    $cfg = Join-Path $env:TEMP 'verifai-cloudflared.yml'
+    Set-Content -Path $cfg -Value 'no-autoupdate: true' -Encoding ascii
+    # A brief network drop (Wi-Fi reconnect, DNS not ready) makes cloudflared
+    # exit with "lookup api.trycloudflare.com: no such host". Retry instead of
+    # stopping the app; Ctrl+C still stops everything.
+    $maxAttempts = 10
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        & cloudflared tunnel --config $cfg --protocol http2 --url "http://127.0.0.1:$Port"
+        if ($LASTEXITCODE -eq 0) { break }
+        if ($attempt -lt $maxAttempts) {
+            Write-Host "Tunnel loi (lan $attempt/$maxAttempts, ma $LASTEXITCODE). Kiem tra mang; thu lai sau 10 giay..."
+            Start-Sleep -Seconds 10
+        }
+    }
+}
+finally {
+    if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -Force }
+}

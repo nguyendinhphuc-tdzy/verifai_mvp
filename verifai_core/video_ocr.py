@@ -12,7 +12,8 @@ from typing import Iterator
 import cv2
 
 
-def iter_all_video_frames(path: Path | str, long_edge: int = 800) -> Iterator[dict]:
+def iter_all_video_frames(path: Path | str, long_edge: int = 800,
+                          keep_full: bool = False) -> Iterator[dict]:
     """Yield one resized BGR frame per decoded video frame, in source order.
 
     JPEG is *not* saved here; the caller saves evidence-bearing frames only.
@@ -31,6 +32,7 @@ def iter_all_video_frames(path: Path | str, long_edge: int = 800) -> Iterator[di
             ok, frame = cap.read()
             if not ok:
                 break
+            original = frame
             height, width = frame.shape[:2]
             factor = min(1.0, long_edge / max(height, width))
             if factor < 1.0:
@@ -39,12 +41,16 @@ def iter_all_video_frames(path: Path | str, long_edge: int = 800) -> Iterator[di
                     (max(1, round(width * factor)), max(1, round(height * factor))),
                     interpolation=cv2.INTER_AREA,
                 )
-            yield {
+            item = {
                 'image': frame,
                 'at': round(idx / fps, 3),
                 'frame': f'ocr-{idx:08d}.jpg',
                 'source_frame_index': idx,
             }
+            # Original resolution only when it differs; used for one-off re-reads.
+            if keep_full and factor < 1.0:
+                item['full'] = original
+            yield item
             idx += 1
     finally:
         cap.release()

@@ -1,5 +1,6 @@
 """VerifAI feasibility MVP. Local-only, modular evidence-first analysis."""
 import json, os, re, sqlite3, threading, time, uuid, hashlib, subprocess, shutil
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import contextmanager, asynccontextmanager
@@ -9,24 +10,34 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
+from verifai_core.envfile import load_env_file
+load_env_file(Path(__file__).resolve().parent/'.env')
 from verifai_core.dataset import ensure_dataset_schema, install_dataset_routes
 from verifai_core.product_import import ensure_product_import_schema, install_product_import_routes
 from verifai_core.recommendation import recommend_ai
 from verifai_core.local_security import local_only_middleware
 from verifai_core.session_export import install_export_routes
-from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, RULE_VERSION as SPRINT2_RULE_VERSION
-from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed
+from verifai_core.sprint2_rules import check_variant, check_unapproved_high_risk_claims, check_brand_typo, check_unapproved_claims_fuzzy, check_brand_substitution, check_product_name, RULE_VERSION as SPRINT2_RULE_VERSION
+from verifai_core.perception import OCRService, ASRService, ocr_installed, asr_installed, has_audio_stream
 from verifai_core.video_ocr import iter_all_video_frames
+from verifai_core.adaptive_ocr import AdaptiveOCRScanner, AdaptiveOCRConfig, OCREvent, ADAPTIVE_OCR_VERSION
 from verifai_core.video_understanding import analyze_native_video
+from verifai_core.color_consistency import check_color_consistency, COLOR_CHECK_VERSION, check_text_rendering, TEXT_CHECK_VERSION
+from verifai_core.frame_anomaly import detect_mirror, detect_pixelation, FRAME_ANOMALY_VERSION
+from verifai_core.infant_nutrition import (CATEGORIES as PRODUCT_CATEGORIES, advertising_restriction,
+                                           breastmilk_comparison, has_age_information, INFANT_RULE_VERSION)
+from verifai_core.rule_registry import RULES, RULES_VERSION, rule_for
 from verifai_core.evidence import RawEvidence, normalize_evidence
 from verifai_core.price import assess_price, PRICE_PARSER_VERSION
 from verifai_core.claims import CLAIM_RULE_VERSION, find_restricted_claims, validate_reference_claims
 from verifai_core.verification import build_verification_report, attach_evidence_ids, VERIFICATION_VERSION
 from verifai_core.visual import visual_pairs, evenly_spaced, select_pairs
-from verifai_core.media_quality import video_stride, select_ocr_frames, OCRCoverage, SAMPLING_VERSION
+from verifai_core.media_quality import video_stride, select_ocr_frames, OCRCoverage, SAMPLING_VERSION, count_decodable_frames
 from verifai_core.vlm import VLMError, vlm_enabled, PROMPT_VERSION
 from verifai_core.gemini import GeminiVLM, DEFAULT_MODEL, GeminiVLM as _ProductionGeminiVLM
 from verifai_core.brand import detect_brand_inconsistencies, BRAND_RULE_VERSION
+from verifai_core.ai_label import find_ai_disclosure, AI_GENERATED_VALUES, AI_LABEL_RULE_VERSION
+from verifai_core.label_suggestion import suggest_label
 from verifai_core.vlm_health import GEMINI_OUTAGE_CIRCUIT
 from verifai_core.evaluation import predicted_error, sufficient_coverage, independent_consensus, calculate_metrics
 
@@ -37,11 +48,30 @@ MAX_UPLOAD=int(os.environ.get('MAX_VIDEO_MB','150'))*1024*1024
 MAX_DURATION=int(os.environ.get('MAX_VIDEO_SECONDS','180'))
 OCR_MAX_FRAMES=max(0,min(60,int(os.environ.get('OCR_MAX_FRAMES','12'))))
 OCR_SAMPLING_MODE=os.environ.get('OCR_SAMPLING_MODE','hybrid').strip().lower()
-OCR_SCAN_MODE=os.environ.get('OCR_SCAN_MODE','all').strip().lower()
+OCR_SCAN_MODES=('adaptive','all','sampled')
+# adaptive (default): check every frame, OCR on a <=0.5 s grid + visual changes,
+# bisect text changes, re-read new numeric text at full resolution.
+# all: OCR every decoded frame (exhaustive reference, slow). sampled: legacy.
+OCR_SCAN_MODE=os.environ.get('OCR_SCAN_MODE','adaptive').strip().lower()
+
+def adaptive_ocr_config():
+    return AdaptiveOCRConfig(
+        max_gap_seconds=float(os.environ.get('OCR_MAX_GAP_SECONDS','0.5')),
+        min_gap_seconds=float(os.environ.get('OCR_MIN_GAP_SECONDS','0.25')),
+        change_threshold=float(os.environ.get('OCR_CHANGE_THRESHOLD','12')),
+        fullres_recheck=os.environ.get('OCR_FULLRES_RECHECK','1')=='1')
 _ANALYSIS_SLOTS=threading.BoundedSemaphore(max(1,min(2,int(os.environ.get('MAX_CONCURRENT_JOBS','1')))))
 for p in (DATA,UPLOAD,FRAMES): p.mkdir(parents=True,exist_ok=True)
+# Cloud demo hosts have no persistent disk: start from a product-only seed.
+_SEED_DB=os.environ.get('VERIFAI_SEED_DB','').strip()
+if _SEED_DB and not DB.exists() and Path(_SEED_DB).is_file():
+    _seed=sqlite3.connect(DB)
+    _seed.executescript(Path(_SEED_DB).read_text(encoding='utf-8'))
+    _seed.close()
 @asynccontextmanager
 async def app_lifespan(_app):
+    if os.getenv('WARM_MODELS','1')=='1':
+        threading.Thread(target=warm_models,name='verifai-warmup',daemon=True).start()
     recover_interrupted_jobs()
     yield
 
@@ -82,7 +112,10 @@ def init():
             created_at TEXT NOT NULL);''')
         # Non-destructive migration: old v1 databases retain all jobs/reviews/labels.
         migrations = {
-            'jobs': {'recovery_attempts':'INTEGER NOT NULL DEFAULT 0'},
+            'product_truth_meta': {'category':"TEXT NOT NULL DEFAULT 'general'",'target_age':"TEXT NOT NULL DEFAULT ''"},
+            'jobs': {'recovery_attempts':'INTEGER NOT NULL DEFAULT 0',
+                     'ai_generated':"TEXT NOT NULL DEFAULT 'unknown'"},
+            'labels': {'ai_suggested_label':'TEXT','label_source':'TEXT'},
             'evidence': {
                 'end_timestamp': 'REAL', 'frame2': 'TEXT', 'source_model': 'TEXT',
                 'fingerprint': 'TEXT', 'metadata': "TEXT NOT NULL DEFAULT '{}'"
@@ -113,7 +146,7 @@ def product_dict(r):
             meta=c.execute('SELECT * FROM product_truth_meta WHERE product_id=?',(d['id'],)).fetchone()
         d.update(dict(meta) if meta else {
             'reference_url':'','reference_note':'','reference_status':'unverified',
-            'revision':1,'updated_at':d['created_at']})
+            'revision':1,'updated_at':d['created_at'],'category':'general','target_age':''})
         with db() as c:
             prof=c.execute('SELECT video_code,variant,expected_video_description,source_class,owner,notes,imported_at FROM product_import_profiles WHERE product_id=?',(d['id'],)).fetchone()
         if prof:
@@ -135,6 +168,8 @@ class ProductIn(BaseModel):
     reference_url:str=Field(default='',max_length=500)
     reference_note:str=Field(default='',max_length=800)
     reference_status:str=Field(default='unverified')
+    category:str=Field(default='general')
+    target_age:str=Field(default='',max_length=60)
 
     @model_validator(mode='after')
     def validate_product_truth(self):
@@ -145,6 +180,9 @@ class ProductIn(BaseModel):
         self.reference_note=self.reference_note.strip()
         if not self.sku or not self.name:
             raise ValueError('SKU và tên sản phẩm không được để trống')
+        if self.category not in PRODUCT_CATEGORIES:
+            raise ValueError('category phải là một trong: '+', '.join(PRODUCT_CATEGORIES))
+        self.target_age=self.target_age.strip()
         if self.reference_status not in ('unverified','reviewed','test_reference_approved'):
             raise ValueError('reference_status phải là unverified, reviewed hoặc test_reference_approved')
         if self.reference_url:
@@ -166,7 +204,7 @@ def _assert_sku_available(conn, sku, skip_id=None):
 
 def _product_snapshot(v):
     return {key:getattr(v,key) for key in ('sku','name','brand','price','claims','banned',
-            'reference_url','reference_note','reference_status')}
+            'reference_url','reference_note','reference_status','category','target_age')}
 
 def reference_scope(status: str) -> str:
     """Never conflate benchmark approval with externally verified commerce data."""
@@ -175,7 +213,17 @@ def reference_scope(status: str) -> str:
 
 
 @app.get('/')
-def home():return FileResponse(BASE/'static'/'index.html')
+def home():return FileResponse(BASE/'static'/'home.html')
+@app.get('/app')
+def workspace():return FileResponse(BASE/'static'/'index.html')
+@app.get('/api/rules')
+def list_rules():
+    return {'version':RULES_VERSION,'rules':RULES,
+            'note':'Căn cứ do nhóm tổng hợp; cần pháp chế kiểm tra. App không kết luận vi phạm pháp luật.'}
+
+@app.get('/healthz')
+def healthz():
+    return {'ok':True}
 @app.get('/api/health')
 def health():
     enabled = vlm_enabled()
@@ -197,9 +245,9 @@ def create_product(v:ProductIn):
                      VALUES(?,?,?,?,?,?,?,?)''',
                   (pid,v.sku,v.name,v.brand,v.price,json.dumps(v.claims,ensure_ascii=False),
                    json.dumps(v.banned,ensure_ascii=False),now))
-        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at)
-                     VALUES(?,?,?,?,?,?)''',
-                  (pid,v.reference_url,v.reference_note,v.reference_status,1,now))
+        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at,category,target_age)
+                     VALUES(?,?,?,?,?,?,?,?)''',
+                  (pid,v.reference_url,v.reference_note,v.reference_status,1,now,v.category,v.target_age))
         c.execute('''INSERT INTO product_truth_audits(product_id,event,revision,snapshot,created_at)
                      VALUES(?,?,?,?,?)''',
                   (pid,'created',1,json.dumps(_product_snapshot(v),ensure_ascii=False),now))
@@ -232,12 +280,12 @@ def update_product(pid:str,v:ProductUpdateIn):
         c.execute('''UPDATE products SET sku=?,name=?,brand=?,price=?,claims=?,banned=? WHERE id=?''',
                   (v.sku,v.name,v.brand,v.price,json.dumps(v.claims,ensure_ascii=False),
                    json.dumps(v.banned,ensure_ascii=False),pid))
-        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at)
-                     VALUES(?,?,?,?,?,?) ON CONFLICT(product_id) DO UPDATE SET
+        c.execute('''INSERT INTO product_truth_meta(product_id,reference_url,reference_note,reference_status,revision,updated_at,category,target_age)
+                     VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(product_id) DO UPDATE SET
                      reference_url=excluded.reference_url, reference_note=excluded.reference_note,
                      reference_status=excluded.reference_status,revision=excluded.revision,
-                     updated_at=excluded.updated_at''',
-                  (pid,v.reference_url,v.reference_note,v.reference_status,new_revision,now))
+                     updated_at=excluded.updated_at,category=excluded.category,target_age=excluded.target_age''',
+                  (pid,v.reference_url,v.reference_note,v.reference_status,new_revision,now,v.category,v.target_age))
         c.execute('''INSERT INTO product_truth_audits(product_id,event,revision,snapshot,created_at)
                      VALUES(?,?,?,?,?)''',
                   (pid,'updated',new_revision,json.dumps(_product_snapshot(v),ensure_ascii=False),now))
@@ -255,6 +303,18 @@ def product_history(pid:str):
 # Separate, lazy-loaded OCR and ASR engines. Do not download models at startup.
 _ocr_service = OCRService()
 _asr_service = ASRService()
+MODEL_WARMUP={'status':'not_started'}
+
+def warm_models():
+    """Load OCR then ASR in the background so the first video does not wait.
+
+    Order matches a job (Paddle before CTranslate2). The services' locks make a
+    job that arrives meanwhile simply wait for the load already in progress.
+    """
+    started=time.monotonic(); MODEL_WARMUP.update(status='running')
+    result={'ocr':_ocr_service.warm() if os.getenv('OCR_ENABLED','1')=='1' else 'disabled',
+            'asr':_asr_service.warm() if os.getenv('ASR_ENABLED','1')=='1' else 'disabled'}
+    MODEL_WARMUP.update(status='done',seconds=round(time.monotonic()-started,1),**result)
 
 def _has_paddle():
     return ocr_installed()
@@ -285,6 +345,71 @@ def _set_progress(job_id, stage, **data):
         c.execute('UPDATE jobs SET details=? WHERE id=? AND status=?',
                   (json.dumps(details,ensure_ascii=False),job_id,'processing'))
 
+RIGHTS_VALUES=('unknown','self_created','permission_granted','public_review_only')
+
+def cloud_upload_rights():
+    """Declared usage rights that allow sending video/frames to Gemini.
+
+    'unknown' is never eligible: media leaves the machine only after the
+    uploader has declared a usage right (PO decision, Sprint 1).
+    """
+    raw=os.environ.get('VLM_CLOUD_RIGHTS','self_created,permission_granted,public_review_only')
+    return {x.strip() for x in raw.split(',') if x.strip() in RIGHTS_VALUES}-{'unknown'}
+
+def _start_vlm_prefetch(path, product):
+    """Start the native-video Gemini calls before OCR (item 2, 04/11/2026).
+
+    Gemini runs on Google's servers, so it overlaps local OCR/ASR instead of
+    waiting for them, and its three calls run side by side. Results are only
+    *consumed* at the VLM stage, so evidence order, circuit accounting and
+    error handling stay exactly as in the sequential path. Returns None (the
+    stage then calls Gemini itself) whenever the sequential path would not use
+    native video or would refuse the call.
+    """
+    if os.getenv('VLM_PREFETCH','1')!='1':
+        return None
+    try:
+        client=GeminiVLM()
+        if not isinstance(client,_ProductionGeminiVLM) or not callable(getattr(client,'_get_client',None)):
+            return None
+        if os.environ.get('VLM_INPUT_MODE','video').strip().lower()!='video':
+            return None
+        if not client.check()['ready']:
+            return None
+        if os.getenv('VLM_CIRCUIT_ENABLED','1')=='1' and not GEMINI_OUTAGE_CIRCUIT.allow():
+            return None
+        sdk=client._get_client()  # create once; the three calls share it
+    except Exception:
+        return None
+    pool=ThreadPoolExecutor(max_workers=3,thread_name_prefix='verifai-vlm')
+
+    def timed(fn,*args):
+        start=time.monotonic(); value=fn(*args)
+        return value,round(time.monotonic()-start,2)
+    futures={'native':pool.submit(timed,analyze_native_video,client,path,product)}
+    if os.environ.get('VLM_COLOR_CHECK','1')=='1':
+        futures['color']=pool.submit(timed,check_color_consistency,sdk,client.model,path)
+    if os.environ.get('VLM_TEXT_CHECK','1')=='1':
+        futures['text']=pool.submit(timed,check_text_rendering,sdk,client.model,path)
+    pool.shutdown(wait=False)  # no new work; running calls finish on their own
+    return {'client':client,'futures':futures,'started':time.monotonic()}
+
+def _prefetched(prefetch, key, timings):
+    """Result of a prefetched call (re-raises its exception), or None if not prefetched."""
+    if not prefetch or key not in prefetch['futures']:
+        return None
+    value,seconds=prefetch['futures'][key].result()
+    timings[f'vlm_{key}_call_seconds']=seconds
+    return value
+
+def _container_frame_count(cap):
+    """Frame count advertised by the container; <=0 means unknown."""
+    import cv2
+    try:
+        return int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
 def _analyze_job(job_id):
     """One local job; only an atomically claimed queued job may run."""
     import cv2
@@ -301,6 +426,10 @@ def _analyze_job(job_id):
         c.execute('DELETE FROM findings WHERE job_id=?',(job_id,))
         c.execute('DELETE FROM evidence WHERE job_id=?',(job_id,))
     path=UPLOAD/j['stored_name']
+    job_rights=(j['rights'] or 'unknown')
+    job_ai_generated=(j['ai_generated'] if 'ai_generated' in j.keys() else None) or 'unknown'
+    vlm_rights_ok=job_rights in cloud_upload_rights()
+    vlm_active=vlm_enabled() and vlm_rights_ok
     coverage={'ocr':'not_installed','asr':'not_installed','visual':'heuristic_screening',
               'c2pa':'not_implemented','vlm':'disabled' if not vlm_enabled() else 'pending'}
     raw=[]; findings=[]; sampled=[]; vlm_calls=0; vlm_errors=[]
@@ -320,7 +449,14 @@ def _analyze_job(job_id):
         if not cap.isOpened(): raise RuntimeError('OpenCV không thể mở video; vui lòng dùng MP4/H.264.')
         fps=float(cap.get(cv2.CAP_PROP_FPS) or 25)
         fps=fps if 0<fps<240 else 25
-        total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)); duration=total/fps if total else 0
+        total=_container_frame_count(cap); frame_count_source='container'
+        if total<=0:
+            # WEBM/MKV often omit frame counts. Without a real duration the
+            # length limit and the Gemini timestamp filter would be bypassed.
+            total=count_decodable_frames(path,limit=int(fps*MAX_DURATION)+1)
+            frame_count_source='decoded'
+        if total<=0: raise RuntimeError('Không đọc được frame nào từ video.')
+        duration=total/fps
         if duration>MAX_DURATION: raise RuntimeError(f'Video vượt giới hạn {MAX_DURATION} giây.')
         interval=video_stride(fps,duration,max_frames=60)
         processed=0;idx=0; frame_dir=FRAMES/job_id;frame_dir.mkdir(parents=True,exist_ok=True)
@@ -342,42 +478,73 @@ def _analyze_job(job_id):
             idx+=1
         cap.release();cap=None
         timings['sampling_seconds']=round(time.monotonic()-stage_start,3)
+        vlm_prefetch=_start_vlm_prefetch(path,p) if vlm_active else None
+        timings['vlm_prefetch']=bool(vlm_prefetch)
         # Video frame sampling and OCR frame selection have different purposes:
         # visual signals may need up to 60 frames, but OCR only needs a smaller
         # representative subset (default 12) to keep CPU latency bounded.
         # Keep B1 hybrid OCR sampling and PR10's CPU-saving opt-out.
         ocr_enabled = os.getenv('OCR_ENABLED','1') == '1'
-        if OCR_SCAN_MODE not in ('all','sampled'):
-            raise RuntimeError('OCR_SCAN_MODE phải là all hoặc sampled')
+        if OCR_SCAN_MODE not in OCR_SCAN_MODES:
+            raise RuntimeError('OCR_SCAN_MODE phải là '+', '.join(OCR_SCAN_MODES))
         all_frames=ocr_enabled and OCR_SCAN_MODE=='all'
-        chosen=(iter_all_video_frames(path) if all_frames else
-                select_ocr_frames(sampled,min(OCR_MAX_FRAMES,len(sampled)),
-                                  mode=OCR_SAMPLING_MODE) if ocr_enabled else [])
-        expected_ocr_frames = max(0,total) if all_frames else len(chosen)
+        adaptive=ocr_enabled and OCR_SCAN_MODE=='adaptive'
+        scanner=None
+        if adaptive:
+            # Every decoded frame is checked; OCR only where text may differ.
+            scanner=AdaptiveOCRScanner(
+                frame_ocr,fps,adaptive_ocr_config(),
+                progress=lambda checked,calls:_set_progress(
+                    job_id,'ocr',done=checked,total=total,ocr_calls=calls,mode='adaptive'))
+            events=scanner.scan(iter_all_video_frames(path,keep_full=scanner.config.fullres_recheck))
+            expected_ocr_frames=total
+        else:
+            chosen=(iter_all_video_frames(path) if all_frames else
+                    select_ocr_frames(sampled,min(OCR_MAX_FRAMES,len(sampled)),
+                                      mode=OCR_SAMPLING_MODE) if ocr_enabled else [])
+            expected_ocr_frames = max(0,total) if all_frames else len(chosen)
+            def _plain_events(frames):
+                for frame in frames:
+                    results,status=frame_ocr(frame['image'])
+                    yield OCREvent(frame,results,status,OCR_SCAN_MODE,visible_until=frame['at'])
+            events=_plain_events(chosen)
         _set_progress(job_id,'ocr',done=0,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
         stage_start=time.monotonic()
-        for n,frame in enumerate(chosen,1):
-            ocr,ocr_status=frame_ocr(frame['image'])
-            ocr_health.observe(ocr_status,len(ocr))
-            if ocr_status=='ok':
-                if all_frames and ocr:
+        for n,event in enumerate(events,1):
+            frame=event.frame
+            ocr_health.observe(event.status,len(event.results))
+            if event.status=='ok':
+                if (all_frames or adaptive) and event.results:
                     cv2.imwrite(str(frame_dir/frame['frame']),frame['image'],
                                 [cv2.IMWRITE_JPEG_QUALITY,80])
-                for text,score in ocr:
-                    evidence('ocr',frame['at'],text,score,frame['frame'],source='paddleocr',
-                             meta={'confidence_kind':'ocr_engine',
-                                   'scan_mode':OCR_SCAN_MODE,
-                                   'source_frame_index':frame.get('source_frame_index'),
-                                   'sampling_version':SAMPLING_VERSION})
+                for text,score in event.results:
+                    meta={'confidence_kind':'ocr_engine',
+                          'scan_mode':OCR_SCAN_MODE,
+                          'source_frame_index':frame.get('source_frame_index'),
+                          'sampling_version':SAMPLING_VERSION}
+                    if adaptive:
+                        meta.update({'ocr_reason':event.reason,
+                                     'inherited_frames':event.inherited_frames,
+                                     'fullres_reread':event.fullres_used,
+                                     'adaptive_version':ADAPTIVE_OCR_VERSION})
+                        if event.visible_until>frame['at']:
+                            meta['segment_end_seconds']=round(event.visible_until,3)
+                    evidence('ocr',frame['at'],text,score,frame['frame'],source='paddleocr',meta=meta)
             ocr_calls+=1
-            if n==expected_ocr_frames or (all_frames and n%5==0) or (not all_frames and n%2==0):
+            if not adaptive and (n==expected_ocr_frames or (all_frames and n%5==0) or (not all_frames and n%2==0)):
                 _set_progress(job_id,'ocr',done=n,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
-        _set_progress(job_id,'ocr',done=ocr_calls,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
+        if not adaptive:
+            _set_progress(job_id,'ocr',done=ocr_calls,total=expected_ocr_frames,mode=OCR_SCAN_MODE)
         ocr_health_data=ocr_health.snapshot()
         ocr_health_data['scan_mode']=OCR_SCAN_MODE
-        ocr_health_data['expected_decoded_frames']=total if all_frames else None
-        ocr_health_data['complete_video_scan']=bool(all_frames and (total<=0 or ocr_calls>=total))
-        if all_frames and total>0 and ocr_calls<total:
+        ocr_health_data['expected_decoded_frames']=total if (all_frames or adaptive) else None
+        checked_frames=(scanner.stats.decoded_frames if scanner else ocr_calls if all_frames else 0)
+        ocr_health_data['complete_video_scan']=bool(
+            (all_frames or adaptive) and (total<=0 or checked_frames>=total)
+            and (scanner is None or scanner.stats.snapshot(scanner.config,fps)['all_frames_accounted']))
+        if scanner:
+            ocr_health_data['adaptive']=scanner.stats.snapshot(scanner.config,fps)
+        if (all_frames or adaptive) and total>0 and checked_frames<total:
             ocr_health_data['status']='partial' if ocr_health.successful_frames else 'error'
             ocr_health_data['errors'].append('Decoder stopped before advertised frame count')
         if not ocr_enabled:
@@ -385,7 +552,47 @@ def _analyze_job(job_id):
         coverage['ocr']=ocr_health_data['status']
         timings['ocr_seconds']=round(time.monotonic()-stage_start,3)
         timings['ocr_frames']=ocr_calls
+        timings['ocr_checked_frames']=checked_frames or ocr_calls
+        if scanner:
+            timings['ocr_fullres_calls']=scanner.stats.fullres_calls
         timings['ocr_avg_seconds_per_frame']=round(timings['ocr_seconds']/ocr_calls,3) if ocr_calls else None
+        anomaly_start=time.monotonic()
+        frame_anomaly={'version':FRAME_ANOMALY_VERSION}
+        if os.environ.get('FRAME_ANOMALY_CHECK','1')=='1':
+            _set_progress(job_id,'visual',current='frame anomalies')
+            try:
+                frame_anomaly['pixelation']=detect_pixelation(path)
+                if ocr_enabled and coverage['ocr'] in ('ok','partial'):
+                    ocr_spans=[(e.at,(e.metadata or {}).get('segment_end_seconds',e.at),
+                                e.text,e.score) for e in raw if e.kind=='ocr']
+                    known_text=(lambda t:[text for start,end,text,score in ocr_spans
+                                          if start<=t<=end and (score is None or score>=0.85)])
+                    frame_anomaly['mirror']=detect_mirror(
+                        path,frame_ocr,p.get('brand',''),
+                        known_text_at=known_text if adaptive and ocr_health_data.get('complete_video_scan') else None)
+            except Exception as exc:  # optional check: record, never fail the job
+                frame_anomaly['error']=str(exc)[:180]
+            mirror=frame_anomaly.get('mirror') or {}
+            if mirror.get('flagged'):
+                uid=evidence('visual_signal',mirror['first_at'],
+                             'Chữ chỉ đọc được khi lật ngang khung hình: '+', '.join(
+                                 t for h in mirror['hits'] for t in h['texts'])[:300],
+                             None,source='frame_anomaly_v1',
+                             meta={'task':'mirror','hits':mirror['hits'],'version':FRAME_ANOMALY_VERSION})
+                flag('VIS-04','high',mirror['first_at'],
+                     f'Khung hình bị lật gương từ khoảng giây {mirror["first_at"]}: tên thương hiệu/nhãn AI chỉ đọc '
+                     f'được khi lật ngang lại ({len(mirror["hits"])} khung). Cần xuất lại video.',
+                     uid,'frame_anomaly_v1',None,{'hits':mirror['hits'],'version':FRAME_ANOMALY_VERSION})
+            pixel=frame_anomaly.get('pixelation') or {}
+            if pixel.get('flagged'):
+                uid=evidence('visual_signal',pixel['first_at'],
+                             f'Độ nét giảm dưới 10% mức đầu video và xuất hiện ô vuông lặp đều từ giây {pixel["first_at"]}',
+                             None,source='frame_anomaly_v1',meta={'task':'pixelation',**pixel})
+                flag('VIS-05','high',pixel['first_at'],
+                     f'Hình bị vỡ ô/mờ bất thường từ khoảng giây {pixel["first_at"]} '
+                     f'(độ nét tụt dưới 10% so với đầu video, kéo dài {pixel.get("longest_run")} mẫu). Cần xuất lại video.',
+                     uid,'frame_anomaly_v1',None,{**pixel,'version':FRAME_ANOMALY_VERSION})
+        timings['anomaly_seconds']=round(time.monotonic()-anomaly_start,3)
         _set_progress(job_id,'asr')
         stage_start=time.monotonic()
         speeches,coverage['asr']=transcribe(path) if os.getenv('ASR_ENABLED','1') == '1' else ([], 'disabled')
@@ -406,7 +613,7 @@ def _analyze_job(job_id):
                          f'Biến động frame {pair.at:.1f}s → {pair.at2:.1f}s (chỉ báo heuristic, không chứng minh lỗi AI).',
                          None,pair.frame,pair.frame2,'opencv-temporal-v2',
                          {'pair_signal':pair.to_dict(),'paired_timestamp':pair.at2,'confidence_kind':'not_calibrated'})
-            if not vlm_enabled():
+            if not vlm_active:
                 flag('VIS-SCREEN','low',pair.at,'Biến động hình ảnh cùng cảnh: cần reviewer xem hai frame; chưa có VLM xác nhận.',
                      uid,source='visual_heuristic',meta={'paired_timestamp':pair.at2})
         blurry=[f for f in sampled if f['blur']<24]
@@ -417,16 +624,21 @@ def _analyze_job(job_id):
         timings['visual_seconds']=round(time.monotonic()-stage_start,3)
         _set_progress(job_id,'vlm')
         stage_start=time.monotonic()
-        if vlm_enabled():
+        if vlm_enabled() and not vlm_rights_ok:
+            # Fail closed: incomplete VLM coverage keeps the AI suggestion at Review.
+            coverage['vlm']='skipped_rights'
+            vlm_errors.append(f'Không gửi video/frame lên Gemini: quyền sử dụng video là '
+                              f'"{job_rights}". Khai báo quyền rồi phân tích lại để dùng VLM.')
+        elif vlm_enabled():
             try:
-                client=GeminiVLM()
+                client=vlm_prefetch['client'] if vlm_prefetch else GeminiVLM()
                 readiness=client.check()
                 if not readiness['ready']: raise VLMError(readiness['message'])
                 # Circuit only applies to the actual cloud adapter, not
                 # offline test mocks or other potential VLM backends.
                 circuit_enabled=(isinstance(client,_ProductionGeminiVLM)
                                  and os.getenv('VLM_CIRCUIT_ENABLED','1') == '1')
-                if circuit_enabled and not GEMINI_OUTAGE_CIRCUIT.allow():
+                if circuit_enabled and not vlm_prefetch and not GEMINI_OUTAGE_CIRCUIT.allow():
                     remaining=round(GEMINI_OUTAGE_CIRCUIT.remaining_seconds())
                     raise VLMError(
                         f'Gemini API tạm thời không sẵn sàng (503/504); '
@@ -473,36 +685,96 @@ def _analyze_job(job_id):
                     _set_progress(job_id,'vlm',current='native full video',done=0,total=1)
                     attempted_calls=1
                     native_request_started=True
-                    result=analyze_native_video(client,path,p)
-                    vlm_calls+=1
-                    if circuit_enabled:
-                        GEMINI_OUTAGE_CIRCUIT.success()
-                    native_video_summary=result.summary
-                    native_timeline_summary=result.timeline_summary
-                    for obs in result.observations:
-                        if obs.timestamp_seconds>duration+1:
-                            continue
-                        evidence('vlm_video_observation',obs.timestamp_seconds,
-                                 obs.description,obs.confidence,source=client.model,
-                                 meta={'category':obs.category,'task':'video',
-                                       'timestamp_source':'model_reported',
-                                       'confidence_kind':'model_self_reported',
-                                       'prompt_version':'gemini-native-video-v1'})
-                    for issue in result.issues:
-                        if issue.timestamp_seconds>duration+1:
-                            continue
-                        uid=evidence('vlm_issue',issue.timestamp_seconds,
-                                     issue.visible_basis+' — '+issue.description,
-                                     issue.confidence,source=client.model,
-                                     meta={'code':issue.code,'task':'video',
+                    native_error=None
+                    try:
+                        result=(_prefetched(vlm_prefetch,'native',timings) if vlm_prefetch
+                                else analyze_native_video(client,path,p))
+                    except (VLMError, ValueError) as exc:
+                        # Sequential path: fail as before (colour/text never called).
+                        # Prefetched path: colour/text already ran in parallel, so keep
+                        # their results and re-raise after them (coverage stays 'error').
+                        if not vlm_prefetch:
+                            raise
+                        native_error=exc
+                    if native_error is None:
+                        vlm_calls+=1
+                        if circuit_enabled:
+                            GEMINI_OUTAGE_CIRCUIT.success()
+                        native_video_summary=result.summary
+                        native_timeline_summary=result.timeline_summary
+                        for obs in result.observations:
+                            if obs.timestamp_seconds>duration+1:
+                                continue
+                            evidence('vlm_video_observation',obs.timestamp_seconds,
+                                     obs.description,obs.confidence,source=client.model,
+                                     meta={'category':obs.category,'task':'video',
                                            'timestamp_source':'model_reported',
-                                           'visible_basis':issue.visible_basis,
-                                           'confidence_kind':'model_self_reported'})
-                        if issue.confidence>=0.70:
-                            flag(issue.code,'medium',issue.timestamp_seconds,
-                                 issue.description,uid,'vlm',issue.confidence,
-                                 {'task':'video','timestamp_source':'model_reported'})
+                                           'confidence_kind':'model_self_reported',
+                                           'prompt_version':'gemini-native-video-v1'})
+                        for issue in result.issues:
+                            if issue.timestamp_seconds>duration+1:
+                                continue
+                            uid=evidence('vlm_issue',issue.timestamp_seconds,
+                                         issue.visible_basis+' — '+issue.description,
+                                         issue.confidence,source=client.model,
+                                         meta={'code':issue.code,'task':'video',
+                                               'timestamp_source':'model_reported',
+                                               'visible_basis':issue.visible_basis,
+                                               'confidence_kind':'model_self_reported'})
+                            if issue.confidence>=0.70:
+                                flag(issue.code,'medium',issue.timestamp_seconds,
+                                     issue.description,uid,'vlm',issue.confidence,
+                                     {'task':'video','timestamp_source':'model_reported'})
                     _set_progress(job_id,'vlm',done=1,total=1,current='native full video')
+                    if os.environ.get('VLM_COLOR_CHECK','1')=='1':
+                        # Whole-video Gemini misses mid-video colour changes;
+                        # evenly spaced stills in one call catch them.
+                        _set_progress(job_id,'vlm',current='color consistency',done=1,total=1)
+                        try:
+                            color_check=(_prefetched(vlm_prefetch,'color',timings)
+                                         or check_color_consistency(client._get_client(),client.model,path))
+                            vlm_calls+=1
+                            for issue in color_check['issues']:
+                                uid=evidence('vlm_issue',issue['timestamp'],
+                                             f"{issue['object']}: {issue['from_color']} → {issue['to_color']}. "
+                                             f"{issue['visible_basis']}",issue['confidence'],source=client.model,
+                                             meta={'code':'VIS-02','task':'color_consistency',
+                                                   'frames_seconds':color_check['times'],
+                                                   'confidence_kind':'model_self_reported',
+                                                   'check_version':COLOR_CHECK_VERSION})
+                                flag('VIS-02','medium',issue['timestamp'],
+                                     f"Màu không nhất quán: {issue['object']} đổi từ {issue['from_color']} "
+                                     f"sang {issue['to_color']}. Reviewer cần xem lại các khung hình.",
+                                     uid,'vlm_color_check',issue['confidence'],
+                                     {'task':'color_consistency','frames_seconds':color_check['times'],
+                                      'check_version':COLOR_CHECK_VERSION})
+                        except Exception as exc:
+                            # Optional extra check: record, never fail the job.
+                            color_check={'status':'error','error':str(exc)[:180],'issues':[]}
+                    if os.environ.get('VLM_TEXT_CHECK','1')=='1':
+                        _set_progress(job_id,'vlm',current='text rendering',done=1,total=1)
+                        try:
+                            text_check=(_prefetched(vlm_prefetch,'text',timings)
+                                        or check_text_rendering(client._get_client(),client.model,path))
+                            vlm_calls+=1
+                            for issue in text_check['issues']:
+                                uid=evidence('vlm_issue',issue['timestamp'],
+                                             f"Chữ hiển thị lỗi: “{issue['text']}”. {issue['problem']}",
+                                             issue['confidence'],source=client.model,
+                                             meta={'code':'TEXT-03','task':'text_rendering',
+                                                   'frames_seconds':text_check['times'],
+                                                   'confidence_kind':'model_self_reported',
+                                                   'check_version':TEXT_CHECK_VERSION})
+                                flag('TEXT-03','medium',issue['timestamp'],
+                                     f"Chữ hiển thị có thể bị lỗi: “{issue['text']}” ({issue['problem']}). "
+                                     'Reviewer cần xem lại khung hình.',
+                                     uid,'vlm_text_check',issue['confidence'],
+                                     {'task':'text_rendering','frames_seconds':text_check['times'],
+                                      'check_version':TEXT_CHECK_VERSION})
+                        except Exception as exc:
+                            text_check={'status':'error','error':str(exc)[:180],'issues':[]}
+                    if native_error is not None:
+                        raise native_error
                 requests=([('single',[f],f'frame {f["at"]}') for f in frame_selection]
                           if not video_mode else [])
                 lookup={f['frame']:f for f in sampled}
@@ -568,6 +840,9 @@ def _analyze_job(job_id):
             coverage['vlm']='disabled'
 
         timings['vlm_seconds']=round(time.monotonic()-stage_start,3)
+        if vlm_prefetch:
+            # vlm_seconds is now only the wait after OCR/ASR; this is the real span.
+            timings['vlm_wall_seconds']=round(time.monotonic()-vlm_prefetch['started'],3)
         _set_progress(job_id,'finalizing')
         normalized,raw_map=normalize_evidence(raw)
         for detected in detect_brand_inconsistencies(normalized,p.get('brand','')):
@@ -577,12 +852,53 @@ def _analyze_job(job_id):
             brand_evidence=normalized[evidence_index]
             brand_evidence.metadata['brand_check']={
                 **detected, 'reference_status':p.get('reference_status','unverified')}
-            flag('SKU-01','medium',brand_evidence.timestamp,
+            flag('SKU-01','high' if brand_evidence.kind=='ocr' else 'medium',brand_evidence.timestamp,
                  f'Thương hiệu trong video “{detected["observed_brand"]}” '
                  f'khác thứ tự tên tham chiếu “{detected["reference_brand"]}”; '
                  'reviewer cần kiểm tra nhãn bao bì, chữ quảng cáo và Product Truth.',
                  source='brand_rule_v1',confidence=brand_evidence.score,
                  meta={**detected,'reference_status':p.get('reference_status','unverified')})
+        if job_ai_generated=='yes':
+            # Dataset group "Thiếu nhãn AI": a declared AI-generated video must
+            # display a disclosure. Absence is only conclusive with full OCR.
+            text_items=[e for e in normalized if e.kind in ('ocr','asr')
+                        or (e.kind in ('vlm_observation','vlm_video_observation')
+                            and e.metadata.get('category')=='visible_text')]
+            disclosure=find_ai_disclosure(e.content for e in text_items)
+            full_ocr=coverage['ocr']=='ok' and bool(ocr_health_data.get('complete_video_scan'))
+            ai_label_meta={'rule_version':AI_LABEL_RULE_VERSION,'declared_ai_generated':True,
+                           'disclosure_found':disclosure,'complete_ocr_scan':full_ocr,
+                           'texts_checked':len(text_items)}
+            if disclosure is None and full_ocr:
+                flag('AI-LABEL-01','high',0,
+                     'Video được khai báo do AI tạo nhưng không tìm thấy nhãn công bố '
+                     '(ví dụ "Nội dung được tạo bởi AI") ở bất kỳ frame nào đã quét OCR '
+                     'hay lời nói. Cần bổ sung nhãn rồi xuất lại video.',
+                     source='ai_label_rule_v1',confidence=None,
+                     meta={**ai_label_meta,'absence_verified':True})
+            elif disclosure is None:
+                flag('AI-LABEL-01','medium',0,
+                     'Chưa tìm thấy nhãn công bố nội dung AI, nhưng OCR chưa quét đủ toàn bộ video; '
+                     'reviewer cần kiểm tra thủ công.',
+                     source='ai_label_rule_v1',meta={**ai_label_meta,'absence_verified':False})
+            details_ai_label={**ai_label_meta,'status':'found' if disclosure else 'missing'}
+        else:
+            details_ai_label={'rule_version':AI_LABEL_RULE_VERSION,'declared_ai_generated':job_ai_generated,
+                              'status':'not_required'}
+        # RULE02 (Nghị định 100/2014/NĐ-CP Điều 6): product-level restriction.
+        restriction=advertising_restriction(p.get('category') or 'general',p.get('target_age') or '')
+        if restriction:
+            flag('INFANT-01','medium',0,restriction['detail']+' Pháp chế cần xác nhận trước khi đăng.',
+                 source='infant_rule_v1',meta={**restriction,'category':p.get('category'),
+                 'target_age':p.get('target_age'),'rule_version':INFANT_RULE_VERSION})
+        if (p.get('category')=='infant_formula' and coverage['ocr']=='ok'
+                and bool(ocr_health_data.get('complete_video_scan'))):
+            age_texts=[e.content for e in normalized if e.kind in ('ocr','asr')]
+            if not has_age_information(age_texts):
+                flag('INFANT-03','medium',0,'Video sữa/sản phẩm dinh dưỡng trẻ nhỏ không hiển thị độ tuổi khuyến nghị '
+                     '(đã quét toàn bộ OCR và lời nói).',source='infant_rule_v1',
+                     meta={'texts_checked':len(age_texts),'rule_version':INFANT_RULE_VERSION})
+        frame_anomaly_details=locals().get('frame_anomaly',{})
         if coverage['ocr']!='ok' and coverage['asr']!='ok':
             flag('COVERAGE','medium',0,'OCR/ASR chưa khả dụng; chữ do Gemini đọc chỉ là bằng chứng ứng viên, cần xác minh độc lập.')
         for n,e in enumerate(normalized):
@@ -592,6 +908,14 @@ def _analyze_job(job_id):
                          and e.metadata.get('category')=='visible_text'
                          and e.score is not None and e.score>=0.80)
             if e.kind not in ('ocr','asr') and not is_vlm_text: continue
+            # Deterministic text read by OCR on >=2 frames at score>=0.90, or
+            # heard by ASR, is strong enough to recommend Regenerate. Gemini
+            # text never is (it stays a reviewer candidate).
+            ocr_frames_seen={str(x.get('frame')) for x in e.metadata.get('sources',[])
+                             if isinstance(x,dict) and x.get('frame')} or ({e.frame} if e.frame else set())
+            strong=(e.kind=='asr' or (e.kind=='ocr' and e.score is not None and e.score>=0.90
+                                      and len(ocr_frames_seen)>=2))
+            strong_severity='high' if strong else 'medium'
             claim_mentions=find_restricted_claims(e.content,p['banned'])
             if claim_mentions:
                 e.metadata['claim_v3']={'version':CLAIM_RULE_VERSION,
@@ -601,7 +925,7 @@ def _analyze_job(job_id):
             for claim in claim_mentions:
                 if claim.state!='asserted':
                     continue
-                flag('CLAIM-01','medium',e.timestamp,
+                flag('CLAIM-01',strong_severity,e.timestamp,
                      f'Có cụm claim hạn chế “{claim.phrase}” trong nội dung; '
                      'reviewer cần xác minh ngữ cảnh và nguồn Product Truth.',
                      source='claim_rule_vlm' if is_vlm_text else 'claim_rule_v3',confidence=e.score,
@@ -612,8 +936,11 @@ def _analyze_job(job_id):
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
             # Scenarios in Sprint-2 Sheet 2 informed these text candidates.
             # They are not labels or trained weights, and require reviewer signoff.
+            # OCR misreads digits on moving packaging ('900g' as '300g' at 0.83),
+            # so an OCR spec mismatch needs a confident reading on >= 2 frames.
             for mismatch in (check_variant(e.content, p.get('variant',''))
-                             if e.kind!='ocr' or e.score is None or e.score>=0.80
+                             if e.kind!='ocr' or (e.score is not None and e.score>=0.95
+                                                  and len(ocr_frames_seen)>=2)
                              else []):
                 flag(mismatch.code,'medium',e.timestamp,
                      f'Quy cách/dung tích quan sát "{mismatch.observed}" '
@@ -624,13 +951,44 @@ def _analyze_job(job_id):
                            'reference_variant':p.get('variant',''),
                            'rule_version':SPRINT2_RULE_VERSION,
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
-            for claim in check_unapproved_high_risk_claims(e.content,p['claims'],p['banned']):
-                flag(claim.code,'medium',e.timestamp,
+            milk=breastmilk_comparison(e.content)
+            if milk:
+                flag('INFANT-02',strong_severity,e.timestamp,
+                     f'Nội dung so sánh với sữa mẹ/ti mẹ: “{e.content[:120]}”. Không được quảng cáo sản phẩm '
+                     'dinh dưỡng trẻ nhỏ/bình bú như thay thế hoặc tương đương sữa mẹ.',
+                     source='infant_rule_v1',confidence=e.score,
+                     meta={'canonical_index':n,'phrase':milk,'rule_version':INFANT_RULE_VERSION,
+                           'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            exact_claims=check_unapproved_high_risk_claims(e.content,p['claims'],p['banned'])
+            for claim in exact_claims:
+                flag(claim.code,strong_severity,e.timestamp,
                      f'Phát hiện claim có rủi ro chưa nằm trong Approved Claims: "{claim.observed}". '
                      'Không mặc định vi phạm; reviewer cần xác minh nội dung và nguồn.',
                      source='claim_candidate_v1',confidence=e.score,
                      meta={'canonical_index':n,'rule_version':SPRINT2_RULE_VERSION,
                            'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            if not exact_claims and not claim_mentions:
+                # OCR often drops Vietnamese diacritics; match accent-free text.
+                for claim in check_unapproved_claims_fuzzy(e.content,p['claims'],p['banned']):
+                    curated=claim.reason=='high_risk_phrase_fuzzy'
+                    flag(claim.code,strong_severity if curated else 'medium',e.timestamp,
+                         f'Claim chưa nằm trong Approved Claims: "{claim.observed}"'
+                         +(' (khớp cụm rủi ro cao).' if curated else ' (cách nói tuyệt đối hóa).')
+                         +' Reviewer cần xác minh nguồn chứng minh.',
+                         source='claim_fuzzy_v1',confidence=e.score,
+                         meta={'canonical_index':n,'reason':claim.reason,'rule_version':SPRINT2_RULE_VERSION,
+                               'evidence_origin':'gemini_visible_text' if is_vlm_text else e.kind})
+            if (e.kind=='ocr' and e.score is not None and e.score>=0.85
+                    and len(ocr_frames_seen)>=2):
+                # Spelling of the product name line (consonant skeletons survive
+                # PaddleOCR's dropped accented vowels: 'Sũa btt' vs 'Sữa bột').
+                for typo in check_product_name(e.content, p.get('name','')):
+                    flag(typo.code,'medium',e.timestamp,
+                         f'Tên sản phẩm hiển thị "{typo.observed}" sai chính tả so với tham chiếu '
+                         f'"{typo.expected}" (đọc trên {len(ocr_frames_seen)} frame). Cần kiểm tra chữ trên video.',
+                         source='product_name_rule_v1',confidence=e.score,
+                         meta={'canonical_index':n,'reason':typo.reason,'reference_name':p.get('name',''),
+                               'rule_version':SPRINT2_RULE_VERSION,'supporting_frames':sorted(ocr_frames_seen)})
             if e.kind=='ocr':
                 source_frames={str(x.get('frame')) for x in e.metadata.get('sources',[])
                                if isinstance(x,dict) and x.get('frame')}
@@ -644,11 +1002,20 @@ def _analyze_job(job_id):
                              source='text_typo_v1',confidence=e.score,
                              meta={'canonical_index':n,'rule_version':SPRINT2_RULE_VERSION,
                                    'supporting_frames':sorted(source_frames)})
+                    for sub in check_brand_substitution(e.content,p.get('brand',''),
+                                                        supporting_frames=len(source_frames)):
+                        flag(sub.code,strong_severity,e.timestamp,
+                             f'Video hiển thị thương hiệu "{sub.observed}" thay vì "{sub.expected}" '
+                             f'(đọc trên {len(source_frames)} frame). Cần kiểm tra bao bì và Product Truth.',
+                             source='brand_substitution_v1',confidence=e.score,
+                             meta={'canonical_index':n,'observed_brand':sub.observed,
+                                   'reference_brand':sub.expected,'rule_version':SPRINT2_RULE_VERSION,
+                                   'supporting_frames':sorted(source_frames)})
             price_check = assess_price(e.content, p['price'])
             if price_check.mentions:
                 e.metadata['price_v3'] = price_check.to_dict()
             if price_check.status == 'MISMATCH':
-                flag('PRICE-01','medium',e.timestamp,
+                flag('PRICE-01',strong_severity,e.timestamp,
                      f'Giá quan sát {price_check.compared_vnd:,} ₫ khác giá tham chiếu '
                      f'{p["price"]:,} ₫; cần kiểm tra sản phẩm, giá khuyến mãi và bối cảnh.',
                      source='price_rule_vlm' if is_vlm_text else 'price_rule_v3',confidence=e.score,
@@ -664,7 +1031,11 @@ def _analyze_job(job_id):
         timings['total_seconds']=round(time.monotonic()-t0,3)
         details={'verification_version':VERIFICATION_VERSION,
                  'timings':timings,'duration':round(duration,2),'fps':round(fps,2),'sampled_frames':processed,
+                 'frame_count':total,'frame_count_source':frame_count_source,
                  'coverage':coverage,'elapsed_seconds':round(time.monotonic()-t0,2),
+                 'ai_label':details_ai_label,
+                 'frame_anomaly':frame_anomaly_details,
+                 'rules_version':RULES_VERSION,
                  'perception_quality':{
                      'sampling_version':SAMPLING_VERSION,
                      'sampling_stride_frames':interval,
@@ -674,13 +1045,14 @@ def _analyze_job(job_id):
                      'asr':{'status':coverage['asr'],
                             'segments':len(speeches),
                             'segments_with_end':sum(seg.get('end') is not None for seg in speeches),
-                            'speech_observed':bool(speeches)},
+                            'speech_observed':bool(speeches),
+                            'audio_stream':has_audio_stream(path)},
                  },
                  'rule_version':'rules-0.4','price_parser_version':PRICE_PARSER_VERSION,
                  'claim_rule_version':CLAIM_RULE_VERSION,
                  'product_truth_snapshot':{key:p.get(key) for key in
                      ('sku','name','brand','price','variant','expected_video_description',
-                      'claims','banned','reference_url','reference_note','reference_status','revision')},'normalization_version':'evidence-2.0',
+                      'claims','banned','reference_url','reference_note','reference_status','revision','category','target_age')},'normalization_version':'evidence-2.0',
                  'frame_timeline':[{'at':f['at'],'frame':f['frame'],'blur':f['blur']} for f in sampled],
                  'normalization':{'raw_count':len(raw),'canonical_count':len(normalized),
                                   'merged_count':len(raw)-len(normalized)},
@@ -688,9 +1060,12 @@ def _analyze_job(job_id):
                            'same_shot_pairs':sum(x.likely_same_shot for x in signals),
                            'change_candidates':len(candidates)},
                  'vlm':{'enabled':vlm_enabled(),'model':os.environ.get('VLM_MODEL',DEFAULT_MODEL),
+                         'rights':job_rights,'cloud_upload_allowed':vlm_rights_ok,
                          'input_mode':'video' if locals().get('video_mode',False) else 'frames',
                          'video_summary':locals().get('native_video_summary',''),
                          'timeline_summary':locals().get('native_timeline_summary',''),
+                         'color_check':locals().get('color_check',{'status':'not_run'}),
+                         'text_check':locals().get('text_check',{'status':'not_run'}),
                         'calls_succeeded':vlm_calls,
                          'calls_attempted':locals().get('attempted_calls',0),
                          'calls_skipped':locals().get('skipped_calls',0),
@@ -770,7 +1145,7 @@ def recover_interrupted_jobs():
     return resumed
 
 @app.post('/api/jobs')
-async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source_url:str=Form(''),rights:str=Form('unknown'),case_code:str=Form('')):
+async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source_url:str=Form(''),rights:str=Form('unknown'),case_code:str=Form(''),ai_generated:str=Form('unknown')):
     with db() as c:
         if not c.execute('SELECT 1 FROM products WHERE id=?',(product_id,)).fetchone():raise HTTPException(404,'Product not found')
     case_code=case_code.strip().upper()
@@ -780,6 +1155,12 @@ async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source
             if not case:raise HTTPException(404,'Dataset case not found')
             if case['product_id'] and case['product_id']!=product_id:
                 raise HTTPException(409,'Dataset case liên kết Product Truth khác với sản phẩm đã chọn')
+    rights=(rights or '').strip() or 'unknown'
+    if rights not in RIGHTS_VALUES:
+        raise HTTPException(400,'rights phải là một trong: '+', '.join(RIGHTS_VALUES))
+    ai_generated=(ai_generated or '').strip().lower() or 'unknown'
+    if ai_generated not in AI_GENERATED_VALUES:
+        raise HTTPException(400,'ai_generated phải là một trong: '+', '.join(AI_GENERATED_VALUES))
     ext=Path(file.filename or '').suffix.lower()
     if ext not in ('.mp4','.mov','.mkv','.webm'):raise HTTPException(400,'Chỉ nhận MP4/MOV/MKV/WEBM')
     jid=uuid.uuid4().hex[:12];stored=f'{jid}{ext}';target=UPLOAD/stored
@@ -792,11 +1173,11 @@ async def upload_video(file:UploadFile=File(...),product_id:str=Form(...),source
             out.write(chunk)
     if not size:target.unlink(missing_ok=True);raise HTTPException(400,'Video rỗng')
     with db() as c:
-        c.execute('INSERT INTO jobs(id,filename,stored_name,product_id,status,source_url,rights,created_at,details,case_code) VALUES(?,?,?,?,?,?,?,?,?,?)',(jid,Path(file.filename).name,stored,product_id,'queued',source_url[:500],rights[:100],utc(),'{}',case_code or None))
+        c.execute('INSERT INTO jobs(id,filename,stored_name,product_id,status,source_url,rights,created_at,details,case_code,ai_generated) VALUES(?,?,?,?,?,?,?,?,?,?,?)',(jid,Path(file.filename).name,stored,product_id,'queued',source_url[:500],rights,utc(),'{}',case_code or None,ai_generated))
         if case_code:
             c.execute('UPDATE dataset_cases SET product_id=COALESCE(product_id,?),updated_at=? WHERE code=?',
                       (product_id,utc(),case_code))
-        audit(c,jid,'system','uploaded',{'size_bytes':size,'sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'source_url':source_url,'rights':rights})
+        audit(c,jid,'system','uploaded',{'size_bytes':size,'sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'source_url':source_url,'rights':rights,'ai_generated':ai_generated})
     _start_job(jid)
     return {'id':jid,'status':'queued'}
 
@@ -813,6 +1194,39 @@ def reanalyze(jid: str):
               'previous_review_cleared':True,'vlm_enabled':vlm_enabled()})
     _start_job(jid)
     return {'id':jid,'status':'queued'}
+
+class JobProductIn(BaseModel):
+    product_id:str=Field(min_length=1,max_length=64)
+    actor:str=Field(default='reviewer',min_length=1,max_length=100)
+
+@app.post('/api/jobs/{jid}/product')
+def change_job_product(jid: str, v: JobProductIn):
+    """Attach or change the Product Truth of an analysed video, then re-analyse
+    the stored video. Findings depend on the reference, so results computed
+    against the old SKU are never kept under the new one."""
+    with db() as c:
+        c.execute('BEGIN IMMEDIATE')
+        j=c.execute('SELECT status,stored_name,product_id,case_code FROM jobs WHERE id=?',(jid,)).fetchone()
+        if not j: raise HTTPException(404,'Job not found')
+        if j['status'] in ('queued','processing'): raise HTTPException(409,'Job đang chạy; đợi xong rồi đổi SKU')
+        new=c.execute('SELECT id,sku FROM products WHERE id=?',(v.product_id,)).fetchone()
+        if not new: raise HTTPException(404,'Product not found')
+        if j['product_id']==v.product_id: raise HTTPException(409,'Video đã gắn sản phẩm này')
+        if j['case_code']:
+            case=c.execute('SELECT product_id FROM dataset_cases WHERE code=?',(j['case_code'],)).fetchone()
+            if case and case['product_id'] and case['product_id']!=v.product_id:
+                raise HTTPException(409,'Dataset case liên kết Product Truth khác với sản phẩm đã chọn')
+        if not (UPLOAD/j['stored_name']).is_file(): raise HTTPException(404,'Uploaded video missing')
+        old=c.execute('SELECT sku FROM products WHERE id=?',(j['product_id'],)).fetchone()
+        c.execute('''UPDATE jobs SET product_id=?,status=?,decision=NULL,review_decision=NULL,reviewer=NULL,
+                     review_note=NULL,recovery_attempts=0 WHERE id=?''',(v.product_id,'queued',jid))
+        audit(c,jid,v.actor,'product_changed',{
+            'from_product_id':j['product_id'],'from_sku':old['sku'] if old else None,
+            'to_product_id':v.product_id,'to_sku':new['sku'],'previous_status':j['status'],
+            'previous_review_cleared':True,'reanalyze':True,
+            'note':'Nhãn đã gán trước đó được giữ trong lịch sử; gợi ý AI được tính lại theo SKU mới.'})
+    _start_job(jid)
+    return {'id':jid,'status':'queued','product_id':v.product_id,'sku':new['sku']}
 
 @app.get('/api/jobs')
 def list_jobs():
@@ -847,10 +1261,12 @@ def get_job(jid:str):
         for f in d['findings']:
             f['metadata']=json.loads(f.get('metadata') or '{}')
             f['evidence_refs']=json.loads(f.get('evidence_refs') or '[]')
+            f['rule']=rule_for(f['code'])
         d['audits']=[dict(r) for r in c.execute('SELECT * FROM audits WHERE job_id=? ORDER BY id DESC',(jid,))]
         d['labels']=[dict(r) for r in c.execute('SELECT * FROM labels WHERE job_id=? ORDER BY id DESC',(jid,))]
         d['ai_recommendation']=(recommend_ai(d['details'].get('verification'),d['findings'])
                                  if d['status']=='completed' else None)
+        d['label_suggestion']=suggest_label(d['ai_recommendation'],d['findings'])
         return d
 @app.get('/api/jobs/{jid}/verification')
 def get_verification(jid: str):
@@ -882,7 +1298,8 @@ def get_video(jid:str):
     return FileResponse(UPLOAD/j['stored_name'],media_type='video/mp4')
 @app.get('/api/jobs/{jid}/frames/{name}')
 def get_frame(jid:str,name:str):
-    if not re.fullmatch(r'[0-9a-f]{12}',jid) or not re.fullmatch(r'\d{3}\.jpg',name):raise HTTPException(400,'Invalid frame')
+    # \d{3}.jpg = UI timeline thumbnails; ocr-\d{8}.jpg = frames saved by full/adaptive OCR.
+    if not re.fullmatch(r'[0-9a-f]{12}',jid) or not re.fullmatch(r'(?:\d{3}|ocr-\d{8})\.jpg',name):raise HTTPException(400,'Invalid frame')
     p=FRAMES/jid/name
     if not p.is_file():raise HTTPException(404,'Frame missing')
     return FileResponse(p,media_type='image/jpeg')
@@ -914,14 +1331,28 @@ class LabelIn(BaseModel):
     annotator:str=Field(min_length=1,max_length=100)
     label:str
     notes:str=''
+    error_types:list[str]=Field(default_factory=list)
 @app.post('/api/jobs/{jid}/labels')
 def label_job(jid:str,v:LabelIn):
     if v.label not in ('clean','error','uncertain'):raise HTTPException(400,'Invalid label')
     with db() as c:
         if not c.execute('SELECT 1 FROM jobs WHERE id=?',(jid,)).fetchone():raise HTTPException(404,'Job not found')
-        c.execute('INSERT INTO labels(job_id,annotator,label,notes,created_at) VALUES(?,?,?,?,?)',(jid,v.annotator,v.label,v.notes,utc()))
-        audit(c,jid,v.annotator,'ground_truth_label',{'label':v.label,'notes':v.notes})
-    return {'ok':True}
+    # Record what the AI suggested at labeling time, so agreement is auditable.
+    job=get_job(jid)
+    suggestion=job.get('label_suggestion') or {}
+    suggested=suggestion.get('label')
+    source=('accepted_ai_suggestion' if suggested==v.label else
+            'reviewer_override' if suggested else 'reviewer_only')
+    notes=v.notes
+    if v.error_types:
+        notes=(notes+' | ' if notes else '')+'Loại lỗi: '+', '.join(t[:60] for t in v.error_types[:8])
+    with db() as c:
+        c.execute('INSERT INTO labels(job_id,annotator,label,notes,created_at,ai_suggested_label,label_source) VALUES(?,?,?,?,?,?,?)',
+                  (jid,v.annotator,v.label,notes,utc(),suggested,source))
+        audit(c,jid,v.annotator,'ground_truth_label',{'label':v.label,'notes':notes,
+              'ai_suggested_label':suggested,'label_source':source,
+              'ai_suggestion_codes':suggestion.get('codes',[])})
+    return {'ok':True,'label_source':source,'ai_suggested_label':suggested}
 @app.get('/api/metrics')
 def metrics():
     """Actual-only candidate metrics; same policy as /api/dataset/summary."""
@@ -930,21 +1361,39 @@ def metrics():
         completed=[j for j in jobs if j['status']=='completed']
         evaluated=[]
         coverage_excluded=0
+        reviewer_truth=consensus_truth=accepted=overridden=0
         for j in completed:
             coverage=json.loads(j['details'] or '{}').get('coverage',{})
             if not sufficient_coverage(coverage):
                 coverage_excluded+=1
                 continue
-            labels=[dict(r) for r in c.execute('SELECT annotator,label FROM labels WHERE job_id=?',(j['id'],))]
+            labels=[dict(r) for r in c.execute('SELECT annotator,label,label_source FROM labels WHERE job_id=? ORDER BY id',(j['id'],))]
             truth=independent_consensus(labels)
-            if truth is None:continue
+            if truth is None:
+                # PO decision 02/11/2026: the session reviewer confirms the AI
+                # suggestion. Use the reviewer's latest clean/error label, but
+                # report it separately: it is not independent of the AI.
+                latest=[l for l in labels if l['label'] in ('clean','error')]
+                if not latest:continue
+                truth=latest[-1]['label']
+                reviewer_truth+=1
+            else:
+                consensus_truth+=1
+            if any(l.get('label_source')=='accepted_ai_suggestion' for l in labels):accepted+=1
+            if any(l.get('label_source')=='reviewer_override' for l in labels):overridden+=1
             findings=[dict(r) for r in c.execute('SELECT code,severity FROM findings WHERE job_id=?',(j['id'],))]
             evaluated.append((truth=='error',predicted_error(findings)))
         result=calculate_metrics(evaluated)
         result.update({'total':len(jobs),'completed':len(completed),
                        'reviewed':sum(bool(j['review_decision']) for j in jobs),
                        'excluded_insufficient_coverage':coverage_excluded,
-                       'note':'Actual-only candidate detection; requires >=2 agreeing annotators and available OCR/ASR/VLM. Dataset endpoint adds case-link constraints.'})
+                       'truth_from_independent_consensus':consensus_truth,
+                       'truth_from_session_reviewer':reviewer_truth,
+                       'reviewer_accepted_ai_suggestion':accepted,
+                       'reviewer_overrode_ai_suggestion':overridden,
+                       'note':('Truth = >=2 agreeing annotators when available, else the session reviewer label. '
+                               'Reviewer labels are given after seeing the AI suggestion, so they measure '
+                               'reviewer agreement with the AI, not independent accuracy.')})
         return result
 
 

@@ -67,8 +67,9 @@ def normalize_evidence(raw: list[RawEvidence], window_seconds: float = 2.3) -> t
         at = max(0.0, round(float(item.at), 2))
         observed_end = at
         # Whisper segments have start/end; retaining the actual end keeps
-        # transcript evidence seekable as a time range, not a point.
-        if item.kind == 'asr':
+        # transcript evidence seekable as a time range, not a point. Adaptive
+        # OCR reports how long a reading stayed on screen the same way.
+        if item.kind in ('asr', 'ocr'):
             try:
                 candidate = float(item.metadata.get('segment_end_seconds', at))
                 if math.isfinite(candidate) and at <= candidate <= at + 60:
