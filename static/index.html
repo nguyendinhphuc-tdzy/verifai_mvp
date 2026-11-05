@@ -1,4 +1,4 @@
-<!doctype html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VerifAI — Video Trust Workspace</title><style>
+<!doctype html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VerifAI · Kiểm duyệt video</title><style>
 :root{--bg:#f4f7fb;--ink:#15263c;--muted:#53677f;--line:#dbe5f0;--card:#fff;--primary:#385ce2;--aqua:#13a5a6;--violet:#775ce9;--pale:#edf2ff;--shadow:0 18px 60px rgba(21,40,80,.07)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font:14px/1.55 "Be Vietnam Pro",Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:radial-gradient(circle at 80% -5%,#e7ecff 0,transparent 30%),var(--bg)}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.app{display:grid;grid-template-columns:238px minmax(0,1fr);min-height:100vh}.side{background:#fff;border-right:1px solid var(--line);padding:27px 17px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:27px}.brand{display:flex;align-items:center;gap:11px;padding:0 13px;font-weight:800;letter-spacing:-.6px;font-size:23px}.brandmark{height:36px;width:36px;border-radius:13px;background:linear-gradient(135deg,#4c75f1,#7961db 70%,#35b4b4);color:#fff;display:grid;place-items:center;box-shadow:0 9px 20px #6071da40}.muted{color:var(--muted)}.nav{display:flex;flex-direction:column;gap:6px}.nav button{width:100%;text-align:left;padding:12px 15px;border:0;border-radius:12px;background:transparent;color:#435673;font-weight:650}.nav button.active{background:#ebefff;color:#314fc4}.nav button:hover:not(.active){background:#f4f6fa}.sidefoot{margin-top:auto;padding:15px;background:#f4f7ff;border:1px solid #e2eaff;border-radius:14px;color:#51617b;font-size:12px}.main{max-width:1550px;width:100%;padding:36px clamp(20px,4vw,66px) 70px;margin:auto}.topline{display:flex;align-items:center;justify-content:space-between;gap:10px}.eyebrow{font-size:11px;font-weight:850;letter-spacing:1.9px;text-transform:uppercase;color:#526de2}.tag{display:inline-flex;align-items:center;gap:7px;border-radius:99px;background:#e8f7f4;color:#167969;padding:7px 12px;font-size:12px;font-weight:720}.dot{width:7px;height:7px;border-radius:50%;background:#2ab699}.hero{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin:28px 0 23px}.hero-copy{padding:35px 37px;border-radius:27px;background:linear-gradient(115deg,#263979,#415ce1 56%,#6f73e6);color:#fff;position:relative;overflow:hidden;min-height:243px}.hero-copy:after{content:"";position:absolute;width:270px;height:270px;border:1px solid #ffffff43;border-radius:50%;right:-75px;top:-72px;box-shadow:0 0 0 45px #ffffff0c,0 0 0 100px #ffffff0c}.hero-copy .eyebrow{color:#bddeff}.hero h1{font-size:clamp(27px,3vw,41px);line-height:1.12;letter-spacing:-1.5px;margin:12px 0}.hero-copy p{color:#e2e9ff;max-width:450px;margin:0}.hero-viz{background:linear-gradient(148deg,#e9edff,#fdfdff 65%,#eaf7f6);border:1px solid #dce5ff;border-radius:27px;padding:24px;display:grid;align-content:center;gap:15px}.signal{background:white;border:1px solid #e0e6f3;border-radius:15px;padding:15px;box-shadow:0 10px 30px #566ab21b;display:flex;align-items:center;gap:12px;transform:translateX(0);animation:up .75s ease both}.signal:nth-child(2){margin-left:24px;animation-delay:.12s}.signal:nth-child(3){margin-left:48px;animation-delay:.24s}.bubble{width:37px;height:37px;border-radius:12px;display:grid;place-items:center;background:#e8edff;color:#4d5fe1;font-size:19px}.signal b{display:block;font-size:13px}.signal small{color:#74829b}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:25px}.stat{background:#fff;border:1px solid #e2e8f3;box-shadow:var(--shadow);padding:20px 21px;border-radius:18px}.stat strong{display:block;font-size:30px;letter-spacing:-1px}.stat small{font-weight:600;color:var(--muted)}.section{display:none;animation:fade .32s ease}.section.active{display:block}.sectionhead{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:6px 0 16px}.sectionhead h2{font-size:24px;letter-spacing:-.8px;margin:0}.sectionhead p{color:var(--muted);margin:4px 0 0}.panel{background:#fff;border:1px solid #e2e9f1;border-radius:20px;padding:24px;box-shadow:var(--shadow);min-width:0}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.gridUpload{display:grid;grid-template-columns:.95fr 1.05fr;gap:18px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}.field label{font-size:12px;font-weight:750;color:#344763}.field input,.field textarea,.field select,.search{width:100%;background:#f8faff;border:1px solid #dbe4ef;border-radius:11px;padding:11px 13px;color:#1b2e47;outline:none}.field input:focus,.field textarea:focus,.field select:focus,.search:focus{border-color:#5979e6;box-shadow:0 0 0 3px #5b7af01a}.field textarea{min-height:70px;resize:vertical}.button{padding:11px 17px;border-radius:11px;border:1px solid transparent;background:#405fe0;color:#fff;font-weight:720;display:inline-flex;align-items:center;justify-content:center;gap:8px}.button:hover{filter:brightness(1.06)}.button.secondary{background:#f1f4fe;border-color:#dce4ff;color:#3551c0}.button.ghost{background:#fff;color:#3d5478;border-color:#dce3ee}.button.green{background:#178f80}.button.full{width:100%}.dropzone{border:2px dashed #b8c8e6;border-radius:17px;min-height:171px;padding:22px;text-align:center;background:linear-gradient(145deg,#f5f7ff,#fcfdff);display:grid;place-items:center;gap:7px;cursor:pointer;transition:.2s}.dropzone:hover,.dropzone.drag{border-color:#6378e8;background:#f0f3ff}.dropzone strong{font-size:15px}.dropzone small{color:var(--muted)}.dropzone input{display:none}.tablewrap{overflow:auto;max-height:470px;border-radius:14px;border:1px solid #e4eaf2}table{border-collapse:collapse;width:100%;min-width:700px}th,td{text-align:left;padding:14px 15px;border-bottom:1px solid #e9edf4;vertical-align:middle}th{position:sticky;top:0;background:#f8faff;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#65758f;z-index:1}td{font-weight:530}tr:last-child td{border-bottom:0}tr:hover td{background:#fafbff}.pill{display:inline-flex;padding:4px 9px;border-radius:30px;font-size:11px;font-weight:750;white-space:nowrap;background:#ecf1ff;color:#4458ae}.pill.high{background:#fdf0df;color:#9a5d12}.pill.medium{background:#fff7dc;color:#846414}.pill.low{background:#e9f5ff;color:#276c9c}.pill.Pass{background:#e8f7f0;color:#1b8057}.pill.Regenerate{background:#fff0e5;color:#ae6621}.pill.completed{background:#e9f7f1;color:#257b62}.pill.failed{background:#fff0e5;color:#a45c18}.pill.queued,.pill.processing{background:#eaf0ff;color:#4763b3}.split{display:grid;grid-template-columns:minmax(300px,1.1fr) minmax(300px,.9fr);gap:18px}.videopane{background:#15233c;border-radius:15px;overflow:hidden;min-height:240px;display:flex;align-items:center;justify-content:center;color:#c0cbe4}.videopane video{width:100%;max-height:490px;display:block}.finding{padding:12px 13px;border:1px solid #e4eaf4;border-radius:13px;margin-bottom:9px;background:#fff;transition:.2s}.finding:hover{background:#f9fbff;transform:translateY(-1px)}.finding header{display:flex;justify-content:space-between;align-items:center;gap:9px}.finding p{margin:8px 0;font-size:13px;color:#435775}.mini{border:1px solid #dee7f1;background:#f7f9fe;border-radius:8px;padding:6px 10px;color:#304b83;font-weight:650}.empty{padding:35px 20px;text-align:center;color:#657891}.empty .emoji{font-size:33px}.log{background:#f7f9fe;border:1px solid #e1e8f2;border-radius:12px;padding:12px;max-height:185px;overflow:auto;font:12px/1.8 ui-monospace,SFMono-Regular,monospace;color:#49607c}.progress{height:7px;background:#e8eeff;border-radius:99px;overflow:hidden;margin:15px 0}.progress i{display:block;height:100%;width:45%;background:linear-gradient(90deg,#5670ed,#31bab1);border-radius:99px;animation:progress 1.4s ease-in-out infinite alternate}.notice{padding:13px 15px;border:1px solid #dce7ff;background:#f1f5ff;color:#345184;border-radius:12px;font-size:13px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.space{justify-content:space-between}.truncate{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}.framegrid{display:flex;gap:9px;overflow:auto;padding:8px 0}.framegrid img{height:90px;border-radius:10px;border:1px solid #dbe2eb;cursor:pointer}.framegrid img:hover{outline:2px solid #5b71e0}.hidden{display:none!important}.right{text-align:right}.footnote{font-size:12px;color:#667a91}.toasts{position:fixed;bottom:22px;right:22px;z-index:10}.toast{max-width:390px;padding:14px 17px;color:#fff;background:#223856;border-radius:13px;box-shadow:0 15px 40px #1427453b;margin-top:8px}.loader{display:inline-block;width:12px;height:12px;border:2px solid #99aff6;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@keyframes fade{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}@keyframes up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes progress{to{transform:translateX(115%);width:65%}}@media(max-width:1100px){.hero{grid-template-columns:1fr}.hero-viz{grid-template-columns:repeat(3,1fr)}.signal:nth-child(n){margin-left:0}.split,.gridUpload{grid-template-columns:1fr}}@media(max-width:760px){.app{display:block}.side{position:static;height:auto;padding:16px;gap:12px}.sidefoot{display:none}.nav{flex-direction:row;overflow:auto}.nav button{white-space:nowrap;width:auto}.main{padding:20px 16px 45px}.hero-copy{padding:25px}.hero-viz{display:none}.stats{grid-template-columns:repeat(2,1fr)}.grid2,.formgrid{grid-template-columns:1fr}.sectionhead{align-items:flex-start;flex-direction:column}}
 .evidence-list{display:grid;gap:9px;max-height:470px;overflow:auto;padding:3px}.evidence-card{border:1px solid #e0e8f4;border-radius:12px;padding:12px;background:#fafcff}.evidence-card:target,.evidence-card.highlight{outline:2px solid #6276e6;background:#eef2ff}.evidence-card .meta{color:#6a7a92;font-size:11px;margin-top:7px}.evidence-card .imgs{display:flex;gap:7px;margin-top:9px}.evidence-card .imgs img{height:80px;max-width:46%;object-fit:contain;border-radius:8px;border:1px solid #dbe2ef;cursor:pointer}.evidence-card p{margin:8px 0 0;overflow-wrap:anywhere}.evidence-card .pill{font-size:10px}.coverage-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}.evidence-list .empty{padding:14px}@media(max-width:760px){.evidence-list{max-height:380px}}
 
@@ -13,12 +13,13 @@
 .analysis-optional .optional-body{padding:0 14px 5px;border-top:1px solid #e9edf6}
 .analysis-optional .optional-body .field:first-child{margin-top:12px}
 .analysis-optional .optional-body .field:last-child{margin-bottom:9px}
-</style><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2718%27 fill=%27%231f7a67%27 stroke=%27%23e8b64a%27 stroke-width=%273%27/%3E%3Cpath d=%27M19 25 L30 44 L47 18%27 fill=%27none%27 stroke=%27%23fffdf6%27 stroke-width=%276%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E"><link rel="stylesheet" href="/static/workspace.css"><link rel="stylesheet" href="/static/theme.css"><link rel="stylesheet" href="/static/ux.css"><meta name="theme-color" content="#10362e"><script>try{if(localStorage.getItem('vfSide')==='collapsed')document.documentElement.classList.add('side-collapsed')}catch(e){}try{if(sessionStorage.getItem('vfEnter')){sessionStorage.removeItem('vfEnter');document.documentElement.classList.add('vf-enter')}}catch(e){}</script></head><body><div class="app">
+</style><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lexend:wght@500;600;700&display=swap" rel="stylesheet"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2718%27 fill=%27%231f7a67%27 stroke=%27%23e8b64a%27 stroke-width=%273%27/%3E%3Cpath d=%27M19 25 L30 44 L47 18%27 fill=%27none%27 stroke=%27%23fffdf6%27 stroke-width=%276%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E"><link rel="stylesheet" href="/static/workspace.css"><link rel="stylesheet" href="/static/theme.css"><link rel="stylesheet" href="/static/ux.css">
+<link rel="stylesheet" href="/static/art.css"><meta name="theme-color" content="#10362e"><script>try{if(localStorage.getItem('vfTheme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}try{if(localStorage.getItem('vfSide')==='collapsed')document.documentElement.classList.add('side-collapsed')}catch(e){}try{if(sessionStorage.getItem('vfEnter')){sessionStorage.removeItem('vfEnter');document.documentElement.classList.add('vf-enter')}}catch(e){}</script></head><body><div class="app">
 <aside class="side" id="side" aria-label="Điều hướng chính">
   <div class="side-top"><a class="brand" href="/" title="Về trang giới thiệu"><span class="brandmark" aria-hidden="true"><svg class="vf-mark draw" viewBox="0 0 64 64" focusable="false"><defs><linearGradient id="vfAppStroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3cd72"/><stop offset=".55" stop-color="#e8b64a"/><stop offset="1" stop-color="#74d2b4"/></linearGradient><linearGradient id="vfAppFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b8972"/><stop offset="1" stop-color="#0b3028"/></linearGradient></defs><rect class="m-fill" x="5" y="5" width="54" height="54" rx="17"/><rect class="m-frame" x="3" y="3" width="58" height="58" rx="19" pathLength="1"/><path class="m-check" d="M19 25 L30 44 L47 18" pathLength="1"/><circle class="m-spark" cx="50" cy="13" r="3.4"/></svg></span><span class="brand-text">Verif<span class="brand-ai">AI</span></span></a><button type="button" class="side-toggle" id="sideToggle" onclick="toggleSide()" aria-controls="side" aria-expanded="true" aria-label="Thu gọn menu" title="Thu gọn menu ( [ )"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg></button></div>
   <nav class="nav" id="nav" aria-label="Các khu vực làm việc">
     <span class="nav-group">Làm việc</span>
-    <button type="button" data-target="queue" class="active" aria-current="page" data-tip="Hàng đợi duyệt"><span class="nicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span><span class="nlabel">Hàng đợi duyệt</span><span class="nbadge" id="navBadgeQueue" hidden></span></button>
+    <button type="button" data-target="queue" class="active" aria-current="page" data-tip="Danh sách duyệt"><span class="nicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span><span class="nlabel">Danh sách duyệt</span><span class="nbadge" id="navBadgeQueue" hidden></span></button>
     <button type="button" data-target="analyze" data-tip="Phân tích video"><span class="nicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg></span><span class="nlabel">Phân tích video</span></button>
     <button type="button" data-target="overview" data-tip="Tổng quan"><span class="nicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></span><span class="nlabel">Tổng quan</span></button>
     <span class="nav-group">Dữ liệu &amp; đánh giá</span>
@@ -27,74 +28,137 @@
     <button type="button" data-target="evaluation" data-tip="Đánh giá"><span class="nicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></span><span class="nlabel">Đánh giá</span></button>
   </nav>
   <div class="side-bottom">
-    <button type="button" class="side-search" onclick="openPalette()" data-tip="Tìm nhanh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="nlabel">Tìm nhanh</span><kbd class="modkey">⌘K</kbd></button>
     <button type="button" class="profile" id="reviewerChip" onclick="openReviewerDialog()" data-tip="Người duyệt"><span class="avatar" id="reviewerAvatar" aria-hidden="true">?</span><span class="nlabel"><b id="reviewerChipName">Chưa đặt tên</b><small>Người duyệt · bấm để đổi</small></span></button>
-    <details class="sidefoot" data-tip="Trạng thái hệ thống"><summary><span class="nlabel">Trạng thái hệ thống</span></summary><div class="health-detail" id="health">Đang kết nối...</div></details>
   </div>
 </aside>
 <div class="side-scrim" id="sideScrim" onclick="closeDrawer()" hidden></div>
 <main class="main" id="mainContent">
   <header class="workspace-header">
     <button type="button" class="icon-btn menu-open" id="menuOpen" onclick="openDrawer()" aria-label="Mở menu" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    <div class="header-heading"><span class="header-eyebrow" id="headerEyebrow">Không gian kiểm duyệt</span><h1 class="header-title" id="currentSectionLabel">Hàng đợi duyệt</h1></div>
-    <div class="header-actions"><button type="button" class="search-trigger" onclick="openPalette()" aria-label="Tìm nhanh video, SKU hoặc trang"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Tìm video, SKU, trang…</span><kbd class="modkey">⌘K</kbd></button><button type="button" class="icon-btn header-help" onclick="openHelp()" aria-label="Xem phím tắt" title="Phím tắt ( ? )">?</button><button type="button" class="button" onclick="openTab('analyze')" title="Phân tích video mới ( N )">+ <span class="hide-sm">Phân tích mới</span></button></div>
+    <div class="header-heading"><span class="header-eyebrow" id="headerEyebrow"></span><h1 class="header-title" id="currentSectionLabel">Danh sách duyệt</h1></div>
+    <div class="header-actions"><button type="button" class="search-trigger" onclick="openPalette()" aria-label="Tìm nhanh video, SKU hoặc trang"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Tìm video, SKU, trang…</span><kbd class="modkey">⌘K</kbd></button><button type="button" class="icon-btn theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Chuyển chế độ sáng hoặc tối" title="Chế độ sáng / tối">☾</button><button type="button" class="icon-btn header-help" onclick="openHelp()" aria-label="Xem phím tắt" title="Phím tắt ( ? )">?</button><button type="button" class="button" onclick="openTab('analyze')" title="Phân tích video mới ( N )">+ <span class="hide-sm">Phân tích mới</span></button></div>
   </header>
 
   <section id="queue" class="section active" aria-labelledby="queueHeading">
-    <div class="sectionhead"><div><h2 id="queueHeading">Video cần kiểm tra</h2><p>Chọn một video để xem cảnh báo, xác minh bằng chứng và đưa ra quyết định.</p></div><div class="row"><a id="exportAllSessionsQueue" class="button secondary" href="/api/sessions/export" download aria-label="Xuất tất cả phiên, kết quả AI và reviewer dưới dạng ZIP" title="Export All Sessions · tải ZIP toàn bộ phiên">↓ Xuất toàn bộ phiên</a><button type="button" class="mini" onclick="refreshAll()" aria-label="Làm mới hàng đợi">↻ Làm mới</button></div></div>
-    <div class="panel">
-      <div class="queue-toolbar"><div class="qtabs" role="tablist" aria-label="Lọc theo trạng thái"><button type="button" role="tab" data-mode="pending" class="active" aria-selected="true">Cần xử lý <span class="qcount" data-count="pending">0</span></button><button type="button" role="tab" data-mode="processing" aria-selected="false">Đang phân tích <span class="qcount" data-count="processing">0</span></button><button type="button" role="tab" data-mode="reviewed" aria-selected="false">Đã duyệt <span class="qcount" data-count="reviewed">0</span></button><button type="button" role="tab" data-mode="failed" aria-selected="false">Lỗi <span class="qcount" data-count="failed">0</span></button><button type="button" role="tab" data-mode="all" aria-selected="false">Tất cả <span class="qcount" data-count="all">0</span></button></div><div class="row"><input id="queueSearch" class="search" type="search" aria-label="Tìm video hoặc SKU" placeholder="Lọc tên video, SKU…" oninput="renderQueue()"><select id="queueStatus" class="search hidden" aria-label="Lọc trạng thái" onchange="renderQueue()"><option value="pending">Cần xử lý</option><option value="all">Tất cả video</option><option value="processing">Đang phân tích</option><option value="reviewed">Đã duyệt</option><option value="failed">Có lỗi xử lý</option></select></div><span class="queue-stat" id="queueCount" aria-live="polite">Đang tải...</span></div>
-      <div id="queueTable" class="tablewrap" aria-live="polite"><div class="skeleton"><i></i><i></i><i></i></div></div>
-      <div class="drop-hint" id="queueDrop" hidden>Thả video vào đây để phân tích<small>MP4, MOV, MKV, WEBM · tối đa 150MB</small></div>
+    <h2 id="queueHeading" class="sr-only">Danh sách duyệt</h2>
+    <div class="inbox-hero" id="inboxHero">
+      <svg viewBox="0 0 1200 220" preserveAspectRatio="xMaxYMax slice" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="heroSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="hs1"/><stop offset="1" class="hs2"/></linearGradient>
+          <filter id="heroGrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" result="n"/><feColorMatrix in="n" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .35 0" result="g"/><feComposite in="g" in2="SourceGraphic" operator="in" result="gi"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="gi"/></feMerge></filter>
+        </defs>
+        <rect width="1200" height="220" fill="url(#heroSky)"/>
+        <g class="h-clouds"><path class="h-cloud" d="M40 34 C220 18 380 46 560 30"/><path class="h-cloud" d="M640 58 C780 44 900 66 1060 50"/><path class="h-cloud" d="M300 78 C420 70 500 84 620 76" style="stroke-width:6"/></g>
+        <circle class="h-sun h-sunglow" cx="806" cy="78" r="30"/>
+        <path class="h-far h-grain" d="M0 150 C140 112 250 128 380 104 S630 84 760 110 S1000 70 1200 96 V220 H0Z"/>
+        <g transform="translate(902 64)"><rect class="h-mono" width="94" height="148" rx="16"/><rect class="h-screen" x="9" y="11" width="76" height="108" rx="9"/><path class="h-play" d="M38 50 L60 65 L38 80Z"/><rect class="h-play" x="34" y="130" width="26" height="5" rx="2.5" opacity=".7"/></g>
+        <g transform="translate(1016 100)"><rect class="h-mono" width="60" height="100" rx="12" opacity=".92"/><rect class="h-screen" x="6" y="8" width="48" height="70" rx="7"/><path class="h-play" d="M23 34 l14 9 -14 9z" opacity=".9"/></g>
+        <path class="h-mid h-grain" d="M0 180 C150 146 290 172 430 150 S700 136 830 160 S1060 136 1200 152 V220 H0Z"/>
+        <g transform="translate(600 120)">
+          <rect class="h-stall" x="0" y="22" width="58" height="40"/><path class="h-awn1" d="M-6 22 h70 l-8 -16 h-54z"/><rect class="h-door" x="21" y="38" width="16" height="24" rx="2"/>
+          <rect class="h-stall" x="74" y="30" width="48" height="32"/><path class="h-awn2" d="M68 30 h60 l-7 -14 h-46z"/><rect class="h-door" x="90" y="42" width="14" height="20" rx="2"/>
+          <rect class="h-stall" x="138" y="36" width="40" height="26"/><path class="h-awn3" d="M133 36 h50 l-6 -12 h-38z"/>
+        </g>
+        <path class="h-near h-grain" d="M0 204 C180 182 330 206 520 188 S860 196 1000 182 S1140 196 1200 188 V220 H0Z"/>
+        <g class="h-sway"><path class="h-leaf" d="M556 220 C562 186 580 168 600 162 C586 186 582 204 584 220Z"/><path class="h-leaf" d="M596 220 C604 192 626 176 652 172 C628 192 618 208 616 220Z"/></g>
+        <g class="h-sway d2"><path class="h-leaf" d="M800 220 C806 190 826 172 848 166 C832 190 826 206 828 220Z"/></g>
+        <g class="h-sway d3"><path class="h-leaf" d="M1090 220 C1094 178 1120 156 1150 150 C1126 178 1118 202 1120 220Z"/><path class="h-leaf" d="M1140 220 C1156 190 1180 178 1200 178 V220Z"/></g>
+        <g><circle class="h-flower" cx="606" cy="196" r="5"/><circle class="h-pistil" cx="606" cy="196" r="2"/><circle class="h-flower" cx="1124" cy="184" r="5"/><circle class="h-pistil" cx="1124" cy="184" r="2"/><circle class="h-flower" cx="838" cy="200" r="4"/><circle class="h-flower" cx="1160" cy="206" r="3"/><circle class="h-flower" cx="570" cy="208" r="3"/></g>
+      </svg>
+      <div class="hero-text"><h2 id="heroTitle">Danh sách duyệt</h2><p>AI đã phân tích trước và đánh dấu các điểm cần kiểm tra. Người duyệt xác minh và đưa ra quyết định cuối cùng.</p><button type="button" class="button hero-cta" id="heroCta" onclick="heroStart()">Bắt đầu duyệt →</button></div>
     </div>
-    <p class="queue-hint">Mẹo: kéo thả video vào bảng để phân tích nhanh · <kbd>J</kbd> <kbd>K</kbd> di chuyển, <kbd>Enter</kbd> mở video, <kbd>?</kbd> xem phím tắt.</p>
+    <div class="panel inbox">
+      <div class="inbox-list">
+        <div class="queue-toolbar"><div class="inbox-search"><input id="queueSearch" class="search" type="search" aria-label="Tìm video hoặc SKU" placeholder="Lọc tên video, SKU…" oninput="renderQueue()"><button type="button" class="icon-btn" onclick="refreshAll()" aria-label="Làm mới danh sách duyệt" title="Làm mới">↻</button><a id="exportAllSessionsQueue" class="icon-btn" href="/api/sessions/export" download aria-label="Xuất tất cả phiên, kết quả AI và reviewer dưới dạng ZIP" title="Export All Sessions · tải ZIP toàn bộ phiên">↓</a></div><div class="qtabs" role="tablist" aria-label="Lọc theo trạng thái"><button type="button" role="tab" data-mode="pending" class="active" aria-selected="true">Cần xử lý <span class="qcount" data-count="pending">0</span></button><button type="button" role="tab" data-mode="processing" aria-selected="false">Đang chạy <span class="qcount" data-count="processing">0</span></button><button type="button" role="tab" data-mode="reviewed" aria-selected="false">Đã duyệt <span class="qcount" data-count="reviewed">0</span></button><button type="button" role="tab" data-mode="failed" aria-selected="false">Lỗi <span class="qcount" data-count="failed">0</span></button><button type="button" role="tab" data-mode="all" aria-selected="false">Tất cả <span class="qcount" data-count="all">0</span></button></div><select id="queueStatus" class="search hidden" aria-label="Lọc trạng thái" onchange="renderQueue()"><option value="pending">Cần xử lý</option><option value="all">Tất cả video</option><option value="processing">Đang phân tích</option><option value="reviewed">Đã duyệt</option><option value="failed">Có lỗi xử lý</option></select><span class="sr-only" id="queueCount" aria-live="polite">Đang tải...</span></div>
+        <div id="queueTable" class="inbox-items" aria-label="Danh sách video" aria-live="polite"><div class="skeleton"><i></i><i></i><i></i></div></div>
+      </div>
+      <div class="inbox-detail" id="inboxDetail" aria-live="polite"></div>
+      <div class="drop-hint" id="queueDrop" hidden>Kéo thả video vào đây để phân tích<small>MP4, MOV, MKV, WEBM · tối đa 150MB</small></div>
+    </div>
     <div id="jobDetail" class="hidden" aria-live="polite">
-      <div class="review-top"><button type="button" class="button ghost back-btn" onclick="closeReview()" title="Về hàng đợi ( Esc )">← Hàng đợi</button><div class="review-title"><h2 id="jobTitle">Chi tiết video</h2><p id="jobMeta"></p><button type="button" class="inline-action job-product-open" id="jobProductOpen" onclick="openJobProductDialog()">Đổi sản phẩm tham chiếu…</button></div><span id="jobBadge"></span><div class="review-nav"><span class="footnote" id="reviewPos"></span><button type="button" class="mini" id="prevJob" onclick="stepJob(-1)" title="Video trước ( K )">‹ Trước</button><button type="button" class="mini" id="nextJob" onclick="stepJob(1)" title="Video sau ( J )">Sau ›</button></div></div>
+      <div class="review-top">
+        <button type="button" class="button ghost back-btn" onclick="closeReview()" title="Về danh sách duyệt ( Esc )">← Danh sách duyệt</button>
+        <div class="review-title"><h2 id="jobTitle">Chi tiết video</h2><p id="jobMeta"></p></div>
+        <span id="jobBadge"></span>
+        <div class="review-nav">
+          <span class="footnote" id="reviewPos"></span>
+          <button type="button" class="mini" id="prevJob" onclick="stepJob(-1)" title="Video trước ( K )" aria-label="Video trước">‹</button>
+          <button type="button" class="mini" id="nextJob" onclick="stepJob(1)" title="Video sau ( J )" aria-label="Video sau">›</button>
+          <div class="more"><button type="button" class="icon-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="reviewMore" aria-label="Thao tác khác" title="Thao tác khác" onclick="toggleMenu('reviewMore')">⋯</button>
+            <div class="menu" id="reviewMore" role="menu" hidden>
+              <button type="button" role="menuitem" id="jobProductOpen" onclick="toggleMenu('reviewMore');openJobProductDialog()">Đổi sản phẩm tham chiếu…</button>
+              <button type="button" role="menuitem" onclick="toggleMenu('reviewMore');exportEvidence()">↓ Xuất bằng chứng</button>
+              <button type="button" role="menuitem" onclick="toggleMenu('reviewMore');copyJobId()">Sao chép mã video</button>
+              <button type="button" role="menuitem" class="danger" onclick="toggleMenu('reviewMore');reanalyzeSelected()" title="Chạy lại sẽ đặt lại cảnh báo và quyết định reviewer đã có">↻ Phân tích lại…</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="review-layout">
         <div class="panel review-video-panel">
-          <div class="review-subhead"><h3>Video</h3><button type="button" class="mini" onclick="exportEvidence()">↓ Xuất bằng chứng</button></div>
           <div class="videopane"><video id="player" controls preload="metadata" playsinline aria-label="Video đang kiểm duyệt"></video></div>
           <div class="ftrack" id="findingTrack" aria-label="Vị trí các cảnh báo trên video"></div><div class="ftrack-labels" id="findingTrackLabels"></div>
-          <div id="frames" class="framegrid" aria-label="Các khung hình lấy mẫu"></div>
-          <details class="detail-disclosure" id="reviewEvidenceDetails">
-            <summary>Bằng chứng và mốc thời gian <span id="evidenceSummary" class="footnote"></span></summary>
-            <div class="disclosure-body"><div class="row" style="margin-bottom:12px"><label for="evidenceFilter" class="footnote">Nguồn bằng chứng</label><select id="evidenceFilter" class="search" style="max-width:185px" onchange="renderEvidence()"><option value="all">Tất cả nguồn</option><option value="ocr">OCR</option><option value="asr">ASR</option><option value="vlm">VLM</option><option value="visual">Hình ảnh</option></select></div><div id="evidences" class="evidence-list"></div></div>
-          </details>
-          <details class="detail-disclosure" id="geminiVideoTimeline" hidden>
-            <summary>Gemini — diễn biến và bối cảnh toàn bộ video</summary>
-            <div class="disclosure-body">
-              <p class="footnote">Gemini đọc video theo cơ chế lấy mẫu nội bộ của API; timestamp là ước lượng của model, không bảo đảm kiểm tra từng frame gốc.</p>
-              <div id="videoTimelineSummary" class="footnote" style="white-space:pre-wrap"></div>
-              <div id="videoContextSummary" class="footnote" style="margin-top:9px;white-space:pre-wrap"></div>
-            </div>
-          </details>
-          <details class="detail-disclosure"><summary>Chi tiết kỹ thuật</summary><div class="disclosure-body"><div id="coverage" class="notice"></div></div></details>
+          <div id="frames" class="framegrid frame-strip" aria-label="Các khung hình lấy mẫu"></div>
         </div>
-        <div class="panel">
-          <div class="review-subhead"><h3>Cảnh báo cần xác minh</h3><button type="button" class="mini" onclick="reanalyzeSelected()" title="Chạy lại sẽ đặt lại cảnh báo và quyết định reviewer đã có">↻ Phân tích lại</button></div>
-          <div id="aiDecisionSummary" class="notice" role="status" aria-live="polite">Đang xác định đề xuất AI...</div>
-          <div id="verificationSummary" class="notice" role="status" aria-live="polite"></div>
-          <details id="verificationDetails" class="detail-disclosure">
-            <summary>Giải thích kết quả kiểm tra <span id="verificationCount" class="footnote"></span></summary>
-            <div id="verificationChecks" class="disclosure-body"></div>
-          </details>
-          <div class="fprogress" id="findingProgress" aria-live="polite"></div>
-          <div id="findings" aria-label="Các cảnh báo AI"></div>
-          <details class="detail-disclosure review-bottom"><summary>Gán nhãn đánh giá <span class="footnote" id="labelSummaryText">AI gợi ý, reviewer xác nhận</span></summary><div class="disclosure-body"><div id="labelSuggestion" class="notice" style="margin-bottom:10px">Chưa có gợi ý.</div><div class="row" style="margin-bottom:10px"><button type="button" class="button secondary" id="acceptSuggestionBtn" onclick="acceptSuggestion()">Dùng nhãn AI gợi ý</button></div><div class="field"><label for="truthLabel">Hoặc chọn nhãn khác</label><select id="truthLabel" class="search"><option value="clean">Không lỗi</option><option value="error">Có lỗi</option><option value="uncertain">Chưa chắc chắn</option></select></div><button type="button" class="mini" onclick="addLabel()">Lưu nhãn của reviewer</button><div id="labelHistory" class="footnote" style="margin-top:8px"></div><p class="footnote">Nhãn do reviewer của phiên này xác nhận sau khi xem gợi ý AI; số liệu đánh giá phản ánh mức đồng thuận reviewer với AI, không phải độ chính xác độc lập.</p></div></details>
-          <details class="detail-disclosure"><summary>Lịch sử thao tác</summary><div class="disclosure-body"><div class="log" id="audits"></div></div></details>
+        <div class="panel review-side">
+          <div class="rtabs" role="tablist" aria-label="Nội dung duyệt">
+            <button type="button" role="tab" id="rtab-findings" data-rtab="findings" aria-controls="rpane-findings" aria-selected="true">Cảnh báo <span class="rcount" id="rtabFindingsCount"></span></button>
+            <button type="button" role="tab" id="rtab-evidence" data-rtab="evidence" aria-controls="rpane-evidence" aria-selected="false" tabindex="-1">Bằng chứng <span class="rcount" id="rtabEvidenceCount"></span></button>
+            <button type="button" role="tab" id="rtab-more" data-rtab="more" aria-controls="rpane-more" aria-selected="false" tabindex="-1">Nhãn &amp; lịch sử</button>
+          </div>
+          <div class="rpane" id="rpane-findings" role="tabpanel" aria-labelledby="rtab-findings">
+            <div class="ai-card">
+              <div id="aiDecisionSummary" role="status" aria-live="polite">Đang xác định đề xuất AI...</div>
+              <div id="verificationSummary" class="ai-stats" role="status" aria-live="polite"></div>
+              <details id="verificationDetails" class="ai-why">
+                <summary>Vì sao AI đề xuất như vậy? <span id="verificationCount" class="footnote"></span></summary>
+                <div id="verificationChecks"></div>
+              </details>
+            </div>
+            <div id="reviewAlerts" class="review-alerts"></div>
+            <div class="fprogress" id="findingProgress" aria-live="polite"></div>
+            <div id="findings" aria-label="Các cảnh báo AI"></div>
+          </div>
+          <div class="rpane" id="rpane-evidence" role="tabpanel" aria-labelledby="rtab-evidence" hidden>
+            <details class="detail-disclosure" id="geminiVideoTimeline" hidden open>
+              <summary>Tóm tắt video từ Gemini</summary>
+              <div class="disclosure-body">
+                <div id="videoContextSummary" style="white-space:pre-wrap"></div>
+                <div id="videoTimelineSummary" class="footnote" style="margin-top:9px;white-space:pre-wrap"></div>
+                <p class="footnote" style="margin-top:9px">Gemini đọc video theo cơ chế lấy mẫu nội bộ của API; timestamp là ước lượng của model, không bảo đảm kiểm tra từng frame gốc.</p>
+              </div>
+            </details>
+            <details class="detail-disclosure evidence-block" id="reviewEvidenceDetails" open>
+              <summary>Bằng chứng theo mốc thời gian <span id="evidenceSummary" class="footnote"></span></summary>
+              <div class="disclosure-body"><div class="row ev-tools"><label for="evidenceFilter" class="footnote">Lọc theo nguồn</label><select id="evidenceFilter" class="search" onchange="renderEvidence()"><option value="all">Tất cả nguồn</option><option value="ocr">Chữ trên hình (OCR)</option><option value="asr">Lời thoại (ASR)</option><option value="vlm">AI thị giác</option><option value="visual">Khung hình</option></select><button type="button" class="mini" onclick="exportEvidence()">↓ Xuất</button></div><div id="evidences" class="evidence-list"></div></div>
+            </details>
+            <details class="detail-disclosure"><summary>Chi tiết kỹ thuật</summary><div class="disclosure-body"><div id="coverage" class="notice"></div></div></details>
+          </div>
+          <div class="rpane" id="rpane-more" role="tabpanel" aria-labelledby="rtab-more" hidden>
+            <div class="label-block review-bottom">
+              <h4>Nhãn đánh giá</h4>
+              <p class="footnote" id="labelSummaryText">AI gợi ý, reviewer xác nhận</p>
+              <div id="labelSuggestion" class="notice">Chưa có gợi ý.</div>
+              <div class="label-actions"><button type="button" class="button secondary" id="acceptSuggestionBtn" onclick="acceptSuggestion()">Dùng nhãn AI gợi ý</button><span class="footnote">hoặc</span><div class="field"><label for="truthLabel" class="sr-only">Chọn nhãn khác</label><select id="truthLabel" class="search"><option value="clean">Không lỗi</option><option value="error">Có lỗi</option><option value="uncertain">Chưa chắc chắn</option></select></div><button type="button" class="mini" onclick="addLabel()">Lưu nhãn này</button></div>
+              <div id="labelHistory" class="footnote label-history"></div>
+              <p class="footnote">Nhãn do reviewer của phiên này xác nhận sau khi xem gợi ý AI; số liệu đánh giá phản ánh mức đồng thuận reviewer với AI, không phải độ chính xác độc lập.</p>
+            </div>
+            <div class="label-block"><h4>Lịch sử thao tác</h4><div class="log" id="audits"></div></div>
+          </div>
         </div>
       </div>
       <div class="decision-bar" id="decisionBar" role="group" aria-label="Quyết định kiểm duyệt">
-        <div class="db-who"><label for="reviewer" class="db-label">Người duyệt</label><input id="reviewer" autocomplete="name" placeholder="Tên reviewer" required></div>
+        <div class="db-who"><button type="button" class="db-chip" onclick="openReviewerDialog()" title="Đổi người duyệt"><span class="avatar" id="dbAvatar" aria-hidden="true">?</span><span class="db-chip-text"><small>Người duyệt</small><b id="dbWhoName">Chưa đặt tên</b></span></button><input id="reviewer" type="hidden"></div>
         <details class="db-note"><summary>✎ Ghi chú</summary><textarea id="reviewNote" rows="3" placeholder="Ghi chú quyết định (tùy chọn): lý do hoặc hành động cần thực hiện" aria-label="Ghi chú quyết định"></textarea></details>
-        <div class="db-actions"><button type="button" class="button green" onclick="submitReview('Pass')">✓ Chấp thuận <kbd>1</kbd></button><button type="button" class="button secondary" onclick="submitReview('Needs Review')">Cần kiểm tra <kbd>2</kbd></button><button type="button" class="button ghost" onclick="submitReview('Regenerate')">Yêu cầu sửa <kbd>3</kbd></button></div>
+        <span class="db-status" id="dbStatus" aria-live="polite"></span>
+        <div class="db-actions"><button type="button" class="button green" data-decision="Pass" onclick="submitReview('Pass')">✓ Chấp thuận <kbd>1</kbd></button><button type="button" class="button secondary" data-decision="Needs Review" onclick="submitReview('Needs Review')">Cần kiểm tra <kbd>2</kbd></button><button type="button" class="button ghost" data-decision="Regenerate" onclick="submitReview('Regenerate')">Yêu cầu sửa <kbd>3</kbd></button></div>
       </div>
     </div>
   </section>
 
   <section id="analyze" class="section" aria-labelledby="analyzeHeading">
     <div class="upload-shell wizard">
-      <div class="sectionhead"><div><h2 id="analyzeHeading">Phân tích video mới</h2><p>Ba bước: chọn video, chọn sản phẩm tham chiếu, rồi xác nhận. Kết quả sẽ vào hàng đợi để bạn duyệt.</p></div></div>
+      <div class="sectionhead"><div><h2 id="analyzeHeading">Phân tích video mới</h2></div></div>
       <ol class="stepper" id="stepper" aria-label="Các bước phân tích">
         <li><button type="button" data-step="1" class="current" aria-current="step"><span class="sn" aria-hidden="true">1</span><span class="st"><b>Video</b><small id="stepSum1">Chưa chọn</small></span></button></li>
         <li><button type="button" data-step="2"><span class="sn" aria-hidden="true">2</span><span class="st"><b>Sản phẩm tham chiếu</b><small id="stepSum2">Chưa chọn</small></span></button></li>
@@ -132,25 +196,24 @@
           <div class="wnav"><button type="button" class="button ghost" id="wBack" hidden>← Quay lại</button><span class="footnote" id="wHint"></span><button type="button" class="button" id="wNext" disabled>Tiếp tục →</button></div>
         </form>
       </div>
-      <p class="footnote" style="margin:15px 2px">Kết quả là gợi ý kiểm duyệt; bạn xác nhận hoặc bác bỏ từng cảnh báo trong hàng đợi.</p>
     </div>
   </section>
 
   <section id="overview" class="section" aria-labelledby="overviewHeading">
-    <div class="sectionhead"><div><h2 id="overviewHeading">Tổng quan</h2><p>Tình trạng xử lý và hoạt động kiểm duyệt gần đây.</p></div><div class="row"><a id="exportAllSessionsOverview" class="button secondary" href="/api/sessions/export" download aria-label="Xuất toàn bộ phiên cùng kết quả AI và reviewer" title="Export All Sessions · tải ZIP toàn bộ phiên">↓ Xuất toàn bộ phiên</a><button type="button" class="button" onclick="openTab('analyze')">+ Thêm video</button></div></div>
+    <h2 id="overviewHeading" class="sr-only">Tổng quan</h2>
     <div id="stats" class="stats ov-stats">
-      <button type="button" class="stat ov-card" onclick="openQueueFilter('pending')"><small>Chờ duyệt</small><strong id="stat-pending">–</strong><span class="ov-go">Mở hàng đợi →</span></button>
+      <button type="button" class="stat ov-card" onclick="openQueueFilter('pending')"><small>Chờ duyệt</small><strong id="stat-pending">–</strong><span class="ov-go">Mở danh sách duyệt →</span></button>
       <button type="button" class="stat ov-card" onclick="openQueueFilter('processing')"><small>Đang phân tích</small><strong id="stat-processing">–</strong><span class="ov-go">Xem tiến độ →</span></button>
       <button type="button" class="stat ov-card" onclick="openQueueFilter('reviewed')"><small>Đã duyệt</small><strong id="stat-reviewed">–</strong><span class="ov-go">Xem video đã duyệt →</span></button>
       <button type="button" class="stat ov-card" onclick="openQueueFilter('all')"><small>Tổng video</small><strong id="stat-total">–</strong><span class="ov-go"><b id="stat-done">–</b> đã phân tích →</span></button>
       <div class="stat subtle"><small>Đã gán nhãn</small><strong id="stat-labels">–</strong></div>
     </div>
     <div class="panel todo" id="overviewTodo"><div class="skeleton"><i></i><i></i></div></div>
-    <div class="panel"><div class="review-subhead"><h3>Video gần đây</h3><button type="button" class="mini" onclick="openTab('queue')">Mở hàng đợi →</button></div><div id="overviewJobs" class="tablewrap"><div class="skeleton"><i></i><i></i></div></div></div>
+    <div class="panel"><div class="review-subhead"><h3>Video gần đây</h3><div class="row"><a id="exportAllSessionsOverview" class="mini" href="/api/sessions/export" download aria-label="Xuất toàn bộ phiên cùng kết quả AI và reviewer" title="Export All Sessions · tải ZIP toàn bộ phiên">↓ Xuất toàn bộ phiên</a><button type="button" class="mini" onclick="openTab('queue')">Mở danh sách duyệt →</button></div></div><div id="overviewJobs" class="tablewrap"><div class="skeleton"><i></i><i></i></div></div></div>
   </section>
 
   <section id="products" class="section" aria-labelledby="productsHeading">
-    <div class="sectionhead"><div><h2 id="productsHeading">Sản phẩm tham chiếu</h2><p>Thông tin sáu video gốc từ Sheet 1, cần xác minh nguồn trước khi kết luận.</p></div><div class="row"><button type="button" class="button secondary" onclick="openDatasetImport()">↑ Import Excel 6 sản phẩm gốc</button><button type="button" class="button" onclick="openProductCreate()">+ Thêm sản phẩm</button><div class="more"><button type="button" class="icon-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="productMore" aria-label="Thao tác khác" title="Thao tác khác" onclick="toggleMenu('productMore')">⋯</button><div class="menu" id="productMore" role="menu" hidden><button type="button" role="menuitem" class="danger" onclick="toggleMenu('productMore');openProductImportReset()">Xóa sản phẩm nhập từ Excel…</button></div></div></div></div>
+    <div class="sectionhead"><div><h2 id="productsHeading">Sản phẩm tham chiếu</h2></div><div class="row"><button type="button" class="button secondary" onclick="openDatasetImport()">↑ Import Excel 6 sản phẩm gốc</button><button type="button" class="button" onclick="openProductCreate()">+ Thêm sản phẩm</button><div class="more"><button type="button" class="icon-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="productMore" aria-label="Thao tác khác" title="Thao tác khác" onclick="toggleMenu('productMore')">⋯</button><div class="menu" id="productMore" role="menu" hidden><button type="button" role="menuitem" class="danger" onclick="toggleMenu('productMore');openProductImportReset()">Xóa sản phẩm nhập từ Excel…</button></div></div></div></div>
     <div class="panel">
       <div class="queue-toolbar"><div class="qtabs" id="productTabs" role="tablist" aria-label="Lọc theo trạng thái nguồn"><button type="button" role="tab" data-status="all" class="active" aria-selected="true">Tất cả <span class="qcount">0</span></button><button type="button" role="tab" data-status="unverified" aria-selected="false">Chưa xem xét nguồn <span class="qcount">0</span></button><button type="button" role="tab" data-status="reviewed" aria-selected="false">Đã xem xét <span class="qcount">0</span></button><button type="button" role="tab" data-status="test_reference_approved" aria-selected="false">Chuẩn kiểm thử <span class="qcount">0</span></button></div><div class="row"><input id="productSearch" class="search" type="search" aria-label="Tìm sản phẩm" placeholder="Tìm tên, SKU, thương hiệu…"></div><span class="queue-stat" id="productShown" aria-live="polite"></span></div>
       <div id="productsList" class="plist"><div class="skeleton"><i></i><i></i><i></i></div></div>
@@ -165,12 +228,12 @@
   </section>
 
   <section id="dataset" class="section" aria-labelledby="datasetHeading">
-    <div class="sectionhead"><div><h2 id="datasetHeading">Bộ kiểm thử</h2><p>Import Excel chỉ lấy 6 sản phẩm gốc của Sheet 1. Các kịch bản lỗi/ground truth được đánh giá riêng, không tự nhập vào MVP.</p></div><div class="row"><button type="button" id="datasetImportTrigger" class="button secondary" aria-controls="datasetImportPanel" onclick="openDatasetImport()">↑ Import Excel (.xlsx)</button><button type="button" class="mini" onclick="refreshDataset()">↻ Làm mới</button></div></div>
+    <div class="sectionhead"><div><h2 id="datasetHeading">Bộ kiểm thử</h2></div><div class="row"><button type="button" id="datasetImportTrigger" class="button secondary" aria-controls="datasetImportPanel" onclick="openDatasetImport()">↑ Import Excel (.xlsx)</button><button type="button" class="mini" onclick="refreshDataset()">↻ Làm mới</button></div></div>
     <details id="datasetImportPanel" class="detail-disclosure dataset-import-panel" style="margin:0 0 15px"><summary>Nhập dữ liệu từ Excel <span class="footnote">6 sản phẩm gốc · tối đa 8 MB</span></summary><div class="disclosure-body">
-      <div class="grid2"><div><h3>Import Product Truth — 6 video gốc</h3><p class="footnote">Chỉ đọc Sheet <b>1. Kich ban goc</b> có đúng VID_GOC01–06 và SKU001–006. Có thể dùng file chỉ chứa Sheet 1. Không import 44 video lỗi, 30 video công khai, simulation hay Ground Truth. Sản phẩm trùng SKU không bị ghi đè tự động; xem cảnh báo xung đột sau khi import. Nguồn giả lập luôn để trạng thái chưa xác minh.</p><form id="datasetForm"><div class="field"><label for="datasetFile">Chọn file Excel (.xlsx, tối đa 8 MB)</label><input id="datasetFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div><button class="button" id="datasetImportSubmit" type="submit">Nhập workbook</button></form><p id="datasetImportStatus" class="footnote" role="status" aria-live="polite">Chọn workbook Sprint 2 để bắt đầu import.</p></div><div><h3>Trạng thái bộ dữ liệu</h3><div id="datasetSummary" class="grid2"></div></div></div>
+      <div class="grid2"><div><h3>Import Product Truth: 6 video gốc</h3><p class="footnote">Chỉ đọc Sheet <b>1. Kich ban goc</b> có đúng VID_GOC01–06 và SKU001–006. Có thể dùng file chỉ chứa Sheet 1. Không import 44 video lỗi, 30 video công khai, simulation hay Ground Truth. Sản phẩm trùng SKU không bị ghi đè tự động; xem cảnh báo xung đột sau khi import. Nguồn giả lập luôn để trạng thái chưa xác minh.</p><form id="datasetForm"><div class="field"><label for="datasetFile">Chọn file Excel (.xlsx, tối đa 8 MB)</label><input id="datasetFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div><button class="button" id="datasetImportSubmit" type="submit">Nhập workbook</button></form><p id="datasetImportStatus" class="footnote" role="status" aria-live="polite">Chọn workbook Sprint 2 để bắt đầu import.</p></div><div><h3>Trạng thái bộ dữ liệu</h3><div id="datasetSummary" class="grid2"></div></div></div>
     </div></details>
     <div class="panel" style="margin-bottom:15px"><div class="data-toolbar"><div class="row"><input class="search" id="datasetSearch" type="search" aria-label="Tìm test case" placeholder="Tìm mã case, SKU, loại lỗi..." oninput="renderDataset()"><select id="datasetGroupFilter" class="search" aria-label="Lọc nhóm dữ liệu" onchange="renderDataset()"><option value="all">Tất cả nhóm</option><option value="original">Video gốc</option><option value="controlled_error">Lỗi kiểm soát</option><option value="public">Video công khai</option></select></div><span class="pill" id="datasetShown">0 cases</span></div><div id="datasetTable" class="tablewrap"></div></div>
-    <div class="panel data-selected" style="margin-bottom:16px"><div class="review-subhead"><h3>Chi tiết trường hợp</h3><span class="footnote">Dữ liệu nguồn và nhãn kiểm định</span></div><div id="datasetDetail" class="muted">Chọn một trường hợp ở danh sách để xem và thao tác.</div></div>
+    <div class="panel data-selected" style="margin-bottom:16px"><div class="review-subhead"><h3>Chi tiết trường hợp</h3></div><div id="datasetDetail" class="muted">Chọn một trường hợp ở danh sách để xem và thao tác.</div></div>
 
   </section>
 
@@ -209,17 +272,17 @@
     <h3>Chung</h3>
     <div>Tìm nhanh <span><kbd class="modkey">⌘K</kbd> <kbd>/</kbd></span></div><div>Bật / tắt menu <kbd>[</kbd></div>
     <div>Phân tích video mới <kbd>N</kbd></div><div>Bảng phím tắt <kbd>?</kbd></div>
-    <h3>Hàng đợi</h3>
+    <h3>Danh sách duyệt</h3>
     <div>Xuống / lên <span><kbd>J</kbd> <kbd>K</kbd></span></div><div>Mở video <kbd>Enter</kbd></div>
     <h3>Màn duyệt video</h3>
     <div>Chấp thuận <kbd>1</kbd></div><div>Cần kiểm tra <kbd>2</kbd></div>
     <div>Yêu cầu sửa <kbd>3</kbd></div><div>Video sau / trước <span><kbd>J</kbd> <kbd>K</kbd></span></div>
-    <div>Về hàng đợi <kbd>Esc</kbd></div>
+    <div>Về danh sách duyệt <kbd>Esc</kbd></div>
   </div>
   <div class="dlg-actions"><button type="button" class="button" onclick="this.closest('dialog').close()">Đã hiểu</button></div>
 </div></dialog>
 <dialog class="vf-dialog" id="whoDialog" aria-labelledby="whoTitle"><form class="dlg-body" id="whoForm">
-  <h2 id="whoTitle">Bạn là ai?</h2><p>Tên người duyệt được ghi vào lịch sử thao tác cho mỗi cảnh báo và quyết định. VerifAI nhớ tên này trên máy của bạn.</p>
+  <h2 id="whoTitle">Thông tin người duyệt</h2><p>Tên người duyệt được ghi vào lịch sử thao tác cho mỗi cảnh báo và quyết định. Tên được lưu trên máy tính này.</p>
   <div class="field"><label for="whoName">Tên người duyệt</label><input id="whoName" autocomplete="name" maxlength="80" placeholder="Ví dụ: Trần Thị Thanh Vy" required></div>
   <div class="dlg-actions"><button type="button" class="button ghost" onclick="this.closest('dialog').close()">Để sau</button><button type="submit" class="button">Lưu tên</button></div>
 </form></dialog>
@@ -238,13 +301,14 @@ function toast(msg,action){let el=document.createElement('div');el.className='to
 function apiErrorText(d,status){if(typeof d.detail==='string')return d.detail;if(Array.isArray(d.detail)&&d.detail.length)return d.detail.map(x=>String(x.msg||'').replace(/^Value error,\s*/,'')).filter(Boolean).join('; ')||status+' Request failed';return status+' Request failed'}
 async function api(url,opt){const res=await fetch(url,opt);let d=await res.json().catch(()=>({}));if(!res.ok)throw Error(apiErrorText(d,res.status));return d}
 const post=(url,obj)=>api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
-const tabNames={queue:'Hàng đợi duyệt',analyze:'Phân tích video',overview:'Tổng quan',products:'Sản phẩm tham chiếu',dataset:'Bộ kiểm thử',evaluation:'Đánh giá thực tế'};
+const tabNames={queue:'Danh sách duyệt',analyze:'Phân tích video',overview:'Tổng quan',products:'Sản phẩm tham chiếu',dataset:'Bộ kiểm thử',evaluation:'Đánh giá thực tế'};
+Object.defineProperty(tabNames,'queue',{enumerable:true,get(){const n=(window.currentReviewerName?.()||'').trim();return n?'Danh sách duyệt của '+n.split(/\s+/).pop():'Danh sách duyệt'}});
 function openTab(id,{skipHistory=false}={}){
  if(id&&id.startsWith('review/')){showJob(id.slice(7),{fromRoute:true});return}
  if(!tabNames[id])return;
  $('queue').classList.remove('reviewing');
  if(!$('player').paused)$('player').pause();
- $('headerEyebrow').textContent='Không gian kiểm duyệt';
+ $('headerEyebrow').textContent='';
  document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===id));
  document.querySelectorAll('.nav button[data-target]').forEach(x=>{
   const active=x.dataset.target===id;
@@ -262,16 +326,17 @@ window.addEventListener('popstate',()=>openTab(location.hash.slice(1)||'queue',{
 window.addEventListener('hashchange',()=>openTab(location.hash.slice(1)||'queue',{skipHistory:true}));
 openTab(tabNames[location.hash.slice(1)]?location.hash.slice(1):'queue',{skipHistory:true});
 if(location.hash.startsWith('#review/'))showJob(location.hash.slice(8),{fromRoute:true});
-async function refreshAll(){try{[jobs,products]=await Promise.all([api('/api/jobs'),api('/api/products')]);renderProducts();renderQueue();renderOverview();scheduleLivePoll();if(selected)updateReviewNav();const m=await api('/api/metrics');$('stat-total').textContent=m.total;$('stat-done').textContent=m.completed;$('stat-reviewed').textContent=m.reviewed;$('stat-labels').textContent=m.evaluated;function fmt(n){return n===null?'—':(n*100).toFixed(1)+'%'}$('metricCards').innerHTML=[['Precision',fmt(m.precision)],['Recall',fmt(m.recall)],['FP / FN',m.fp+' / '+m.fn],['Evaluated',m.evaluated+' / '+m.completed],['VLM analyzed',m.vlm_jobs??0],['VLM candidates',m.vlm_flagged_jobs??0],['Visual candidates',m.visual_candidate_jobs??0],['Canonical evidence',m.canonical_evidence??0]].map(([a,b])=>`<div class="stat"><small>${a}</small><strong>${b}</strong></div>`).join('')}catch(e){toast('Không kết nối API: '+e.message)}}
+async function refreshAll(){try{[jobs,products]=await Promise.all([api('/api/jobs'),api('/api/products')]);renderProducts();renderQueue();renderOverview();scheduleLivePoll();if(selected)updateReviewNav();const m=await api('/api/metrics');$('stat-total').textContent=m.total;$('stat-done').textContent=m.completed;$('stat-reviewed').textContent=m.reviewed;$('stat-labels').textContent=m.evaluated;function fmt(n){return n===null?'-':(n*100).toFixed(1)+'%'}$('metricCards').innerHTML=[['Precision',fmt(m.precision)],['Recall',fmt(m.recall)],['FP / FN',m.fp+' / '+m.fn],['Evaluated',m.evaluated+' / '+m.completed],['VLM analyzed',m.vlm_jobs??0],['VLM candidates',m.vlm_flagged_jobs??0],['Visual candidates',m.visual_candidate_jobs??0],['Canonical evidence',m.canonical_evidence??0]].map(([a,b])=>`<div class="stat"><small>${a}</small><strong>${b}</strong></div>`).join('')}catch(e){toast('Không kết nối API: '+e.message)}}
 const statusText={queued:'Trong hàng đợi',processing:'Đang phân tích',completed:'Đã phân tích',failed:'Lỗi xử lý'};
 const decisionText={Pass:'Chấp thuận',Regenerate:'Yêu cầu sửa','Needs Review':'Cần kiểm tra'};
 const sourceNames={rule:'Luật kiểm tra',vlm:'AI thị giác (VLM)',gemini:'AI thị giác (Gemini)',ocr:'Chữ trên hình (OCR)',asr:'Lời thoại (ASR)',visual:'So sánh khung hình'};
 const severityNames={high:'Cao',medium:'Trung bình',low:'Thấp'},flagNames={unreviewed:'Chưa xác minh',confirmed:'Đã xác nhận là lỗi',rejected:'Đã bác bỏ'};
-const findingNames={'VIS-SCREEN':'Hình ảnh cần xem lại','COVERAGE':'Nội dung chưa được kiểm tra','EVIDENCE-LOW':'Chưa đủ bằng chứng','PRICE-MISMATCH':'Giá không khớp','PRICE_MISMATCH':'Giá không khớp','PRICE-01':'Sai giá','CLAIM-01':'Claim bị hạn chế','CLAIM-02':'Claim ngoài danh sách duyệt','SKU-01':'Sai thương hiệu/SKU','TEXT-01':'Lỗi chính tả thương hiệu','TEXT-02':'Lỗi chính tả tên sản phẩm','TEXT-03':'Chữ hiển thị vô nghĩa/biến dạng','VARIANT-01':'Sai quy cách/dung tích','VIS-02':'Hình ảnh không nhất quán','VIS-04':'Khung hình bị lật gương','VIS-05':'Hình bị vỡ ô/mờ bất thường','AI-LABEL-01':'Thiếu nhãn nội dung AI','INFANT-01':'Sản phẩm thuộc diện cấm quảng cáo (NĐ 100/2014)','INFANT-02':'So sánh với sữa mẹ/ti mẹ','INFANT-03':'Thiếu độ tuổi khuyến nghị'};
+const findingNames={'VIS-SCREEN':'Hình ảnh cần xem lại','COVERAGE':'Nội dung chưa được kiểm tra','EVIDENCE-LOW':'Chưa đủ bằng chứng','PRICE-MISMATCH':'Giá không khớp','PRICE_MISMATCH':'Giá không khớp','PRICE-01':'Sai giá','CLAIM-01':'Claim bị hạn chế','CLAIM-02':'Claim ngoài danh sách được phép','SKU-01':'Sai thương hiệu/SKU','TEXT-01':'Lỗi chính tả thương hiệu','TEXT-02':'Lỗi chính tả tên sản phẩm','TEXT-03':'Chữ hiển thị vô nghĩa/biến dạng','VARIANT-01':'Sai quy cách/dung tích','VIS-02':'Hình ảnh không nhất quán','VIS-04':'Khung hình bị lật gương','VIS-05':'Hình bị vỡ ô/mờ bất thường','AI-LABEL-01':'Thiếu nhãn nội dung AI','INFANT-01':'Sản phẩm thuộc diện cấm quảng cáo (NĐ 100/2014)','INFANT-02':'So sánh với sữa mẹ/ti mẹ','INFANT-03':'Thiếu độ tuổi khuyến nghị'};
+function fmtDateTime(iso){const d=new Date(iso);if(isNaN(d))return iso||'';const p=n=>String(n).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`}
 function tableData(data){
  if(!data.length)return '<div class="work-empty"><h3>Chưa có video phù hợp</h3><p>Bạn có thể thử đổi bộ lọc hoặc bắt đầu phân tích một video.</p><button class="button secondary" onclick="openTab(\'analyze\')">+ Phân tích video</button></div>';
- return `<table><thead><tr><th>Video</th><th>Sản phẩm</th><th>Tiến độ</th><th>AI đề xuất</th><th>Reviewer</th><th></th></tr></thead><tbody>${data.map(j=>`<tr class="rowlink" tabindex="0" data-job="${esc(j.id)}" onclick="showJob('${esc(j.id)}')" onkeydown="if(event.key==='Enter'){event.preventDefault();showJob('${esc(j.id)}')}"><td><b class="truncate" style="display:block">${esc(j.filename)}</b><small class="muted">${esc(j.created_at?.slice(0,16).replace('T',' '))}</small></td><td><b>${esc(j.sku)}</b><br><small class="muted">${esc(j.product_name)}</small></td><td><span class="pill ${esc(j.status)}">${esc(statusText[j.status]||j.status)}</span></td><td><span class="pill ${esc(j.ai_recommendation?.decision||'')}">${esc(j.ai_recommendation?(j.ai_recommendation.reference_scope==='test'&&j.ai_recommendation.decision==='Pass'
-  ?'Pass (kiểm thử)':decisionText[j.ai_recommendation.decision]||j.ai_recommendation.decision):'—')}</span></td><td><span class="pill ${esc(j.review_decision||'')}">${esc(j.review_decision?decisionText[j.review_decision]||j.review_decision:'Chưa duyệt')}</span></td><td><button type="button" class="mini" onclick="event.stopPropagation();showJob('${esc(j.id)}')">Mở →</button></td></tr>`).join('')}</tbody></table>`;
+ return `<table><thead><tr><th>Video</th><th>Sản phẩm</th><th>Tiến độ</th><th>AI đề xuất</th><th>Reviewer</th><th></th></tr></thead><tbody>${data.map(j=>`<tr class="rowlink" tabindex="0" data-job="${esc(j.id)}" onclick="showJob('${esc(j.id)}')" onkeydown="if(event.key==='Enter'){event.preventDefault();showJob('${esc(j.id)}')}"><td><b class="truncate" style="display:block">${esc(j.filename)}</b><small class="muted">${esc(fmtDateTime(j.created_at))}</small></td><td><b>${esc(j.sku)}</b><br><small class="muted">${esc(j.product_name)}</small></td><td><span class="pill ${esc(j.status)}">${esc(statusText[j.status]||j.status)}</span></td><td><span class="pill ${esc(j.ai_recommendation?.decision||'')}">${esc(j.ai_recommendation?(j.ai_recommendation.reference_scope==='test'&&j.ai_recommendation.decision==='Pass'
+  ?'Pass (kiểm thử)':decisionText[j.ai_recommendation.decision]||j.ai_recommendation.decision):'-')}</span></td><td><span class="pill ${esc(j.review_decision||'')}">${esc(j.review_decision?decisionText[j.review_decision]||j.review_decision:'Chưa duyệt')}</span></td><td><button type="button" class="mini" onclick="event.stopPropagation();showJob('${esc(j.id)}')">Mở →</button></td></tr>`).join('')}</tbody></table>`;
 }
 function renderOverview(){$('overviewJobs').innerHTML=tableData(jobs.slice(0,6));renderOverviewExtras()}
 function renderQueue(){
@@ -292,7 +357,8 @@ function renderQueue(){
  jobs.forEach(j=>{if(!j.review_decision&&j.status!=='failed')counts.pending++;if(j.status==='queued'||j.status==='processing')counts.processing++;if(j.review_decision)counts.reviewed++;if(j.status==='failed')counts.failed++;});
  window.queueOrder=filtered.map(j=>j.id);
  updateQueueChrome(counts,mode);
- $('queueTable').innerHTML=tableData(filtered);
+ $('queueTable').innerHTML=inboxList(filtered,mode);
+ inboxLead();renderInboxDetail();
 }
 let editingProductId=null;
 function openProductImportReset(){openTab('products');const p=$('productImportResetPanel');if(!p.open)p.showModal();$('productImportResetConfirm').value='';$('productImportResetStatus').textContent='';$('productImportResetConfirm').focus()}
@@ -310,7 +376,7 @@ async function clearProductImport(){
 function renderProducts(){
  const keepProduct=$('uploadProduct').value;
  $('uploadProduct').innerHTML='<option value="">Chọn sản phẩm tham chiếu</option>'+
-  products.map(p=>`<option value="${esc(p.id)}">${esc(p.sku)} — ${esc(p.name)}</option>`).join('');
+  products.map(p=>`<option value="${esc(p.id)}">${esc(p.sku)} · ${esc(p.name)}</option>`).join('');
  if(products.some(p=>p.id===keepProduct))$('uploadProduct').value=keepProduct;
  const refText={reviewed:'Đã xem xét nguồn thực tế',test_reference_approved:'Chuẩn tham chiếu kiểm thử',unverified:'Chưa xem xét nguồn'};
  const shown=productListView();
@@ -380,10 +446,10 @@ $('uploadForm').onsubmit=async e=>{
   resetAnalyzeWizard();await refreshAll();
   $('queueStatus').value='pending';openTab('queue');highlightJob(j.id);
   toast('Đã đưa video vào hàng đợi, đang phân tích…',{label:'Mở video',run:()=>showJob(j.id)});
- }catch(err){toast('Upload thất bại: '+err.message)}
+ }catch(err){toast('Tải video lên không thành công: '+err.message)}
  finally{$('uploadBtn').disabled=false;$('wBack').disabled=false;$('uploadProgress').classList.add('hidden')}
 };
-const progressNames={sampling:'Đang đọc khung hình',ocr:'Đang nhận diện chữ (OCR)',asr:'Đang nhận diện lời nói (ASR)',visual:'Đang kiểm tra hình ảnh',vlm:'Đang phân tích VLM',finalizing:'Đang tổng hợp kết quả',recovered:'Đang phục hồi job'};
+const progressNames={sampling:'Đang đọc khung hình',ocr:'Đang nhận diện chữ (OCR)',asr:'Đang nhận diện lời nói (ASR)',visual:'Đang kiểm tra hình ảnh',vlm:'Đang phân tích VLM',finalizing:'Đang tổng hợp kết quả',recovered:'Đang khôi phục phiên phân tích'};
 function progressText(job){
  const p=job.details?.progress||{},state=job.status;
  if(state==='queued')return 'Đang chờ lượt phân tích...';
@@ -392,7 +458,7 @@ function progressText(job){
  const counts=Number.isFinite(p.done)&&Number.isFinite(p.total)?' '+p.done+'/'+p.total:'';
  const elapsed=p.updated_at?(Date.now()-Date.parse(p.updated_at))/60000:0;
  const request=p.stage==='vlm'&&p.current?' · '+String(p.current):'';
- const ageWarning=elapsed>3?' · API chậm, xem log nếu không có tiến triển.':'';
+ const ageWarning=elapsed>3?' · Máy chủ phản hồi chậm. Vui lòng kiểm tra nhật ký hệ thống nếu tiến độ không thay đổi.':'';
  return detail+counts+request+ageWarning;
 }
 async function showJob(jid,{fromRoute=false}={}){
@@ -400,9 +466,9 @@ async function showJob(jid,{fromRoute=false}={}){
  openTab('queue',{skipHistory:true});selected=jid;
  $('queue').classList.add('reviewing');
  $('currentSectionLabel').textContent='Duyệt video';
- $('headerEyebrow').textContent='Hàng đợi duyệt ›';
+ $('headerEyebrow').textContent='Danh sách duyệt ›';
  if(!fromRoute&&location.hash!=='#review/'+jid)history.pushState({review:jid},'',location.pathname+location.search+'#review/'+jid);
- if(changed){currentJob=null;$('reviewNote').value='';$('reviewer').value=currentReviewerName();$('reviewEvidenceDetails').open=false;syncNoteIndicator();}
+ if(changed){currentJob=null;$('reviewNote').value='';$('reviewer').value=currentReviewerName();$('reviewEvidenceDetails').open=true;setReviewTab('findings');syncNoteIndicator();}
  updateReviewNav();
  if(poll)clearInterval(poll);
  try{await loadJob(jid)}
@@ -447,27 +513,26 @@ function renderVerification(d){
  const recommendation=ready?(d.ai_recommendation||d.details?.ai_recommendation):null;
  const aiTitle=recommendation?(recommendation.reference_scope==='test'&&recommendation.decision==='Pass'
   ?'Pass (bộ kiểm thử)':decisionText[recommendation.decision]||recommendation.decision):'Chưa có kết quả';
+ $('aiDecisionSummary').closest('.ai-card').dataset.decision=recommendation?.decision||'';
  $('aiDecisionSummary').innerHTML=recommendation?
-  '<b>AI đề xuất: <span class="pill '+esc(recommendation.decision)+'">'+esc(aiTitle)+'</span></b>'+
-  '<p class="footnote" style="margin:7px 0 0">'+esc(recommendation.explanation||'')+'</p>'+
-  '<p class="footnote" style="margin:5px 0 0">Đây là đề xuất AI, không phải quyết định reviewer hay chứng nhận tuân thủ.</p>'+
+  '<div class="ai-head"><span class="ai-label" title="Đây là đề xuất AI, không phải quyết định reviewer hay chứng nhận tuân thủ.">AI đề xuất</span><span class="pill '+esc(recommendation.decision)+'">'+esc(aiTitle)+'</span></div>'+
+  (recommendation.explanation?'<p class="ai-text">'+esc(recommendation.explanation)+'</p>':'')+
   (recommendation.reason==='product_truth_unverified'&&d.product?.id?
-   '<button type="button" class="mini" style="margin-top:8px" onclick="openTab(\'products\');startProductEdit(\''+esc(d.product.id)+'\')">Xem và xác minh Product Truth</button>':''):
-  '<b>AI đề xuất: Chưa có kết quả</b> — '+esc(progressText(d)||'Video chưa có kết quả phân tích.');
+   '<button type="button" class="mini" style="margin-top:10px" onclick="openTab(\'products\');startProductEdit(\''+esc(d.product.id)+'\')">Xem và xác minh Product Truth</button>':''):
+  '<div class="ai-head"><span class="ai-label">AI đề xuất</span><span class="pill">Chưa có kết quả</span></div><p class="ai-text">'+esc(progressText(d)||(d.status==='failed'?'Phân tích không thành công.':'Video chưa có kết quả phân tích.'))+'</p>';
  $('verificationDetails').classList.toggle('hidden',!ready||!report?.checks?.length);
  if(!ready){
-  $('verificationSummary').textContent=progressText(d)||'Đang chờ phân tích';
+  $('verificationSummary').textContent='';
   $('verificationChecks').textContent='';
   return;
  }
  if(!report){
-  $('verificationSummary').textContent='Job cũ chưa có kết quả Verification Engine v3. Phân tích lại để tạo báo cáo mới.';
+  $('verificationSummary').textContent='Kết quả cũ chưa có phần đối chiếu tín hiệu. Phân tích lại để có báo cáo đầy đủ.';
   $('verificationChecks').textContent='';
   return;
  }
- const counts=(Number(report.conflict_count)||0)+' nhóm tín hiệu khác nhau · '+(Number(report.candidate_count)||0)+' nhóm cảnh báo';
- $('verificationSummary').textContent=(verificationStatusNames[report.status]||report.status)+
-  '. '+counts+'. Đây là kết quả hỗ trợ; reviewer vẫn phải kiểm tra và quyết định.';
+ const conflicts=Number(report.conflict_count)||0,candidates=Number(report.candidate_count)||0;
+ $('verificationSummary').innerHTML=conflicts?'<span class="vs-chip warn">'+conflicts+' nhóm tín hiệu trái nhau giữa các nguồn</span>':'';
  $('verificationCount').textContent=(report.checks?.length||0)+' nhóm';
  $('verificationChecks').innerHTML=(report.checks||[]).map(check=>{
   const category={price:'Giá',claim:'Claim',visual:'Hình ảnh',other:'Khác'}[check.category]||check.category;
@@ -476,7 +541,7 @@ function renderVerification(d){
   const detail=[check.phrase,values].filter(Boolean).map(esc).join(' · ');
   const sources=(check.modalities||[]).map(x=>String(x).toUpperCase()).join(' + ');
   const ids=(check.evidence_ids||[]).filter(id=>Number.isSafeInteger(Number(id))&&Number(id)>0).slice(0,12);
-  return `<div class="finding"><header><b>${esc(category)} · ${esc(verificationCheckNames[check.status]||check.status)}</b></header><p>${esc(named)}</p>${detail?`<p class="footnote">${detail}</p>`:''}
+  return `<div class="vcheck"><b>${esc(category)} · ${esc(verificationCheckNames[check.status]||check.status)}</b><p>${esc(named)}</p>${detail?`<p class="footnote">${detail}</p>`:''}
   <div class="row"><small class="muted">${esc(sources||'Chưa có nguồn gắn trực tiếp')}</small>
   ${ids.map(id=>`<button type="button" class="mini" onclick="jumpEvidence(${Number(id)})">↗ Bằng chứng #${Number(id)}</button>`).join('')}</div></div>`;
  }).join('');
@@ -484,18 +549,18 @@ function renderVerification(d){
 async function loadJob(jid){
  const d=await api('/api/jobs/'+jid);currentJob=d;renderLabelSuggestion(d);renderJobProduct(d);
  $('jobDetail').classList.remove('hidden');$('jobTitle').textContent=d.filename;
- $('jobBadge').innerHTML=`<span class="pill ${esc(d.status)}">${esc(statusText[d.status]||d.status)}</span>`+(d.review_decision?`<span class="pill ${esc(d.review_decision)}">Đã duyệt: ${esc(decisionText[d.review_decision]||d.review_decision)}${d.reviewer?' · '+esc(d.reviewer):''}</span>`:'');
- $('jobMeta').textContent=`${d.product.sku} · ${d.product.name} · ${d.details.duration||'—'}s · Mã ${d.id}`;
+ $('jobBadge').innerHTML=(d.status!=='completed'?`<span class="pill ${esc(d.status)}">${esc(statusText[d.status]||d.status)}</span>`:'')+(d.review_decision?`<span class="pill ${esc(d.review_decision)}">Đã duyệt: ${esc(decisionText[d.review_decision]||d.review_decision)}${d.reviewer?' · '+esc(d.reviewer):''}</span>`:'');
+ $('jobMeta').textContent=`${d.product.sku} · ${d.product.name}`+(d.details.duration?` · ${Number(d.details.duration).toFixed(1)} giây`:'');$('jobMeta').title='Mã video: '+d.id;
  if($('player').dataset.job!==jid){$('player').src='/api/jobs/'+jid+'/video';$('player').dataset.job=jid}
  const c=d.details.coverage||{},n=d.details.normalization||{},v=d.details.visual||{},vlm=d.details.vlm||{},t=d.details.timings||{};
  const pq=d.details.perception_quality||{},oq=pq.ocr||{},aq=pq.asr||{};
  renderVerification(d);
- $('coverage').innerHTML=d.status==='failed'?`<b>Lỗi:</b> ${esc(d.details.error)}`:d.status!=='completed'?esc(progressText(d)):`<b>Pipeline coverage</b><div class="coverage-row"><span class="pill">OCR: ${esc(c.ocr||'—')}</span><span class="pill">ASR: ${esc(c.asr||'—')}</span><span class="pill">VLM: ${esc(c.vlm||'—')}</span><span class="pill">Visual: ${esc(c.visual||'—')}</span></div><div class="footnote" style="margin-top:8px">${n.raw_count??'—'} raw → ${n.canonical_count??'—'} canonical (${n.merged_count??0} merged) · ${v.same_shot_pairs??0} same-shot pairs · ${v.change_candidates??0} temporal candidates · ${vlm.calls_succeeded??0} VLM calls · ${esc(d.details.elapsed_seconds)}s</div><div class="footnote" style="margin-top:7px">Sampling: ${t.sampling_seconds??'—'}s · OCR: ${t.ocr_seconds??'—'}s (${t.ocr_frames??'—'} frames) · ASR: ${t.asr_seconds??'—'}s · VLM: ${t.vlm_seconds??'—'}s</div>${pq.sampling_version?`<div class="footnote" style="margin-top:7px">OCR: ${oq.successful_frames??0}/${oq.attempted_frames??0} frame chạy thành công · ${oq.text_lines??0} dòng chữ · ${oq.empty_frames??0} frame không có chữ · ${oq.failed_frames??0} frame lỗi · ASR: ${aq.audio_stream===false?'video không có âm thanh':`${aq.segments??0} đoạn lời nói`}. OCR sampling: ${esc(pq.ocr_sampling_mode||'—')}</div>`:''}${vlm.errors?.length?`<div class="footnote" style="color:#9a4a1c;margin-top:6px">VLM errors: ${esc(vlm.errors.join(' | '))}</div>`:''}<div class="footnote" style="margin-top:5px">VLM là cảnh báo cần xác minh, confidence chưa hiệu chuẩn. Không có ảnh SKU reference. C2PA chưa tích hợp.</div>`;
+ $('coverage').innerHTML=d.status==='failed'?`<b>Lỗi:</b> ${esc(d.details.error)}`:d.status!=='completed'?esc(progressText(d)):`<b>Pipeline coverage</b><div class="coverage-row"><span class="pill">OCR: ${esc(c.ocr||'-')}</span><span class="pill">ASR: ${esc(c.asr||'-')}</span><span class="pill">VLM: ${esc(c.vlm||'-')}</span><span class="pill">Visual: ${esc(c.visual||'-')}</span></div><div class="footnote" style="margin-top:8px">${n.raw_count??'-'} raw → ${n.canonical_count??'-'} canonical (${n.merged_count??0} merged) · ${v.same_shot_pairs??0} same-shot pairs · ${v.change_candidates??0} temporal candidates · ${vlm.calls_succeeded??0} VLM calls · ${esc(d.details.elapsed_seconds)}s</div><div class="footnote" style="margin-top:7px">Sampling: ${t.sampling_seconds??'-'}s · OCR: ${t.ocr_seconds??'-'}s (${t.ocr_frames??'-'} frames) · ASR: ${t.asr_seconds??'-'}s · VLM: ${t.vlm_seconds??'-'}s</div>${pq.sampling_version?`<div class="footnote" style="margin-top:7px">OCR: ${oq.successful_frames??0}/${oq.attempted_frames??0} frame chạy thành công · ${oq.text_lines??0} dòng chữ · ${oq.empty_frames??0} frame không có chữ · ${oq.failed_frames??0} frame lỗi · ASR: ${aq.audio_stream===false?'video không có âm thanh':`${aq.segments??0} đoạn lời nói`}. OCR sampling: ${esc(pq.ocr_sampling_mode||'-')}</div>`:''}${vlm.errors?.length?`<div class="footnote" style="color:#9a4a1c;margin-top:6px">VLM errors: ${esc(vlm.errors.join(' | '))}</div>`:''}<div class="footnote" style="margin-top:5px">VLM là cảnh báo cần xác minh, confidence chưa hiệu chuẩn. Không có ảnh SKU reference. C2PA chưa tích hợp.</div>`;
  const mode=vlm.input_mode||'frames';
  const nativeVideo=(d.status==='completed'&&mode==='video');
- $('geminiVideoTimeline').hidden=!nativeVideo;
+ $('geminiVideoTimeline').hidden=!nativeVideo||(!vlm.timeline_summary&&!vlm.video_summary);
  $('videoTimelineSummary').textContent=vlm.timeline_summary||'Gemini không trả về timeline chi tiết.';
- $('videoContextSummary').textContent=vlm.video_summary?'Tổng quan: '+vlm.video_summary:'';
+ $('videoContextSummary').textContent=vlm.video_summary||'';
  if(d.status==='completed'){
    $('coverage').innerHTML+='<div class="footnote" style="margin-top:7px">'+
       'OCR mode: '+esc(oq.scan_mode||'sampled')+
@@ -508,14 +573,26 @@ async function loadJob(jid){
  $('frames').innerHTML=frames.filter((e,i,a)=>a.findIndex(x=>x.frame===e.frame)===i).slice(0,20).map(e=>`<img loading="lazy" src="/api/jobs/${jid}/frames/${esc(e.frame)}" title="${e.at}s" onclick="seek(${Number(e.at)})">`).join('');
  renderEvidence();
  const incompleteCoverage=d.status==='completed'&&['ocr','asr','vlm'].some(k=>c[k]!=='ok');
- const caution=incompleteCoverage?'<p class="notice" role="note">Một số nguồn kiểm tra chưa sẵn sàng. Hãy xem lại video thủ công trước khi ra quyết định.</p>':'';
  const truth=d.details?.product_truth_snapshot||{};
  const truthStale=d.status==='completed'&&truth.revision&&d.product?.revision&&truth.revision!==d.product.revision;
- const truthAlert=d.status!=='completed'?'':truthStale
-  ?'<p class="notice">Product Truth đã được cập nhật sau lần phân tích này. Chạy phân tích lại để sử dụng dữ liệu mới, và lưu lại quyết định trước đó nếu cần.</p>'
-  :!['reviewed','test_reference_approved'].includes(truth.reference_status)
-   ?'<p class="notice">Nguồn Product Truth chưa được xem xét; reviewer cần xác minh tham chiếu trước khi chấp thuận.</p>':'';
- $('findings').innerHTML=truthAlert+caution+(d.status!=='completed'?'<div class="empty">'+esc(progressText(d))+'</div>':d.findings.length?d.findings.map(f=>`<div class="finding f-${esc(f.flag_review)}" id="finding-${Number(f.id)}"><header><span><span class="pill ${esc(f.severity)}">${esc(severityNames[f.severity]||f.severity)}</span> <b>${esc(findingNames[f.code]||f.code)}</b></span><button class="mini" onclick="seek(${Number(f.timestamp)})">▶ ${Number(f.timestamp).toFixed(1)}s</button></header><p>${esc(f.detail)}</p>${f.rule?`<div class="footnote" style="margin:-2px 0 6px"><span class="pill">${esc(f.rule.rule_id)}</span> Ưu tiên: <b>${esc(f.rule.review_priority)}</b> · Căn cứ: ${esc(f.rule.legal_basis)}${f.rule.legal_note?' · Lưu ý: '+esc(f.rule.legal_note):''} · <i>cần pháp chế xác nhận</i></div>`:''}<div class="row"><span class="footnote">${esc(sourceNames[f.source||'rule']||f.source)}${f.confidence!==null&&f.confidence!==undefined?' · độ tin cậy (chưa hiệu chỉnh) '+Math.round(f.confidence*100)+'%':''}</span>${f.evidence_id?`<button class="mini" onclick="jumpEvidence(${Number(f.evidence_id)})">↗ Bằng chứng #${Number(f.evidence_id)}</button>`:''}</div><div class="row fverdict-row"><div class="fverdict" role="group" aria-label="Xác minh cảnh báo"><button type="button" class="yes" aria-pressed="${f.flag_review==='confirmed'}" onclick="flag(${f.id},'${f.flag_review==='confirmed'?'unreviewed':'confirmed'}')">✓ Đúng là lỗi</button><button type="button" class="no" aria-pressed="${f.flag_review==='rejected'}" onclick="flag(${f.id},'${f.flag_review==='rejected'?'unreviewed':'rejected'}')">✕ Không phải lỗi</button></div><span class="fstate">${esc(flagNames[f.flag_review]||f.flag_review)}</span></div></div>`).join(''):'<div class="notice">Không có cảnh báo trên những module đã chạy; các nhóm lỗi chưa được kiểm tra vẫn yêu cầu reviewer.</div>');
+ const truthUnverified=d.status==='completed'&&!truthStale&&!['reviewed','test_reference_approved'].includes(truth.reference_status);
+ const truthBtnShown=(d.ai_recommendation||d.details?.ai_recommendation)?.reason==='product_truth_unverified'&&d.product?.id;
+ const alerts=[];
+ if(d.status==='failed')alerts.push(['danger','Phân tích không thành công'+(d.details?.error?': '+d.details.error:'.'),'Phân tích lại','reanalyzeSelected()']);
+ if(truthStale)alerts.push(['','Sản phẩm tham chiếu đã đổi sau lần phân tích này.','Phân tích lại','reanalyzeSelected()']);
+ if(truthUnverified&&!truthBtnShown)alerts.push(['','Sản phẩm tham chiếu chưa được xác minh.','Xác minh',`openTab('products');startProductEdit('${esc(d.product.id)}')`]);
+ if(incompleteCoverage)alerts.push(['','Một số nguồn AI chưa chạy, hãy xem lại video thủ công.','Xem nguồn nào','showCoverageDetails()']);
+ $('reviewAlerts').innerHTML=alerts.map(([tone,text,label,run])=>`<div class="ralert ${tone}" role="note"><span class="ralert-icon" aria-hidden="true">!</span><span class="ralert-text">${esc(text)}</span>${label?`<button type="button" class="inline-action" onclick="${run}">${esc(label)}</button>`:''}</div>`).join('');
+ const sortedFindings=d.findings.slice().sort((a,b)=>(a.flag_review==='unreviewed'?0:1)-(b.flag_review==='unreviewed'?0:1)||(Number(a.timestamp)||0)-(Number(b.timestamp)||0));
+ $('findings').innerHTML=d.status!=='completed'?(d.status==='failed'?'':'<div class="empty">'+esc(progressText(d))+'</div>'):sortedFindings.length?sortedFindings.map(f=>{
+  const done=f.flag_review!=='unreviewed',conf=f.confidence!==null&&f.confidence!==undefined?' · độ tin cậy (chưa hiệu chỉnh) '+Math.round(f.confidence*100)+'%':'';
+  return `<article class="finding f-${esc(f.flag_review)} sev-${esc(f.severity)}" id="finding-${Number(f.id)}">
+  <header><button type="button" class="ftoggle" onclick="toggleFinding(${Number(f.id)})" aria-expanded="${!done}" title="${done?'Mở lại chi tiết':'Thu gọn'}"><span class="pill ${esc(f.severity)}">${esc(severityNames[f.severity]||f.severity)}</span><b>${esc(findingNames[f.code]||f.code)}</b>${done?`<span class="fdone ${esc(f.flag_review)}">${f.flag_review==='confirmed'?'✓ Đúng là lỗi':'✕ Không phải lỗi'}</span>`:''}</button><button type="button" class="tchip" onclick="seek(${Number(f.timestamp)})" title="Xem video tại mốc này">▶ ${Number(f.timestamp).toFixed(1)}s</button></header>
+  <div class="fbody"><p>${esc(f.detail)}</p>
+  ${conf||f.evidence_id?`<div class="fmeta" title="Nguồn: ${esc(sourceNames[f.source||'rule']||(/rule/i.test(f.source)?'Luật kiểm tra':f.source))}">${conf?`<span>${conf.replace(/^ · /,'')}</span>`:''}${f.evidence_id?`<button type="button" class="inline-action" onclick="jumpEvidence(${Number(f.evidence_id)})">Xem bằng chứng #${Number(f.evidence_id)}</button>`:''}</div>`:''}
+  ${f.rule?`<details class="fbasis"><summary>Căn cứ ${esc(f.rule.rule_id)} · ưu tiên ${esc(f.rule.review_priority)}</summary><p>${esc(f.rule.legal_basis)}${f.rule.legal_note?'<br>Lưu ý: '+esc(f.rule.legal_note):''}<br><i>Cần pháp chế xác nhận.</i></p></details>`:''}
+  <div class="fverdict-row"><div class="fverdict" role="group" aria-label="Xác minh cảnh báo"><button type="button" class="yes" aria-pressed="${f.flag_review==='confirmed'}" onclick="flag(${f.id},'${f.flag_review==='confirmed'?'unreviewed':'confirmed'}')">✓ Đúng là lỗi</button><button type="button" class="no" aria-pressed="${f.flag_review==='rejected'}" onclick="flag(${f.id},'${f.flag_review==='rejected'?'unreviewed':'rejected'}')">✕ Không phải lỗi</button></div></div></div></article>`}).join(''):'<div class="fempty"><b>Không có cảnh báo</b><span>AI không thấy dấu hiệu lỗi trong các phần đã kiểm tra. Các nhóm lỗi chưa được kiểm tra vẫn cần bạn xem lại.</span></div>';
+ renderReviewChrome(d);
  $('audits').innerHTML=d.audits.map(a=>`<div>${esc(a.created_at.slice(11,19))} · ${esc(a.actor)} · ${esc(a.action)}</div>`).join('')||'Chưa có log';
  if(!$('reviewer').value.trim())$('reviewer').value=currentReviewerName();if(d.review_note&&!$('reviewNote').value)$('reviewNote').value=d.review_note;
  syncNoteIndicator();renderFindingTrack(d);renderFindingProgress(d);updateReviewNav();
@@ -524,16 +601,17 @@ function renderEvidence(){
  if(!currentJob)return;
  const d=currentJob,filter=$('evidenceFilter').value;
  const evs=d.evidence.filter(e=>filter==='all'||(filter==='vlm'?e.kind.startsWith('vlm'):filter==='visual'?e.kind.startsWith('visual'):e.kind===filter));
- $('evidenceSummary').textContent=`${evs.length} / ${d.evidence.length} mục bằng chứng`;
+ $('evidenceSummary').textContent=filter==='all'?`${d.evidence.length} mục`:`${evs.length} / ${d.evidence.length} mục`;
+ const kindName=k=>k==='ocr'?'Chữ trên hình':k==='asr'?'Lời thoại':String(k).startsWith('vlm')?'AI thị giác':String(k).startsWith('visual')?'Khung hình':k;
  $('evidences').innerHTML=evs.length?evs.map(e=>{
   const sources=e.metadata?.sources||[],t1=Number(e.timestamp),t2=Number(e.metadata?.paired_timestamp??e.end_timestamp??e.timestamp),rangeStart=Math.min(t1,t2),rangeEnd=Math.max(t1,t2);
   const thumb=e.frame?`<img loading="lazy" src="/api/jobs/${d.id}/frames/${esc(e.frame)}" onclick="seek(${t1})" title="Frame tại ${t1}s">`:'';
   const thumb2=e.frame2&&e.frame2!==e.frame?`<img loading="lazy" src="/api/jobs/${d.id}/frames/${esc(e.frame2)}" onclick="seek(${t2})" title="Frame thứ hai">`:'';
-  return `<div class="evidence-card" id="evidence-${Number(e.id)}"><div class="row space"><span><span class="pill">${esc(e.kind)}</span> <b>#${Number(e.id)}</b></span><button class="mini" onclick="seek(${t1})">▶ ${rangeStart.toFixed(1)}${rangeEnd>rangeStart?'–'+rangeEnd.toFixed(1):''}s</button></div><p>${esc(e.content)}</p><div class="meta">${esc(e.source_model||'unknown')} · ${sources.length} raw source(s)${e.score!==null&&e.score!==undefined?' · score '+Math.round(e.score*100)+'%':''} · ${esc(e.fingerprint||'legacy')}</div>${thumb||thumb2?`<div class="imgs">${thumb}${thumb2}</div>`:''}</div>`;
- }).join(''):'<div class="empty">Không có evidence thuộc bộ lọc này.</div>';
+  return `<div class="evidence-card ev-${esc(String(e.kind).split('_')[0])}" id="evidence-${Number(e.id)}">${thumb||thumb2?`<div class="imgs">${thumb}${thumb2}</div>`:''}<div class="ev-body"><div class="ev-head"><span class="ev-kind" title="${esc(e.kind)}">${esc(kindName(e.kind))}</span><span class="ev-id">#${Number(e.id)}</span><button type="button" class="tchip" onclick="seek(${t1})" title="Xem video tại mốc này">▶ ${rangeStart.toFixed(1)}${rangeEnd>rangeStart?'–'+rangeEnd.toFixed(1):''}s</button></div><p>${esc(e.content)}</p><div class="meta" title="${esc(e.source_model||'unknown')} · ${sources.length} raw source(s) · ${esc(e.fingerprint||'legacy')}">${e.score!==null&&e.score!==undefined?'Điểm tín hiệu '+Math.round(e.score*100)+'% · ':''}${sources.length>1?sources.length+' nguồn gộp lại':'1 nguồn'}</div></div></div>`;
+ }).join(''):'<div class="empty">Không có bằng chứng thuộc bộ lọc này.</div>';
 }
 function jumpEvidence(id){
- $('reviewEvidenceDetails').open=true;
+ setReviewTab('evidence');$('reviewEvidenceDetails').open=true;
  $('evidenceFilter').value='all';renderEvidence();
  requestAnimationFrame(()=>{
   const el=$('evidence-'+id);
@@ -541,7 +619,7 @@ function jumpEvidence(id){
  });
 }
 function exportEvidence(){if(selected)window.open(`/api/jobs/${selected}/evidence/export`,'_blank')}
-async function reanalyzeSelected(){if(!selected)return;if(!confirm('Chạy lại phân tích? Các findings và quyết định reviewer trước đó sẽ được reset (audit log vẫn giữ).'))return;try{await api(`/api/jobs/${selected}/reanalyze`,{method:'POST'});toast('Đã yêu cầu chạy lại với VLM hiện tại');await showJob(selected)}catch(e){toast(e.message)}}
+async function reanalyzeSelected(){if(!selected)return;if(!confirm('Chạy lại phân tích? Các cảnh báo và quyết định của người duyệt trước đó sẽ được đặt lại (lịch sử thao tác vẫn được lưu).'))return;try{await api(`/api/jobs/${selected}/reanalyze`,{method:'POST'});toast('Đã yêu cầu chạy lại với VLM hiện tại');await showJob(selected)}catch(e){toast(e.message)}}
 function seek(t){let v=$('player');v.currentTime=t;v.play().catch(()=>{});v.scrollIntoView({behavior:'smooth',block:'nearest'})}
 async function flag(id,state){
  const reviewer=ensureReviewer(()=>flag(id,state));
@@ -550,6 +628,7 @@ async function flag(id,state){
  try{
   await api(`/api/jobs/${selected}/findings/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({state,reviewer})});
   await loadJob(selected);
+  if(state!=='unreviewed')focusNextFinding();
   toast(state==='unreviewed'?'Đã bỏ đánh dấu cảnh báo':state==='confirmed'?'Đã xác nhận cảnh báo là lỗi':'Đã bác bỏ cảnh báo',prev!==state?{label:'Hoàn tác',run:()=>flag(id,prev)}:null);
  }catch(e){toast(e.message)}
 }
@@ -566,7 +645,7 @@ async function submitReview(decision){
   const truth=currentJob.details?.product_truth_snapshot||{};
   const refIssue=!['reviewed','test_reference_approved'].includes(truth.reference_status)||
    (truth.revision&&truth.revision!==currentJob.product?.revision);
-  if((incomplete.length||pending||refIssue||reconciliationIssue)&&!confirm('Có '+pending+' cảnh báo chưa xác minh, '+incomplete.length+' nguồn AI chưa đầy đủ và '+(refIssue?'Product Truth cần xem lại.':'Product Truth đã được xem xét.')+(reconciliationIssue?' Kết quả Verification Engine còn cần kiểm tra.':'')+' Bạn vẫn muốn chấp thuận sau khi tự kiểm tra?'))return;
+  if((incomplete.length||pending||refIssue||reconciliationIssue)&&!confirm('Có '+pending+' cảnh báo chưa xác minh, '+incomplete.length+' nguồn AI chưa đầy đủ và '+(refIssue?'Product Truth cần xem lại.':'Product Truth đã được xem xét.')+(reconciliationIssue?' Kết quả đối chiếu tín hiệu cần được kiểm tra thêm.':'')+' Bạn vẫn muốn chấp thuận sau khi tự kiểm tra?'))return;
  }
  try{
   const done=selected,order=(window.queueOrder||[]).slice(),at=order.indexOf(done);
@@ -587,7 +666,7 @@ function renderLabelSuggestion(d){const s=d.label_suggestion,box=$('labelSuggest
 async function saveLabel(label,types){if(!selected)return;const annotator=ensureReviewer(()=>saveLabel(label,types));if(!annotator)return;try{const r=await post(`/api/jobs/${selected}/labels`,{annotator,label,error_types:types||[]});toast(r.label_source==='accepted_ai_suggestion'?'Đã chấp nhận gợi ý AI':'Đã lưu nhãn của reviewer');await loadJob(selected);await refreshAll()}catch(e){toast(e.message)}}
 function acceptSuggestion(){const s=currentJob?.label_suggestion;if(!s)return toast('Chưa có gợi ý AI');saveLabel(s.label,s.error_types)}
 function addLabel(){const s=currentJob?.label_suggestion,l=$('truthLabel').value;saveLabel(l,s&&s.label===l?s.error_types:[])}
-api('/api/health').then(h=>{$('health').textContent=`OCR ${h.ocr?'ready':'optional'} · ASR ${h.asr?'ready':'optional'} · VLM ${h.vlm?.ready?'ready':h.vlm?.enabled?'unavailable':'disabled'} · ${h.vlm?.model||''}`}).catch(()=>{$('health').textContent='Backend chưa kết nối'});refreshAll();
+refreshAll();
 
 // Sprint-2 dataset: source scenarios, simulated predictions and actual runs are separated.
 let datasetCases=[],datasetSelected=null,datasetOverview=null;
@@ -615,13 +694,13 @@ function selectDatasetCase(code,scrollToDetails=false){
  const video=safeurl(c.source_url)?`<a href="${esc(safeurl(c.source_url))}" rel="noopener noreferrer" target="_blank">Nguồn video ↗</a>`:'Chưa có URL';
  const src=safeurl(c.product_url)?`<a href="${esc(safeurl(c.product_url))}" rel="noopener noreferrer" target="_blank">Trang sản phẩm ↗</a>`:'Chưa có URL sản phẩm';
  const opts=products.map(p=>`<option value="${esc(p.id)}" ${c.product_id===p.id?'selected':''}>${esc(p.sku)} · ${esc(p.name)}</option>`).join('');
- $('datasetDetail').innerHTML=`<h4>${esc(c.code)} · ${esc(c.name)}</h4><p>Nhóm: <b>${esc(c.case_group)}</b> · ${esc(c.issue_type)} · ${esc(c.severity)} · Tình trạng: ${esc(c.source_status)}</p><p><b>Kịch bản:</b> ${esc(c.description||c.product_context||'—')}</p><div class="grid2"><div class="notice"><b>Expected:</b> ${esc(c.expected||c.price_raw||'Chưa cung cấp')}</div><div class="notice"><b>Observed (mô tả kịch bản, chưa đo từ AI):</b> ${esc(c.observed||'Chưa có')}</div></div><p><b>Tham chiếu:</b> ${video} · ${src} · Variant: ${esc(c.variant||'Chưa có')}</p><p><b>Ground truth:</b> ${esc(c.expected_truth)} (${esc(c.truth_origin)}); <b>Độc lập xác minh:</b> ${esc(c.verified_truth||'Chưa có')} · ${Number(c.annotation_count)||0} annotation(s).</p><div class="field"><label>Liên kết Product Truth (không tự xác thực SKU khi chỉ có URL)</label><select id="datasetProductLink"><option value="">Chưa liên kết</option>${opts}</select></div><div class="row" style="margin:12px 0"><button class="mini" onclick="linkDatasetProduct()">Lưu Product Link</button><button class="mini" onclick="prepareDatasetUpload()">→ Upload video cho case</button></div><h4>Independent human annotation</h4><div class="formgrid"><div class="field"><label>Annotator</label><input id="caseAnnotator" placeholder="Tên reviewer độc lập"></div><div class="field"><label>Label</label><select id="caseLabel"><option value="error">error</option><option value="clean">clean</option><option value="uncertain">uncertain</option></select></div></div><div class="field"><label>Ghi chú và evidence quan sát</label><input id="caseNote" placeholder="Thời gian / loại lỗi / lý do"></div><button class="mini" onclick="submitCaseAnnotation()">Lưu nhãn độc lập</button>`;
+ $('datasetDetail').innerHTML=`<h4>${esc(c.code)} · ${esc(c.name)}</h4><p>Nhóm: <b>${esc(c.case_group)}</b> · ${esc(c.issue_type)} · ${esc(c.severity)} · Tình trạng: ${esc(c.source_status)}</p><p><b>Kịch bản:</b> ${esc(c.description||c.product_context||'-')}</p><div class="grid2"><div class="notice"><b>Expected:</b> ${esc(c.expected||c.price_raw||'Chưa cung cấp')}</div><div class="notice"><b>Observed (mô tả kịch bản, chưa đo từ AI):</b> ${esc(c.observed||'Chưa có')}</div></div><p><b>Tham chiếu:</b> ${video} · ${src} · Variant: ${esc(c.variant||'Chưa có')}</p><p><b>Ground truth:</b> ${esc(c.expected_truth)} (${esc(c.truth_origin)}); <b>Độc lập xác minh:</b> ${esc(c.verified_truth||'Chưa có')} · ${Number(c.annotation_count)||0} annotation(s).</p><div class="field"><label>Liên kết Product Truth (không tự xác thực SKU khi chỉ có URL)</label><select id="datasetProductLink"><option value="">Chưa liên kết</option>${opts}</select></div><div class="row" style="margin:12px 0"><button class="mini" onclick="linkDatasetProduct()">Lưu Product Link</button><button class="mini" onclick="prepareDatasetUpload()">→ Upload video cho case</button></div><h4>Independent human annotation</h4><div class="formgrid"><div class="field"><label>Annotator</label><input id="caseAnnotator" placeholder="Tên reviewer độc lập"></div><div class="field"><label>Label</label><select id="caseLabel"><option value="error">error</option><option value="clean">clean</option><option value="uncertain">uncertain</option></select></div></div><div class="field"><label>Ghi chú và evidence quan sát</label><input id="caseNote" placeholder="Thời gian / loại lỗi / lý do"></div><button class="mini" onclick="submitCaseAnnotation()">Lưu nhãn độc lập</button>`;
  if(scrollToDetails)requestAnimationFrame(()=>document.querySelector('.data-selected')?.scrollIntoView({behavior:'smooth',block:'start'}));
 }
 async function linkDatasetProduct(){if(!datasetSelected)return;const id=$('datasetProductLink').value;if(!id)return toast('Chọn Product Truth');try{await post(`/api/dataset/cases/${datasetSelected}/link`,{product_id:id});toast('Đã liên kết');await refreshDataset()}catch(e){toast(e.message)}}
 function prepareDatasetUpload(){const c=datasetCases.find(x=>x.code===datasetSelected);if(!c)return;openTab('analyze');$('analysisAdvanced').open=true;$('uploadCase').value=c.code;if(c.product_id)$('uploadProduct').value=c.product_id;if(safeurl(c.source_url))$('sourceUrl').value=c.source_url;syncAnalyze();toast('Đã chọn case '+c.code+'; hãy tải tệp video thật và chọn Product Truth phù hợp')}
 function caseToUpload(){const c=datasetCases.find(x=>x.code===$('uploadCase').value);if(!c)return;if(c.product_id)$('uploadProduct').value=c.product_id;if(safeurl(c.source_url))$('sourceUrl').value=c.source_url;syncAnalyze()}
 async function submitCaseAnnotation(){if(!datasetSelected)return;const annotator=$('caseAnnotator').value.trim();if(!annotator)return toast('Nhập tên annotator');try{const r=await post(`/api/dataset/cases/${datasetSelected}/annotations`,{annotator,label:$('caseLabel').value,notes:$('caseNote').value});toast(r.verified_truth?'Đã xác minh bằng 2 nhãn đồng thuận':'Đã lưu; cần ≥2 người độc lập cùng kết quả');await refreshDataset()}catch(e){toast(e.message)}}
-$('datasetForm').onsubmit=async e=>{e.preventDefault();const file=$('datasetFile').files[0];if(!file)return;const status=$('datasetImportStatus'),btn=$('datasetImportSubmit');if(!/\.xlsx$/i.test(file.name)){status.textContent='Chỉ hỗ trợ workbook .xlsx';return}if(file.size>8*1024*1024){status.textContent='File Excel vượt giới hạn 8 MB';return}const f=new FormData();f.append('file',file);btn.disabled=true;status.textContent='Đang nhập workbook...';try{const r=await api('/api/products/import',{method:'POST',body:f});const g=r.groups||{};status.textContent=`Đã đọc ${r.products_read} sản phẩm gốc. Tạo mới: ${r.products_created}; SKU đã tồn tại: ${r.matched_existing}. ${r.core_conflicts_not_overwritten?.length?'Không ghi đè SKU xung đột: '+r.core_conflicts_not_overwritten.join(', '):'Không nhập kịch bản lỗi hay nhãn mô phỏng.'}`;await refreshAll();await refreshDataset();toast('Import Excel thành công')}catch(err){status.textContent='Import thất bại: '+err.message;toast(err.message)}finally{btn.disabled=false}};
+$('datasetForm').onsubmit=async e=>{e.preventDefault();const file=$('datasetFile').files[0];if(!file)return;const status=$('datasetImportStatus'),btn=$('datasetImportSubmit');if(!/\.xlsx$/i.test(file.name)){status.textContent='Chỉ hỗ trợ workbook .xlsx';return}if(file.size>8*1024*1024){status.textContent='File Excel vượt giới hạn 8 MB';return}const f=new FormData();f.append('file',file);btn.disabled=true;status.textContent='Đang nhập workbook...';try{const r=await api('/api/products/import',{method:'POST',body:f});const g=r.groups||{};status.textContent=`Đã đọc ${r.products_read} sản phẩm gốc. Tạo mới: ${r.products_created}; SKU đã tồn tại: ${r.matched_existing}. ${r.core_conflicts_not_overwritten?.length?'Không ghi đè SKU xung đột: '+r.core_conflicts_not_overwritten.join(', '):'Không nhập kịch bản lỗi hay nhãn mô phỏng.'}`;await refreshAll();await refreshDataset();toast('Import Excel thành công')}catch(err){status.textContent='Nhập dữ liệu không thành công: '+err.message;toast(err.message)}finally{btn.disabled=false}};
 refreshDataset();
 </script></body></html>

@@ -43,6 +43,20 @@
   addEventListener('resize', () => { if (!mobile() && html.classList.contains('drawer-open')) drawer(false); });
   syncToggle();
 
+  /* ---------- Light / dark theme (remembered on this device) ---------- */
+  const themeBtn = q('themeToggle');
+  const syncTheme = () => {
+    const dark = html.dataset.theme === 'dark';
+    if (themeBtn) { themeBtn.textContent = dark ? '☀' : '☾'; themeBtn.title = dark ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'; themeBtn.setAttribute('aria-pressed', String(dark)); }
+  };
+  window.toggleTheme = () => {
+    const dark = html.dataset.theme !== 'dark';
+    if (dark) html.dataset.theme = 'dark'; else delete html.dataset.theme;
+    store.set('vfTheme', dark ? 'dark' : '');
+    syncTheme();
+  };
+  syncTheme();
+
   /* ---------- Reviewer identity (remembered on this device) ---------- */
   const initials = n => n.trim().split(/\s+/).filter(Boolean).map(w => w[0]).filter((_, i, a) => i === 0 || i === a.length - 1).join('').toUpperCase();
   function renderChip() {
@@ -50,6 +64,7 @@
     q('reviewerChipName').textContent = n || 'Chưa đặt tên';
     q('reviewerAvatar').textContent = n ? initials(n) : '?';
     q('reviewerChip').dataset.tip = n ? 'Người duyệt: ' + n : 'Đặt tên người duyệt';
+    if (q('dbWhoName')) { q('dbWhoName').textContent = n || 'Chưa đặt tên'; q('dbAvatar').textContent = n ? initials(n) : '?'; }
   }
   function setReviewer(name) {
     name = String(name || '').trim().slice(0, 80);
@@ -99,11 +114,13 @@
       const on = b.dataset.mode === mode;
       b.classList.toggle('active', on);
       b.setAttribute('aria-selected', String(on));
+      // Hide empty filters (except the default, "all" and the active one) to keep the bar short.
+      b.hidden = !on && !['pending', 'all'].includes(b.dataset.mode) && !(counts[b.dataset.mode] > 0);
     });
     document.querySelectorAll('#queue .qcount').forEach(el => { el.textContent = counts[el.dataset.count] ?? 0; });
     const badge = q('navBadgeQueue');
     if (badge) { badge.textContent = counts.pending; badge.hidden = !counts.pending; }
-    if (focusJob) { const row = document.querySelector(`#queueTable tr[data-job="${CSS.escape(focusJob)}"]`); if (row && document.activeElement === document.body) row.focus({ preventScroll: true }); }
+    if (focusJob) { const row = document.querySelector(`#queueTable .rowlink[data-job="${CSS.escape(focusJob)}"]`); if (row && document.activeElement === document.body) row.focus({ preventScroll: true }); }
   };
   document.querySelectorAll('#queue .qtabs button').forEach(b => b.addEventListener('click', () => {
     q('queueStatus').value = b.dataset.mode;
@@ -111,10 +128,11 @@
   }));
   let focusJob = null;
   function moveRow(dir) {
-    const rows = [...document.querySelectorAll('#queueTable tr.rowlink')];
+    const rows = [...document.querySelectorAll('#queueTable .rowlink')];
     if (!rows.length) return;
     let i = rows.indexOf(document.activeElement);
-    i = i < 0 ? (dir > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, i + dir));
+    if (i < 0) { const at = rows.findIndex(r => r.classList.contains('sel')); i = at < 0 ? (dir > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, at + dir)); }
+    else i = Math.min(rows.length - 1, Math.max(0, i + dir));
     rows[i].focus();
     rows[i].scrollIntoView({ block: 'nearest' });
     focusJob = rows[i].dataset.job;
@@ -160,8 +178,9 @@
     if (location.hash !== '#queue') history.pushState({ tab: 'queue' }, '', location.pathname + location.search + '#queue');
     openTab('queue', { skipHistory: true });
     focusJob = jid;
+    if (jid) { window.inboxForget?.(jid); window.inboxSelect?.(jid); }
     requestAnimationFrame(() => {
-      const row = jid && document.querySelector(`#queueTable tr[data-job="${CSS.escape(jid)}"]`);
+      const row = jid && document.querySelector(`#queueTable .rowlink[data-job="${CSS.escape(jid)}"]`);
       if (row) { row.focus({ preventScroll: true }); row.scrollIntoView({ block: 'center' }); }
     });
   };
@@ -223,10 +242,86 @@
     box.innerHTML = `<span>Đã xác minh <b>${done}/${total}</b> cảnh báo</span><span class="bar"><i style="width:${total ? done / total * 100 : 0}%"></i></span>`;
   };
 
+  /* ---------- Review side panel: tabs, finding focus, decision bar ---------- */
+  const RTABS = ['findings', 'evidence', 'more'];
+  window.setReviewTab = name => {
+    if (!RTABS.includes(name)) name = 'findings';
+    RTABS.forEach(t => {
+      const on = t === name, tab = q('rtab-' + t), pane = q('rpane-' + t);
+      if (!tab || !pane) return;
+      tab.setAttribute('aria-selected', String(on));
+      tab.tabIndex = on ? 0 : -1;
+      pane.hidden = !on;
+    });
+  };
+  document.querySelectorAll('.rtabs [data-rtab]').forEach(b => {
+    b.addEventListener('click', () => setReviewTab(b.dataset.rtab));
+    b.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const i = RTABS.indexOf(b.dataset.rtab), next = RTABS[(i + (e.key === 'ArrowRight' ? 1 : -1) + RTABS.length) % RTABS.length];
+      setReviewTab(next); q('rtab-' + next).focus();
+    });
+  });
+  // Unverified findings start open, verified ones start collapsed; the header toggles either way.
+  window.toggleFinding = id => {
+    const card = q('finding-' + id); if (!card) return;
+    const pendingCard = card.classList.contains('f-unreviewed');
+    const isOpen = pendingCard ? !card.classList.contains('collapsed') : card.classList.contains('expanded');
+    card.classList.toggle(pendingCard ? 'collapsed' : 'expanded', pendingCard ? isOpen : !isOpen);
+    card.querySelector('.ftoggle')?.setAttribute('aria-expanded', String(!isOpen));
+  };
+  window.focusNextFinding = () => {
+    const next = document.querySelector('#findings .finding.f-unreviewed');
+    if (!next) return;
+    next.classList.remove('flash'); void next.offsetWidth; next.classList.add('flash');
+    next.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  window.showCoverageDetails = () => {
+    setReviewTab('evidence');
+    const d = q('coverage')?.closest('details');
+    if (d) { d.open = true; requestAnimationFrame(() => d.scrollIntoView({ behavior: 'smooth', block: 'nearest' })); }
+  };
+  window.copyJobId = () => {
+    if (!selected) return;
+    const done = () => toast('Đã sao chép mã video ' + selected);
+    navigator.clipboard?.writeText(selected).then(done, () => toast('Mã video: ' + selected)) ?? toast('Mã video: ' + selected);
+  };
+  // Measure the sticky header and where the review view starts, for the fixed review layout.
+  const measureReview = () => {
+    const hdr = document.querySelector('.workspace-header'), jd = q('jobDetail');
+    const sticky = hdr && getComputedStyle(hdr).position === 'sticky';
+    html.style.setProperty('--hdr-h', (sticky ? hdr.offsetHeight : 0) + 'px');
+    if (jd && !jd.classList.contains('hidden')) { let y = 0; for (let e = jd; e; e = e.offsetParent) y += e.offsetTop; html.style.setProperty('--rv-top', y + 'px'); }
+  };
+  addEventListener('resize', () => requestAnimationFrame(measureReview));
+  window.renderReviewChrome = d => {
+    requestAnimationFrame(measureReview);
+    const ready = d.status === 'completed';
+    const pending = ready ? d.findings.filter(f => f.flag_review === 'unreviewed').length : 0;
+    const fc = q('rtabFindingsCount'), ec = q('rtabEvidenceCount');
+    fc.textContent = ready && d.findings.length ? (pending ? pending : '✓') : '';
+    fc.classList.toggle('is-todo', pending > 0);
+    ec.textContent = d.evidence?.length || '';
+    const rec = ready ? (d.ai_recommendation || d.details?.ai_recommendation) : null;
+    document.querySelectorAll('#decisionBar [data-decision]').forEach(b => {
+      b.classList.toggle('ai-pick', !!rec && rec.decision === b.dataset.decision);
+      b.title = rec && rec.decision === b.dataset.decision ? 'AI đề xuất lựa chọn này' : '';
+      b.setAttribute('aria-pressed', String(d.review_decision === b.dataset.decision));
+      b.disabled = !ready;
+    });
+    const st = q('dbStatus');
+    st.className = 'db-status';
+    if (!ready) { st.textContent = d.status === 'failed' ? 'Phân tích lỗi' : 'Đang phân tích…'; }
+    else if (d.review_decision) { st.textContent = 'Đã duyệt: ' + (decisionText[d.review_decision] || d.review_decision); st.classList.add('is-ok'); }
+    else if (pending) { st.textContent = `Còn ${pending} cảnh báo chưa xác minh`; st.classList.add('is-todo'); }
+    else { st.textContent = d.findings.length ? 'Đã xác minh hết cảnh báo' : 'Sẵn sàng quyết định'; st.classList.add('is-ok'); }
+  };
+
   /* ---------- Quick search (command palette) ---------- */
   const pal = q('cmdk'), input = q('cmdkInput'), list = q('cmdkList');
   let items = [], sel = 0;
-  const PAGES = [['queue', 'Hàng đợi duyệt', '☰'], ['analyze', 'Phân tích video', '▶'], ['overview', 'Tổng quan', '◔'], ['products', 'Sản phẩm tham chiếu', '◇'], ['dataset', 'Bộ kiểm thử', '▦'], ['evaluation', 'Đánh giá thực tế', '◎']];
+  const PAGES = [['queue', 'Danh sách duyệt', '☰'], ['analyze', 'Phân tích video', '▶'], ['overview', 'Tổng quan', '◔'], ['products', 'Sản phẩm tham chiếu', '◇'], ['dataset', 'Bộ kiểm thử', '▦'], ['evaluation', 'Đánh giá thực tế', '◎']];
   function build(text) {
     const n = norm(text), hit = s => !n || norm(s).includes(n);
     const out = [];
@@ -301,6 +396,7 @@
     }
     if (onQueue && (k === 'j' || k === 'J')) { e.preventDefault(); moveRow(1); return; }
     if (onQueue && (k === 'k' || k === 'K')) { e.preventDefault(); moveRow(-1); return; }
+    if (onQueue && k === 'Enter' && window.inboxSelected?.()) { e.preventDefault(); showJob(window.inboxSelected()); return; }
     if (k === 'n' || k === 'N') { e.preventDefault(); openTab('analyze'); }
   });
 })();
