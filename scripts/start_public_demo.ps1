@@ -24,6 +24,17 @@ if (-not $env:VERIFAI_ACCESS_CODE -and -not $codeLine) { throw 'Them dong VERIFA
 $code = if ($env:VERIFAI_ACCESS_CODE) { $env:VERIFAI_ACCESS_CODE } else { ($codeLine -replace '^\s*VERIFAI_ACCESS_CODE\s*=\s*', '').Trim().Trim('"').Trim("'") }
 if ($code.Length -lt 8) { throw 'VERIFAI_ACCESS_CODE phai co it nhat 8 ky tu.' }
 
+# An old server on the same port would answer /healthz and the tunnel would serve old code.
+$busy = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($busy) {
+    throw "Cong $Port dang bi tien trinh PID $($busy.OwningProcess) chiem (co the la ban demo cu). Chay: Stop-Process -Id $($busy.OwningProcess) -Force  roi chay lai script."
+}
+# Quick tunnels need outbound TCP 7844 to Cloudflare; some Wi-Fi/VPN/firewalls block it.
+$edge = Test-NetConnection 198.41.200.53 -Port 7844 -WarningAction SilentlyContinue
+if (-not $edge.TcpTestSucceeded) {
+    Write-Warning 'Mang hien tai chan cong 7844 toi Cloudflare: tunnel se khong ket noi duoc. Hay doi mang (vd. hotspot dien thoai) hoac tat VPN/tuong lua roi chay lai.'
+}
+
 $env:VERIFAI_PUBLIC_MODE = '1'
 $env:VERIFAI_DATA = Join-Path $Root 'data_demo'
 $env:VERIFAI_SEED_DB = Join-Path $Root 'deploy\seed.sql'
