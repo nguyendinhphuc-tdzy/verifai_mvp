@@ -79,6 +79,12 @@ app=FastAPI(title='VerifAI MVP API',version='2.1.0',lifespan=app_lifespan)
 app.middleware('http')(local_only_middleware)
 app.mount('/static',StaticFiles(directory=str(BASE/'static')),name='static')
 
+def decoded_all_frames(decoded:int,advertised:int)->bool:
+    """Container frame counts (esp. .mov) are estimates: decoders often stop
+    1-2 frames short. Allow max(2, 1%) missing before calling the scan partial."""
+    if advertised<=0: return True
+    return decoded>=advertised-max(2,round(advertised*0.01))
+
 def utc(): return datetime.now(timezone.utc).isoformat(timespec='seconds')
 @contextmanager
 def db():
@@ -539,12 +545,13 @@ def _analyze_job(job_id):
         ocr_health_data['scan_mode']=OCR_SCAN_MODE
         ocr_health_data['expected_decoded_frames']=total if (all_frames or adaptive) else None
         checked_frames=(scanner.stats.decoded_frames if scanner else ocr_calls if all_frames else 0)
+        decoded_enough=decoded_all_frames(checked_frames,total)
         ocr_health_data['complete_video_scan']=bool(
-            (all_frames or adaptive) and (total<=0 or checked_frames>=total)
+            (all_frames or adaptive) and decoded_enough
             and (scanner is None or scanner.stats.snapshot(scanner.config,fps)['all_frames_accounted']))
         if scanner:
             ocr_health_data['adaptive']=scanner.stats.snapshot(scanner.config,fps)
-        if (all_frames or adaptive) and total>0 and checked_frames<total:
+        if (all_frames or adaptive) and not decoded_enough:
             ocr_health_data['status']='partial' if ocr_health.successful_frames else 'error'
             ocr_health_data['errors'].append('Decoder stopped before advertised frame count')
         if not ocr_enabled:
