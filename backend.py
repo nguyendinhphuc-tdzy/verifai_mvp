@@ -77,6 +77,16 @@ async def app_lifespan(_app):
 
 app=FastAPI(title='VerifAI MVP API',version='2.1.0',lifespan=app_lifespan)
 app.middleware('http')(local_only_middleware)
+@app.middleware('http')
+async def revalidate_ui_assets(request,call_next):
+    # Without Cache-Control the browser may reuse stale JS/CSS after an update
+    # (new index.html + old script => broken page). "no-cache" keeps caching
+    # but forces a cheap ETag/Last-Modified check (304) on every load.
+    response=await call_next(request)
+    path=request.url.path
+    if path.startswith('/static/') or path in ('/','/app'):
+        response.headers.setdefault('Cache-Control','no-cache')
+    return response
 app.mount('/static',StaticFiles(directory=str(BASE/'static')),name='static')
 
 def decoded_all_frames(decoded:int,advertised:int)->bool:
@@ -678,7 +688,7 @@ def _analyze_job(job_id):
                         if issue.code=='VIS-02' and task!='pair': continue
                         paired=selected_frames[1-issue.frame_index] if task=='pair' else None
                         uid=evidence('vlm_issue',anchor['at'],
-                                     f'{issue.visible_basis} — {issue.description}',issue.confidence,
+                                     f'{issue.visible_basis}: {issue.description}',issue.confidence,
                                      anchor['frame'],paired['frame'] if paired else None,model,
                                      {'code':issue.code,'task':task,'prompt_version':PROMPT_VERSION,
                                       'visible_basis':issue.visible_basis,
@@ -722,7 +732,7 @@ def _analyze_job(job_id):
                             if issue.timestamp_seconds>duration+1:
                                 continue
                             uid=evidence('vlm_issue',issue.timestamp_seconds,
-                                         issue.visible_basis+' — '+issue.description,
+                                         issue.visible_basis+': '+issue.description,
                                          issue.confidence,source=client.model,
                                          meta={'code':issue.code,'task':'video',
                                                'timestamp_source':'model_reported',
