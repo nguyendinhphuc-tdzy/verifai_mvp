@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="VerifAI: lớp kiểm định chất lượng cho video thương mại AI trước khi phát hành. Bằng chứng rõ ràng, người duyệt quyết định cuối cùng.">
-<meta name="theme-color" content="#061915">
+<meta name="theme-color" content="#2fa3d6">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2718%27 fill=%27%231f7a67%27 stroke=%27%23e8b64a%27 stroke-width=%273%27/%3E%3Cpath d=%27M19 25 L30 44 L47 18%27 fill=%27none%27 stroke=%27%23fffdf6%27 stroke-width=%276%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
-<title>VerifAI · Kiểm định video thương mại AI</title>
+<title>VerifAI · Kiểm duyệt video quảng cáo AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Lexend:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg-900:#061915;--bg-850:#08231d;--bg-800:#0b3028;--bg-750:#103a31;--bg-700:#14463b;
@@ -451,6 +451,218 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
   .w>span,.intro-word span{transform:none}
   .statement .sw{color:var(--white)}
 }
+
+/* =====================================================================
+   Art direction (05/11/2026): synced with the app. Warm paper with grain,
+   layered illustrated landscape, Lexend display type, leaf corners,
+   no dotted pills. Light surfaces by default; dark panels re-scope vars.
+   ===================================================================== */
+:root{
+  --paper:#f4ebdb;--label:#a0701a;--leaf-bg:#dcefe6;--h-ink:#1c4a40;
+  --leaf:18px 18px 40px 18px;--leaf-lg:26px 26px 72px 26px;
+  --display:"Lexend","Be Vietnam Pro",system-ui,sans-serif;
+  --white:#142821;--text:#2c4038;--muted:#56685f;--faint:#86948d;
+  --line:rgba(20,40,33,.12);--line-2:rgba(20,40,33,.2);--card:transparent;
+  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .3  0 0 0 0 .2  0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+/* Scopes that stay dark (or sit on the sky) get light-on-dark tokens back. */
+.hero-copy,.contact,.piano-box,.check.end,.bento .card.feat,.mark,.mock,.float{--white:#fffdf6;--text:#e1eae6;--muted:#d6e4de;--faint:#a9bdb5;--line:rgba(255,255,255,.12);--line-2:rgba(255,255,255,.28)}
+.float{--white:#142821}
+body{background:#f4ebdb url(/static/home/paper.webp) 0 0/512px 512px;color:var(--text)}
+::selection{background:var(--gold);color:#142821}
+h1,h2,h3,.statement,.brand,.intro-word{font-family:var(--display)}
+.grad{background:linear-gradient(92deg,#1f7a67 0%,#2e8f6a 45%,#b8860b 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cursor-glow,.scroll-cue,.dots{display:none!important}
+
+/* Section labels: plain text, no pill, no dot */
+.eyebrow{padding:0;border:0;background:none;border-radius:0;color:var(--label);font-family:var(--display);font-weight:600;letter-spacing:.14em;font-size:.78rem}
+.eyebrow i{display:none}
+.head h2{font-weight:700;letter-spacing:-.035em;color:var(--h-ink)}
+
+/* Buttons */
+.btn-dark{background:#10362e;color:#fffdf6;box-shadow:0 14px 30px rgba(9,60,80,.25)}
+.btn-dark:hover{background:#0b2c25}
+.btn-ghost{background:transparent;border-color:var(--line-2);color:var(--white)}
+.btn-ghost:hover{background:rgba(20,40,33,.05);border-color:rgba(20,40,33,.35)}
+
+/* ---------- Nav over the sky, paper once scrolled ---------- */
+.nav{--white:#0c2b25;--line-2:rgba(12,43,37,.3)}
+.nav .nav-links a{color:#0f3a32}
+.nav .nav-links a:hover{background:rgba(255,255,255,.35);color:#0c2b25}
+.nav .nav-links a.active{color:#0c2b25;text-decoration:underline;text-underline-offset:6px}
+.nav.scrolled{--white:#142821;--line-2:rgba(20,40,33,.2);background:rgba(246,241,230,.88);border-bottom-color:rgba(20,40,33,.1)}
+.nav.scrolled .nav-links a{color:#2c4038}
+.nav.scrolled .nav-links a:hover{background:rgba(20,40,33,.06);color:#142821}
+.nav.scrolled .nav-links a.active{color:var(--label)}
+.brand b span{color:var(--gold)}
+.nav:not(.scrolled) .brand b span{color:#a8730f}
+
+/* ---------- Hero: painted landscape with two living trees ---------- */
+.hero{min-height:max(640px,100svh);padding:0;display:flex;align-items:center;background:#3fc4d2}
+.scene{position:absolute;inset:0;pointer-events:none;overflow:hidden;container-type:size}
+.art{position:absolute;bottom:0;left:var(--ax,50%);width:max(100cqw,177.68cqh);aspect-ratio:1672/941;transform:translateX(calc(var(--ax,50%) * -1));perspective:1400px}
+.art-bg{position:absolute;inset:0;width:100%;height:100%}
+.tree{position:absolute;left:var(--x);top:var(--y);width:var(--w);height:var(--h);transform-origin:var(--ox) var(--oy);transform-style:preserve-3d;
+  transform:rotateY(calc(var(--px,0) * 9deg)) rotateX(calc(var(--py,0) * -4deg)) rotate(var(--lean,0deg));
+  transition:transform .9s cubic-bezier(.2,.7,.2,1)}
+.tree img{position:relative;display:block;width:100%;height:100%;transform-origin:var(--ox) var(--oy);
+  filter:drop-shadow(10px 14px 10px rgba(16,60,40,.22));animation:treeSway 6.2s ease-in-out var(--d) infinite;will-change:transform}
+.tree-r img{animation-duration:7.4s}
+@keyframes treeSway{
+  0%,100%{transform:rotate(-1.1deg) skewX(.6deg)}
+  30%{transform:rotate(.9deg) skewX(-.5deg)}
+  55%{transform:rotate(-.4deg) skewX(.2deg)}
+  78%{transform:rotate(1.4deg) skewX(-.8deg)}}
+.tree-shadow{position:absolute;left:calc(var(--ox) - 34%);top:calc(var(--oy) - 4%);width:68%;height:8%;border-radius:50%;background:radial-gradient(closest-side,rgba(16,60,40,.28),transparent);transform:skewX(calc(var(--px,0) * -20deg));transition:transform .9s}
+.leaf-fall{position:absolute;left:0;top:0;pointer-events:none;z-index:4;will-change:transform}
+.snd-btn{width:40px;height:40px;flex:0 0 auto;display:grid;place-items:center;border-radius:50%;border:1.5px solid rgba(16,54,46,.38);background:rgba(255,253,246,.72);color:#10362e;cursor:pointer;transition:background .16s,border-color .16s}
+.snd-btn:hover{background:#fffdf6;border-color:#10362e}
+.snd-btn:focus-visible{outline:2px solid #e8b64a;outline-offset:2px}
+/* Wind before leaving: trees bow to the right, leaves tear off (static/leaves.js) */
+body.windy .tree{--lean:7deg;transition:transform .55s cubic-bezier(.3,.6,.3,1)}
+body.windy .tree img{animation:treeGust .5s ease-in-out infinite alternate}
+@keyframes treeGust{from{transform:rotate(1deg) skewX(-2deg)}to{transform:rotate(4deg) skewX(-5deg)}}
+.hero .wrap{width:min(1180px,calc(100% - 32px))}
+.hero-edge{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:clamp(46px,6vw,90px);z-index:3;filter:drop-shadow(0 -3px 4px rgba(60,50,20,.12))}
+.hero .wrap{position:relative;z-index:3}
+.hero-copy{text-align:left;margin:0 0 0 clamp(0px,calc(18vw - 120px),190px);max-width:640px;padding:110px 0 120px}
+.hero .eyebrow{color:#0d4a3e}
+.hero h1{margin:12px 0 16px;font-size:clamp(2.3rem,4.4vw,3.9rem);line-height:1.06;letter-spacing:-.04em;font-weight:700;color:#0c2b25}
+.hero h1 .grad{background:linear-gradient(transparent 58%,rgba(250,224,138,.95) 58%,rgba(250,224,138,.95) 92%,transparent 92%);-webkit-background-clip:border-box;background-clip:border-box;color:#0c2b25;-webkit-text-fill-color:#0c2b25;padding:0 .06em}
+.hero h1 .w>.grad{padding-right:.32em;margin-right:-.32em}
+.hero h1 .w:last-child>.grad{padding-right:.06em;margin-right:0}
+.hero-sub{margin:0 0 26px;max-width:560px;color:#0f3a32;font-weight:500}
+.hero-actions,.hero-stats{justify-content:flex-start}
+.hero .btn-ghost{color:#0c2b25;border-color:rgba(12,43,37,.35);background:rgba(255,255,255,.28);backdrop-filter:blur(4px)}
+.hero .btn-ghost:hover{background:rgba(255,255,255,.5);border-color:#0c2b25}
+.showcase .hero-stats{justify-content:center;margin:0 0 34px}
+.hero-stats div{color:var(--muted)}
+.hero-stats strong{font-family:var(--display);color:var(--h-ink)}
+
+/* ---------- Showcase (app mock) on paper ---------- */
+.showcase{position:relative;z-index:2;padding:56px 0 20px}
+.showcase .stage{margin:0 auto}
+.mock{border-radius:var(--leaf-lg);box-shadow:0 40px 90px rgba(20,40,33,.22)}
+.mock-screen{border-radius:20px 20px 64px 20px}
+.mock-bar{grid-template-columns:1fr auto 1fr}
+.mock-bar .addr{grid-column:2}
+.vline i{width:4px;height:16px;border-radius:2px;border:0}
+
+/* ---------- Marquee: plain words separated by hairlines ---------- */
+.marquee{background:transparent;border-color:var(--line)}
+.mq-item{border:0;border-radius:0;padding:4px 26px;color:#2c4038;font-family:var(--display);font-weight:500;border-right:1px solid var(--line)}
+.mq-track .mq-item{margin-right:0}
+.mq-item:hover{background:none;color:var(--label)}
+
+/* ---------- Unboxed content: hairlines instead of cards ---------- */
+.card{border:0;border-top:1px solid var(--line);border-radius:0;background:transparent;padding:28px 6px}
+.spot:before{background:radial-gradient(380px circle at var(--mx,50%) var(--my,50%),rgba(220,239,230,.7),transparent 60%)}
+.statement .sw{color:rgba(20,40,33,.14)}
+.statement .sw.hl.on{color:var(--label)}
+.statement{font-weight:600}
+.pain .num,.step .k{color:var(--label);font-family:var(--display)}
+.pain h3,.step h3,.check h3,.bento h3,.tab b{font-family:var(--display);font-weight:600;color:var(--h-ink)}
+.pain .pic{background:rgba(220,239,230,.55);border:0;border-radius:var(--leaf)}
+.pic-price .neq,.pic-queue em,.il-upload .plus{color:var(--label)}
+.pic-shield .flag{background:#fff0c9;color:#895a00}
+.tagp{background:#fffdf8}
+.pic-shield .bubble{background:#fffdf8}
+
+/* How it works */
+.pipe-line{background:var(--line)}
+.pnode .dot{background:var(--paper);border-color:var(--line-2);border-radius:50%;font-family:var(--display)}
+.pnode.done{color:#2c4038}
+.pnode.done .dot{border-color:rgba(31,122,103,.5);color:#1f7a67}
+.pnode.active{color:#142821}
+.step.active .card{border-color:var(--gold)}
+.illus{background:rgba(220,239,230,.45);border:0;border-radius:var(--leaf)}
+.il-upload .file{background:#fffdf8}
+.il-chips{display:grid;gap:6px}
+.il-chips span{padding:0;border:0;border-radius:0;background:none;color:#2c4038}
+.il-chips span em{color:var(--label)}
+.il-rules div{background:transparent;border-bottom:1px solid var(--line);border-radius:0;padding:8px 2px}
+.il-rules div:last-child{border-bottom:0}
+.il-rules .ok{background:#dff4ea;color:#087750}.il-rules .warn{background:#fff0c9;color:#895a00}
+
+/* Checks (horizontal) */
+.check{border-top:0;border-left:1px solid var(--line);padding:6px 26px}
+.check .ico{border:0;border-radius:50%;background:var(--grain),#dcefe6;color:#1f7a67}
+.check:nth-child(even) .ico{background:var(--grain),#fff0c9;color:var(--label)}
+.check .src{padding:0;background:none;border-radius:0;color:var(--faint);letter-spacing:.08em;text-transform:uppercase}
+.check .ex div{background:#fffdf8;border:1px solid var(--line);border-radius:12px 12px 26px 12px}
+.check.end{border-left:0;border-radius:var(--leaf-lg);padding:30px;background:var(--grain),linear-gradient(145deg,#1d725f,#2b8972)}
+.check.end h3{color:#fffdf6}
+.hs-progress{background:var(--line)}
+
+/* Decisions */
+.tab{background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0}
+.tab:hover{background:rgba(220,239,230,.4)}
+.tab .badge{border-radius:50%}
+.tab.active{background:rgba(232,182,74,.1);border-radius:var(--leaf);border-bottom-color:transparent}
+.dpanel{background:#fffdf8;border-radius:var(--leaf-lg);box-shadow:0 30px 70px rgba(20,40,33,.14)}
+
+/* Principles */
+.bento .card{min-height:0}
+.bento .ic{border:0;border-radius:50%;background:var(--grain),#dcefe6;color:var(--label)}
+.bento .card.feat,.bento .card.lav{border:0;border-radius:var(--leaf-lg);padding:30px}
+.bento .card.feat{background:var(--grain),linear-gradient(145deg,#1d725f,#2b8972)}
+.bento .card.feat h3{color:#fffdf6}
+.bento .card.lav{background:var(--grain),#ece2cc}
+.bento .card.lav p{color:#4b5a53}
+.bento .card.lav .ic{background:var(--grain),#fffdf8;color:var(--label)}
+
+/* Team */
+.member{background:transparent;border-top:1px solid var(--line);border-radius:0;padding:26px 10px 18px}
+.member:hover{box-shadow:none}
+.avatar{border-radius:50% 50% 50% 18%;font-family:var(--display);background:var(--grain),linear-gradient(135deg,#1f7a67,#2b8972 60%,#e8b64a)}
+.member h3{color:var(--h-ink);font-family:var(--display)}
+.member .role{color:var(--label)}
+
+/* Contact & piano stay as deep-green panels, with grain and leaf corners */
+.contact{border-radius:var(--leaf-lg);background:var(--grain),radial-gradient(circle at 85% 0%,rgba(232,182,74,.25),transparent 24rem),linear-gradient(150deg,#14463b,#0b3028)}
+.contact .eyebrow{color:#f3cd72}
+.contact .btn-ghost:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.5)}
+.piano-box{border-radius:var(--leaf-lg)}
+.piano-box .btn-ghost:hover{background:rgba(255,255,255,.1)}
+
+/* Intro + exit curtain on paper */
+.intro{background:#f4ebdb url(/static/home/paper.webp) 0 0/512px 512px}
+.intro-word span{color:#142821}
+.intro-word span.ai{background:linear-gradient(90deg,#1f7a67,#b8860b);-webkit-background-clip:text;background-clip:text;color:transparent}
+.intro-tag{color:#56685f}
+.intro-bar{background:rgba(20,40,33,.1)}
+.intro-skip{background:transparent;border-color:rgba(20,40,33,.2);color:#56685f}
+.intro-skip:hover{color:#142821}
+.intro-scan{background:linear-gradient(90deg,transparent,#1f7a67,transparent);box-shadow:none}
+.leave{background:var(--paper)}
+
+/* Footer & misc */
+footer{border-top-color:var(--line)}
+.foot .links a:hover,.mail:hover{color:var(--label)}
+.contact .mail:hover{color:#f3cd72}
+
+@media (max-width:900px){
+  .nav-links{background:#fbf8f1;border-color:rgba(20,40,33,.12);box-shadow:0 30px 60px rgba(20,40,33,.18)}
+  .nav .nav-links a,.nav.scrolled .nav-links a{color:#2c4038}
+  .nav .nav-links .only-mobile{color:var(--label)}
+  .check{border-left:0;border-top:1px solid var(--line);padding:22px 4px}
+}
+@media (max-width:640px){
+  .hero{min-height:860px;align-items:flex-start}
+  .hero-copy{margin:0;padding:96px 0 0}
+  .art{--ax:0%;width:max(100cqw,93cqh);height:auto}
+  .art{-webkit-mask-image:linear-gradient(transparent,#000 14%);mask-image:linear-gradient(transparent,#000 14%)}
+  .hero h1{font-size:clamp(2.1rem,9vw,2.8rem)}
+}
+@media (prefers-reduced-motion:reduce){.tree img{animation:none}.tree{transition:none}}
+
+/* ---------- Leaving: a gust of leaves sweeps the page away ---------- */
+.leave{background:#f4ebdb url(/static/home/paper.webp) 0 0/512px 512px;clip-path:inset(0 100% 0 0);transition:clip-path .85s cubic-bezier(.6,0,.3,1) .45s}
+body.leaving .leave{clip-path:inset(0 0 0 0)}
+.leave .mark{transition:opacity .3s ease .95s}
+main,.nav-inner,footer{transform-origin:0 50%}
+body.leaving main,body.leaving .nav-inner,body.leaving footer{transform:translateX(30vw) rotate(1.5deg);opacity:0;filter:blur(3px);transition:transform 1.15s cubic-bezier(.55,0,.75,.2) .1s,opacity .9s ease .35s,filter .9s ease .2s}
+body.leaving main,body.leaving .nav-inner,body.leaving footer{transition-delay:.35s,.5s,.4s}
 </style>
 </head>
 <body class="locked">
@@ -515,6 +727,7 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
       <a class="only-mobile" href="/app" data-enter>Vào ứng dụng →</a>
     </nav>
     <div style="display:flex;gap:10px;align-items:center">
+      <button class="snd-btn" id="soundToggle" type="button" data-sound-toggle onclick="vfSfx.toggle()" aria-label="Tắt âm thanh"></button>
       <a class="btn btn-gold btn-sm magnetic btn-enter-top" href="/app" data-enter>Vào ứng dụng
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
       <button class="menu-btn" id="menuBtn" type="button" aria-label="Mở menu" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
@@ -525,30 +738,45 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
 <main id="top">
   <!-- HERO -->
   <section class="hero" id="hero">
-    <div class="hero-bg" aria-hidden="true">
-      <div class="grid-lines"></div>
-      <div class="orb o1" data-par=".18"></div>
-      <div class="orb o2" data-par=".1"></div>
-      <div class="orb o3" data-par=".26"></div>
+    <div class="scene" aria-hidden="true">
+      <div class="art" id="art">
+        <img class="art-bg" src="/static/home/landscape.webp" alt="" width="1672" height="941" decoding="async" fetchpriority="high">
+        <div class="tree tree-l" id="treeL" style="--x:0%;--y:46.44%;--w:17.70%;--h:40.17%;--ox:25%;--oy:99.2%;--d:0s">
+          <i class="tree-shadow"></i><img src="/static/home/tree-l.webp" alt="" decoding="async">
+        </div>
+        <div class="tree tree-r" id="treeR" style="--x:80.80%;--y:13.71%;--w:19.20%;--h:47.72%;--ox:91%;--oy:99.3%;--d:-2.3s">
+          <i class="tree-shadow"></i><img src="/static/home/tree-r.webp" alt="" decoding="async">
+        </div>
+      </div>
+      <svg class="hero-edge" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+        <defs><pattern id="paperPat" patternUnits="userSpaceOnUse" width="512" height="512"><image href="/static/home/paper.webp" width="512" height="512"/></pattern></defs>
+        <path d="M0 52 C70 40 120 58 190 46 C270 32 330 60 420 50 C520 38 560 22 660 34 C760 46 820 62 930 50 C1030 39 1080 24 1180 36 C1270 46 1340 58 1440 44 V90 H0Z" fill="#cbb98f" opacity=".35" transform="translate(0 -6)"/>
+        <path d="M0 52 C70 40 120 58 190 46 C270 32 330 60 420 50 C520 38 560 22 660 34 C760 46 820 62 930 50 C1030 39 1080 24 1180 36 C1270 46 1340 58 1440 44 V90 H0Z" fill="url(#paperPat)"/>
+      </svg>
     </div>
     <div class="wrap">
       <div class="hero-copy">
-        <span class="eyebrow stagger" style="--d:.15s"><i></i>Lớp kiểm định chất lượng cho video AI</span>
+        <span class="eyebrow stagger" style="--d:.15s">Giải pháp kiểm duyệt chất lượng video AI</span>
         <h1 data-split>Kiểm định video thương mại AI <span class="grad">trước khi phát hành.</span></h1>
-        <p class="hero-sub stagger" style="--d:.75s">VerifAI đọc chữ trên hình, nghe lời thoại, so sánh khung hình và đối chiếu với dữ liệu sản phẩm để chỉ ra chỗ cần xem lại, kèm bằng chứng rõ ràng. Người duyệt luôn là người quyết định cuối cùng.</p>
+        <p class="hero-sub stagger" style="--d:.75s">VerifAI nhận diện chữ trên hình, chuyển lời thoại thành văn bản, so sánh khung hình và đối chiếu với dữ liệu sản phẩm để xác định các điểm cần kiểm tra, kèm bằng chứng cụ thể. Quyết định cuối cùng thuộc về người duyệt.</p>
         <div class="hero-actions stagger" style="--d:.9s">
-          <a class="btn btn-gold magnetic" href="/app" data-enter>Vào không gian kiểm duyệt
+          <a class="btn btn-dark magnetic" href="/app" data-enter>Bắt đầu kiểm duyệt
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
           <a class="btn btn-ghost magnetic" href="#cach-hoat-dong">Xem cách hoạt động</a>
         </div>
-        <div class="hero-stats stagger" style="--d:1.05s">
+      </div>
+    </div>
+  </section>
+
+  <!-- SHOWCASE -->
+  <div class="showcase">
+    <div class="wrap">
+        <div class="hero-stats reveal">
           <div><strong class="count" data-to="5">0</strong>bước kiểm tra</div>
           <div><strong class="count" data-to="3">0</strong>mức gợi ý</div>
           <div><strong>0</strong>lần tự động phát hành</div>
         </div>
-      </div>
-
-      <div class="stage stagger" style="--d:1.15s">
+      <div class="stage reveal zoom">
         <div class="mock" id="mock">
           <div class="mock-screen">
             <div class="mock-bar">
@@ -580,22 +808,21 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
         </div>
       </div>
 
-      <div class="scroll-cue" aria-hidden="true"><i></i>Cuộn để khám phá</div>
     </div>
-  </section>
+  </div>
 
   <!-- MARQUEE -->
   <div class="marquee" aria-label="Các tín hiệu VerifAI xử lý">
     <div class="mq-track" id="mq">
-      <span class="mq-item"><i></i>Đọc chữ tiếng Việt trên hình</span>
-      <span class="mq-item"><i></i>Chuyển lời thoại thành văn bản</span>
-      <span class="mq-item"><i></i>Đối chiếu giá bán</span>
-      <span class="mq-item"><i></i>Kiểm tra tên và mã sản phẩm</span>
-      <span class="mq-item"><i></i>Tuyên bố công dụng</span>
-      <span class="mq-item"><i></i>So sánh khung hình liên tiếp</span>
-      <span class="mq-item"><i></i>Bằng chứng có mốc thời gian</span>
-      <span class="mq-item"><i></i>Lưu vết thao tác</span>
-      <span class="mq-item"><i></i>Xuất toàn bộ phiên duyệt</span>
+      <span class="mq-item">Đọc chữ tiếng Việt trên hình</span>
+      <span class="mq-item">Chuyển lời thoại thành văn bản</span>
+      <span class="mq-item">Đối chiếu giá bán</span>
+      <span class="mq-item">Kiểm tra tên và mã sản phẩm</span>
+      <span class="mq-item">Tuyên bố công dụng</span>
+      <span class="mq-item">So sánh khung hình liên tiếp</span>
+      <span class="mq-item">Bằng chứng có mốc thời gian</span>
+      <span class="mq-item">Lưu vết thao tác</span>
+      <span class="mq-item">Xuất toàn bộ phiên duyệt</span>
     </div>
   </div>
 
@@ -603,20 +830,20 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
   <section class="section" id="van-de">
     <div class="wrap">
       <div class="head reveal">
-        <span class="eyebrow"><i></i>01 · Vấn đề</span>
+        <span class="eyebrow">01 · Vấn đề</span>
       </div>
-      <p class="statement" data-scrub>Video AI được tạo ra chỉ trong vài phút. Nhưng một con số [sai giá,] một cái tên [sai sản phẩm] hay một câu quảng cáo [quá đà] có thể khiến thương hiệu mất đi niềm tin của người mua.</p>
+      <p class="statement" data-scrub>Video AI được sản xuất nhanh và với số lượng lớn. Một thông tin [sai giá,] một tên [sai sản phẩm] hoặc một tuyên bố [vượt quá công dụng] có thể ảnh hưởng đến uy tín thương hiệu và niềm tin của khách hàng.</p>
       <div class="pains">
         <article class="card spot pain reveal" style="--d:0s">
           <div class="pic pic-price" aria-hidden="true"><span class="tagp">199.000 VND</span><span class="neq">≠</span><span class="tagp bad">189.000 VND</span></div>
           <span class="num">01</span>
           <h3>Sai thông tin sản phẩm</h3>
-          <p>Video AI có thể hiển thị sai giá, đổi tên sản phẩm hoặc thay đổi bao bì giữa các cảnh mà mắt thường dễ bỏ sót.</p>
+          <p>Video AI có thể hiển thị sai giá, đổi tên sản phẩm hoặc thay đổi bao bì giữa các cảnh, những lỗi dễ bị bỏ sót khi duyệt thủ công.</p>
         </article>
         <article class="card spot pain reveal" style="--d:.12s">
           <div class="pic pic-queue" aria-hidden="true"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i><i style="--k:3"></i><i style="--k:4"></i><em>đang chờ duyệt</em></div>
           <span class="num">02</span>
-          <h3>Duyệt thủ công là nút thắt</h3>
+          <h3>Duyệt thủ công tốn nhiều thời gian</h3>
           <p>Tốc độ tạo video tăng nhanh, nhưng việc xem từng giây và đối chiếu từng thông tin vẫn làm bằng tay.</p>
         </article>
         <article class="card spot pain reveal" style="--d:.24s">
@@ -634,15 +861,15 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
     <div class="wrap how">
       <div class="how-sticky">
         <div class="head left reveal" style="margin-bottom:0">
-          <span class="eyebrow"><i></i>02 · Cách hoạt động</span>
-          <h2>AI quan sát. Luật đối chiếu. <span class="grad">Con người quyết định.</span></h2>
+          <span class="eyebrow">02 · Cách hoạt động</span>
+          <h2>AI phân tích, hệ thống đối chiếu, <span class="grad">người duyệt quyết định.</span></h2>
           <p>Năm bước từ lúc tải video lên đến khi có quyết định, mỗi bước đều để lại bằng chứng.</p>
         </div>
         <div class="pipe" id="pipe" aria-hidden="true">
           <div class="pipe-line"><i id="pipeFill"></i></div>
           <div class="pnode"><span class="dot">1</span><b>Tải video</b></div>
           <div class="pnode"><span class="dot">2</span><b>Trích xuất tín hiệu</b></div>
-          <div class="pnode"><span class="dot">3</span><b>Gom bằng chứng</b></div>
+          <div class="pnode"><span class="dot">3</span><b>Tổng hợp bằng chứng</b></div>
           <div class="pnode"><span class="dot">4</span><b>Đối chiếu dữ liệu</b></div>
           <div class="pnode"><span class="dot">5</span><b>Người duyệt quyết định</b></div>
         </div>
@@ -662,7 +889,7 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
         </div></div>
         <div class="step"><div class="card spot">
           <span class="k">Bước 3</span>
-          <h3>Gom thành bằng chứng có nguồn gốc</h3>
+          <h3>Tổng hợp bằng chứng có nguồn gốc rõ ràng</h3>
           <p>Chữ lặp lại được gộp lại, mỗi bằng chứng có mốc thời gian đầu và cuối, cùng nguồn rõ ràng. Các nguồn khác nhau không bị trộn lẫn.</p>
           <div class="illus il-chips"><span><em>Chữ</em>199.000 VND · 00:08</span><span><em>Lời thoại</em>"hiệu quả 100%" · 00:12</span><span><em>Hình</em>Khung 00:17 so với 00:15</span></div>
         </div></div>
@@ -687,9 +914,9 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
     <div class="hs-sticky">
       <div class="wrap">
         <div class="head reveal">
-          <span class="eyebrow"><i></i>03 · Kiểm tra gì</span>
-          <h2>Sáu nhóm tín hiệu, <span class="grad">một màn hình.</span></h2>
-          <p><span class="on-desk">Cuộn xuống</span><span class="on-touch">Vuốt ngang</span> để lướt qua từng nhóm kiểm tra mà VerifAI thực hiện trên mỗi video.</p>
+          <span class="eyebrow">03 · Kiểm tra gì</span>
+          <h2>Sáu nhóm kiểm tra <span class="grad">trên mỗi video.</span></h2>
+          <p><span class="on-desk">Cuộn xuống</span><span class="on-touch">Vuốt ngang</span> để xem từng nhóm kiểm tra VerifAI thực hiện.</p>
         </div>
       </div>
       <div class="hs-viewport">
@@ -731,8 +958,8 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
             <div class="ex"><div>Nắp chai đổi màu giữa 00:15 và 00:17</div><small>Ví dụ minh họa</small></div>
           </article>
           <article class="card check end">
-            <h3>Muốn thấy tận mắt?</h3>
-            <p>Tải một video lên và xem VerifAI chỉ ra những gì cần xem lại.</p>
+            <h3>Dùng thử với video của bạn</h3>
+            <p>Tải một video lên để xem các điểm VerifAI đánh dấu cần kiểm tra.</p>
             <a class="btn btn-gold magnetic" href="/app" data-enter>Phân tích video
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
           </article>
@@ -746,14 +973,14 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
   <section class="section" id="quyet-dinh">
     <div class="wrap">
       <div class="head reveal">
-        <span class="eyebrow"><i></i>04 · Ba mức gợi ý</span>
-        <h2>Rõ ràng đến mức <span class="grad">ai cũng hiểu.</span></h2>
+        <span class="eyebrow">04 · Ba mức gợi ý</span>
+        <h2>Ba mức đánh giá <span class="grad">rõ ràng.</span></h2>
         <p>Mỗi video nhận một gợi ý kèm lý do và mốc thời gian. Bấm vào từng mức để xem ví dụ.</p>
       </div>
       <div class="decisions">
         <div class="tabs reveal from-left" role="tablist" aria-label="Ba mức gợi ý">
           <button class="tab" role="tab" data-i="0" data-tone="pass" type="button"><span class="badge">✓</span><span><b>Đạt</b><small>Không thấy điểm bất thường cần xử lý</small></span><span class="timer"></span></button>
-          <button class="tab" role="tab" data-i="1" data-tone="review" type="button"><span class="badge">!</span><span><b>Cần xem lại</b><small>Có tín hiệu cần con người xác minh</small></span><span class="timer"></span></button>
+          <button class="tab" role="tab" data-i="1" data-tone="review" type="button"><span class="badge">!</span><span><b>Cần xem lại</b><small>Có tín hiệu cần người duyệt xác minh</small></span><span class="timer"></span></button>
           <button class="tab" role="tab" data-i="2" data-tone="regen" type="button"><span class="badge">↻</span><span><b>Làm lại</b><small>Có lỗi rõ ràng so với dữ liệu sản phẩm</small></span><span class="timer"></span></button>
         </div>
         <div class="dpanel reveal from-right" id="dpanel" role="tabpanel" aria-live="polite"></div>
@@ -765,15 +992,15 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
   <section class="section" id="nguyen-tac">
     <div class="wrap">
       <div class="head reveal">
-        <span class="eyebrow"><i></i>05 · Nguyên tắc</span>
-        <h2>Được xây để <span class="grad">đáng tin.</span></h2>
-        <p>VerifAI là trợ lý kiểm duyệt, không phải máy phán xét. Đây là những nguyên tắc nhóm giữ trong từng tính năng.</p>
+        <span class="eyebrow">05 · Nguyên tắc</span>
+        <h2>Nguyên tắc <span class="grad">vận hành.</span></h2>
+        <p>VerifAI là công cụ hỗ trợ kiểm duyệt, không thay thế người duyệt. Các nguyên tắc sau được áp dụng cho mọi tính năng.</p>
       </div>
       <div class="bento">
         <article class="card spot wide feat reveal">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11l2 2 4-4"/></svg></div>
           <h3>Bằng chứng trước, kết luận sau</h3>
-          <p>Mỗi cảnh báo đi kèm khung hình, mốc thời gian và nguồn tạo ra nó, để người duyệt kiểm tra lại trong vài giây.</p>
+          <p>Mỗi cảnh báo đi kèm khung hình, mốc thời gian và nguồn tạo ra nó, để người duyệt dễ dàng kiểm tra lại.</p>
         </article>
         <article class="card spot wide reveal" style="--d:.1s">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
@@ -787,8 +1014,8 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
         </article>
         <article class="card spot lav reveal" style="--d:.1s">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/></svg></div>
-          <h3>Thận trọng có chủ đích</h3>
-          <p>Tín hiệu chưa chắc chắn được đánh dấu "cần xem lại" thay vì kết luận vội.</p>
+          <h3>Ưu tiên thận trọng</h3>
+          <p>Tín hiệu chưa chắc chắn được đánh dấu "cần xem lại" thay vì đưa ra kết luận khi chưa đủ cơ sở.</p>
         </article>
         <article class="card spot reveal" style="--d:.2s">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg></div>
@@ -803,9 +1030,9 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
   <section class="section" id="nhom">
     <div class="wrap">
       <div class="head reveal">
-        <span class="eyebrow"><i></i>06 · Nhóm</span>
-        <h2>Năm người, <span class="grad">một mục tiêu.</span></h2>
-        <p>Một nhóm liên ngành kết hợp kinh doanh, sản phẩm, dữ liệu và kỹ thuật AI.</p>
+        <span class="eyebrow">06 · Nhóm</span>
+        <h2>Đội ngũ <span class="grad">phát triển.</span></h2>
+        <p>Nhóm gồm năm thành viên phụ trách kinh doanh, sản phẩm, dữ liệu và kỹ thuật AI.</p>
       </div>
       <div class="team">
         <article class="member tilt reveal" style="--d:0s"><div class="avatar">TR</div><h3>Trâm</h3><span class="role">Kinh doanh và nghiên cứu AI</span><p>Định hình bài toán, thử nghiệm mô hình hiểu video, business case.</p></article>
@@ -817,9 +1044,9 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
 
       <div class="contact reveal zoom" id="lien-he">
         <div>
-          <span class="eyebrow"><i></i>Liên hệ</span>
-          <h2>Cùng trò chuyện về VerifAI</h2>
-          <p>Bạn muốn góp ý, dùng thử hay hợp tác? Gửi email cho nhóm, chúng tôi sẽ phản hồi sớm.</p>
+          <span class="eyebrow">Liên hệ</span>
+          <h2>Liên hệ nhóm VerifAI</h2>
+          <p>Để góp ý, đăng ký dùng thử hoặc trao đổi hợp tác, vui lòng gửi email cho nhóm. Chúng tôi sẽ phản hồi trong thời gian sớm nhất.</p>
           <a class="mail" href="mailto:tranthithanhvy1120@gmail.com">tranthithanhvy1120@gmail.com</a>
         </div>
         <div class="contact-actions">
@@ -835,9 +1062,9 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
   <section class="section piano-sec" id="dan" style="padding-top:40px">
     <div class="wrap">
       <div class="head reveal">
-        <span class="eyebrow"><i></i>Nghỉ tay một chút</span>
-        <h2>Duyệt xong rồi? <span class="grad">Chơi một bản nhạc.</span></h2>
-        <p>Cây đàn này kêu thật. Bấm chuột, chạm màn hình hoặc gõ bàn phím máy tính để chơi.</p>
+        <span class="eyebrow">Tiện ích</span>
+        <h2>Đàn piano <span class="grad">trực tuyến.</span></h2>
+        <p>Có thể chơi bằng chuột, màn hình cảm ứng hoặc bàn phím máy tính.</p>
       </div>
       <div class="piano-box reveal zoom">
         <div class="piano-top">
@@ -935,7 +1162,8 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
   }
   function playIntro() {
     intro.classList.remove('done', 'play');
-    body.classList.remove('ready', 'leaving');
+    body.classList.remove('ready', 'leaving', 'windy');
+    document.querySelectorAll('.vf-gust').forEach(g => g.remove());
     body.classList.add('locked');
     void intro.offsetWidth;
     intro.classList.add('play');
@@ -987,9 +1215,33 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
     e.preventDefault();
     const lm = $('.leave .mark'); lm.classList.remove('draw'); void lm.offsetWidth; lm.classList.add('draw');
     try { sessionStorage.setItem('vfEnter', '1'); } catch (_) {}
-    body.classList.add('leaving');
-    setTimeout(() => { location.href = a.href; }, 620);
+    // Wind first: the trees bow and their leaves tear off, then the page is swept away.
+    body.classList.add('windy');
+    window.vfSfx?.play('gust');
+    window.vfLeafGust?.({ count: Math.round(innerWidth / 13), duration: 1500,
+      origins: [{ el: $('#treeL'), weight: 2 }, { el: $('#treeR'), weight: 1 }] });
+    setTimeout(() => body.classList.add('leaving'), 450);
+    setTimeout(() => { location.href = a.href; }, 1800);
   }));
+
+  /* ---------- Living trees: 3D tilt toward the pointer, leaves drifting down ---------- */
+  const art = $('#art'), heroEl = $('#hero'), trees = [$('#treeL'), $('#treeR')];
+  if (art && !reduce) {
+    let raf = 0, tx = 0, ty = 0;
+    heroEl.addEventListener('pointermove', e => {
+      tx = e.clientX / innerWidth * 2 - 1; ty = e.clientY / innerHeight * 2 - 1;
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; art.style.setProperty('--px', tx.toFixed(3)); art.style.setProperty('--py', ty.toFixed(3)); });
+    });
+    heroEl.addEventListener('pointerleave', () => { art.style.setProperty('--px', 0); art.style.setProperty('--py', 0); });
+    let heroOn = true;
+    new IntersectionObserver(([en]) => { heroOn = en.isIntersecting; }).observe(heroEl);
+    const drop = () => {
+      if (heroOn && !document.hidden && !body.classList.contains('windy') && !body.classList.contains('locked'))
+        window.vfDropLeaf?.(art, trees[Math.random() < .55 ? 0 : 1]);
+      setTimeout(drop, 1400 + Math.random() * 2200);
+    };
+    setTimeout(drop, 1800);
+  }
 
   /* ---------- Reveal on scroll ---------- */
   const io = new IntersectionObserver(entries => entries.forEach(en => {
@@ -1138,7 +1390,7 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
              ['ok', '✓', 'Tên và mã sản phẩm khớp', 'Trùng với sản phẩm đã chọn', '00:03'],
              ['ok', '✓', 'Tuyên bố nằm trong danh sách đã duyệt', 'Không có cụm từ cần thận trọng', '']],
       note: 'Người duyệt vẫn xem nhanh và xác nhận trước khi phát hành.' },
-    { tone: 'review', label: 'Cần xem lại', title: 'Có tín hiệu cần con người xác minh',
+    { tone: 'review', label: 'Cần xem lại', title: 'Có tín hiệu cần người duyệt xác minh',
       rows: [['ok', '✓', 'Giá bán khớp dữ liệu sản phẩm', 'Chữ trên hình: 199.000 VND', '00:08'],
              ['warn', '!', 'Tuyên bố chưa có trong danh sách đã duyệt', '"Hiệu quả 100%" trong lời thoại', '00:12'],
              ['bad', '!', 'Bao bì có thể thay đổi giữa hai cảnh', 'Tín hiệu so sánh khung hình', '00:17']],
@@ -1391,5 +1643,7 @@ footer{position:relative;z-index:1;margin-top:110px;padding:40px 0 34px;border-t
   });
 })();
 </script>
+<script src="/static/sfx.js"></script>
+<script src="/static/leaves.js"></script>
 </body>
 </html>

@@ -111,7 +111,7 @@ def test_excel_import_is_visible_from_dataset_heading_and_stays_wired():
     assert 'function openDatasetImport()' in html
     assert "panel.open=true" in html
     assert "api('/api/products/import',{method:'POST',body:f})" in html
-    assert 'Import Product Truth — 6 video gốc' in html
+    assert 'Import Product Truth: 6 video gốc' in html
     assert 'file.size>8*1024*1024' in html
     assert 'btn.disabled=true' in html and 'btn.disabled=false' in html
 
@@ -119,7 +119,7 @@ def test_excel_import_is_visible_from_dataset_heading_and_stays_wired():
 def test_original_sheet_product_import_and_clear_controls():
     html=HTML.read_text(encoding='utf-8')
     assert "api('/api/products/import',{method:'POST',body:f})" in html
-    assert 'Import Product Truth — 6 video gốc' in html
+    assert 'Import Product Truth: 6 video gốc' in html
     assert 'id="productImportResetPanel"' in html
     assert 'id="productImportResetConfirm"' in html
     assert "post('/api/products/import/reset',{confirmation:phrase})" in html
