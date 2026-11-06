@@ -515,6 +515,9 @@ h1,h2,h3,.statement,.brand,.intro-word{font-family:var(--display)}
   78%{transform:rotate(1.4deg) skewX(-.8deg)}}
 .tree-shadow{position:absolute;left:calc(var(--ox) - 34%);top:calc(var(--oy) - 4%);width:68%;height:8%;border-radius:50%;background:radial-gradient(closest-side,rgba(16,60,40,.28),transparent);transform:skewX(calc(var(--px,0) * -20deg));transition:transform .9s}
 .leaf-fall{position:absolute;left:0;top:0;pointer-events:none;z-index:4;will-change:transform}
+.snd-btn{width:40px;height:40px;flex:0 0 auto;display:grid;place-items:center;border-radius:50%;border:1.5px solid rgba(16,54,46,.38);background:rgba(255,253,246,.72);color:#10362e;cursor:pointer;transition:background .16s,border-color .16s}
+.snd-btn:hover{background:#fffdf6;border-color:#10362e}
+.snd-btn:focus-visible{outline:2px solid #e8b64a;outline-offset:2px}
 /* Wind before leaving: trees bow to the right, leaves tear off (static/leaves.js) */
 body.windy .tree{--lean:7deg;transition:transform .55s cubic-bezier(.3,.6,.3,1)}
 body.windy .tree img{animation:treeGust .5s ease-in-out infinite alternate}
@@ -724,6 +727,7 @@ body.leaving main,body.leaving .nav-inner,body.leaving footer{transition-delay:.
       <a class="only-mobile" href="/app" data-enter>Vào ứng dụng →</a>
     </nav>
     <div style="display:flex;gap:10px;align-items:center">
+      <button class="snd-btn" id="soundToggle" type="button" data-sound-toggle onclick="vfSfx.toggle()" aria-label="Tắt âm thanh"></button>
       <a class="btn btn-gold btn-sm magnetic btn-enter-top" href="/app" data-enter>Vào ứng dụng
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
       <button class="menu-btn" id="menuBtn" type="button" aria-label="Mở menu" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
@@ -1213,6 +1217,7 @@ body.leaving main,body.leaving .nav-inner,body.leaving footer{transition-delay:.
     try { sessionStorage.setItem('vfEnter', '1'); } catch (_) {}
     // Wind first: the trees bow and their leaves tear off, then the page is swept away.
     body.classList.add('windy');
+    window.vfSfx?.play('gust');
     window.vfLeafGust?.({ count: Math.round(innerWidth / 13), duration: 1500,
       origins: [{ el: $('#treeL'), weight: 2 }, { el: $('#treeR'), weight: 1 }] });
     setTimeout(() => body.classList.add('leaving'), 450);
@@ -1638,6 +1643,7 @@ body.leaving main,body.leaving .nav-inner,body.leaving footer{transition-delay:.
   });
 })();
 </script>
+<script src="/static/sfx.js"></script>
 <script src="/static/leaves.js"></script>
 </body>
 </html>
