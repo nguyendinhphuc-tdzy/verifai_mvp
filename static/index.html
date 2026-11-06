@@ -36,7 +36,7 @@
   <header class="workspace-header">
     <button type="button" class="icon-btn menu-open" id="menuOpen" onclick="openDrawer()" aria-label="Mở menu" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
     <div class="header-heading"><span class="header-eyebrow" id="headerEyebrow"></span><h1 class="header-title" id="currentSectionLabel">Danh sách duyệt</h1></div>
-    <div class="header-actions"><button type="button" class="search-trigger" onclick="openPalette()" aria-label="Tìm nhanh video, SKU hoặc trang"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Tìm video, SKU, trang…</span><kbd class="modkey">⌘K</kbd></button><button type="button" class="icon-btn theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Chuyển chế độ sáng hoặc tối" title="Chế độ sáng / tối">☾</button><button type="button" class="icon-btn header-help" onclick="openHelp()" aria-label="Xem phím tắt" title="Phím tắt ( ? )">?</button><button type="button" class="button" onclick="openTab('analyze')" title="Phân tích video mới ( N )">+ <span class="hide-sm">Phân tích mới</span></button></div>
+    <div class="header-actions"><button type="button" class="search-trigger" onclick="openPalette()" aria-label="Tìm nhanh video, SKU hoặc trang"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Tìm video, SKU, trang…</span><kbd class="modkey">⌘K</kbd></button><button type="button" class="icon-btn sound-toggle" id="soundToggle" data-sound-toggle onclick="vfSfx.toggle()" aria-label="Tắt âm thanh"></button><button type="button" class="icon-btn theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Chuyển chế độ sáng hoặc tối" title="Chế độ sáng / tối">☾</button><button type="button" class="icon-btn header-help" onclick="openHelp()" aria-label="Xem phím tắt" title="Phím tắt ( ? )">?</button><button type="button" class="button" onclick="openTab('analyze')" title="Phân tích video mới ( N )">+ <span class="hide-sm">Phân tích mới</span></button></div>
   </header>
 
   <section id="queue" class="section active" aria-labelledby="queueHeading">
@@ -272,6 +272,7 @@
     <h3>Chung</h3>
     <div>Tìm nhanh <span><kbd class="modkey">⌘K</kbd> <kbd>/</kbd></span></div><div>Bật / tắt menu <kbd>[</kbd></div>
     <div>Phân tích video mới <kbd>N</kbd></div><div>Bảng phím tắt <kbd>?</kbd></div>
+    <div>Bật / tắt âm thanh <kbd>M</kbd></div>
     <h3>Danh sách duyệt</h3>
     <div>Xuống / lên <span><kbd>J</kbd> <kbd>K</kbd></span></div><div>Mở video <kbd>Enter</kbd></div>
     <h3>Màn duyệt video</h3>
@@ -293,6 +294,7 @@
   <div class="field" id="jobProductControl"><label for="jobProductSelect">Sản phẩm mới (SKU)</label><select id="jobProductSelect" class="search" aria-label="Đổi sản phẩm tham chiếu"></select></div>
   <div class="dlg-actions"><button type="button" class="button ghost" onclick="this.closest('dialog').close()">Hủy</button><button type="button" class="button" id="jobProductApply" onclick="changeJobProduct()">Gắn sản phẩm và phân tích lại</button></div>
 </div></dialog>
+<script src="/static/sfx.js"></script>
 <script src="/static/workspace-ux.js"></script>
 <script src="/static/workspace-pages.js"></script>
 <script>
@@ -443,10 +445,10 @@ $('uploadForm').onsubmit=async e=>{
    x.upload.onprogress=ev=>{if(ev.lengthComputable)setUploadProgress(ev.loaded/ev.total)};
    x.onload=()=>{let d={};try{d=JSON.parse(x.responseText)}catch(_){}x.status>=200&&x.status<300?resolve(d):reject(Error(apiErrorText(d,x.status)))};
    x.onerror=()=>reject(Error('Mất kết nối khi tải video lên'));x.send(form)});
-  resetAnalyzeWizard();await refreshAll();
+  window.vfSfx?.play('sent');resetAnalyzeWizard();await refreshAll();
   $('queueStatus').value='pending';openTab('queue');highlightJob(j.id);
   toast('Đã đưa video vào hàng đợi, đang phân tích…',{label:'Mở video',run:()=>showJob(j.id)});
- }catch(err){toast('Tải video lên không thành công: '+err.message)}
+ }catch(err){window.vfSfx?.play('error');toast('Tải video lên không thành công: '+err.message)}
  finally{$('uploadBtn').disabled=false;$('wBack').disabled=false;$('uploadProgress').classList.add('hidden')}
 };
 const progressNames={sampling:'Đang đọc khung hình',ocr:'Đang nhận diện chữ (OCR)',asr:'Đang nhận diện lời nói (ASR)',visual:'Đang kiểm tra hình ảnh',vlm:'Đang phân tích VLM',finalizing:'Đang tổng hợp kết quả',recovered:'Đang khôi phục phiên phân tích'};
@@ -628,9 +630,10 @@ async function flag(id,state){
  try{
   await api(`/api/jobs/${selected}/findings/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({state,reviewer})});
   await loadJob(selected);
+  window.vfSfx?.finding(state,currentJob?.findings);
   if(state!=='unreviewed')focusNextFinding();
   toast(state==='unreviewed'?'Đã bỏ đánh dấu cảnh báo':state==='confirmed'?'Đã xác nhận cảnh báo là lỗi':'Đã bác bỏ cảnh báo',prev!==state?{label:'Hoàn tác',run:()=>flag(id,prev)}:null);
- }catch(e){toast(e.message)}
+ }catch(e){window.vfSfx?.play('error');toast(e.message)}
 }
 async function submitReview(decision){
  if(!selected||!currentJob)return;
@@ -654,10 +657,11 @@ async function submitReview(decision){
   const waiting=new Set(jobs.filter(j=>!j.review_decision&&j.status==='completed'&&j.id!==done).map(j=>j.id));
   const next=order.slice(at+1).concat(order.slice(0,Math.max(at,0))).find(id=>waiting.has(id))||[...waiting][0];
   const label=decisionText[decision]||decision;
+  window.vfSfx?.decision(decision);
   if(next){await showJob(next);toast('Đã lưu: '+label+' · đang mở video tiếp theo',{label:'Quay lại',run:()=>showJob(done)})}
   else{await loadJob(done);toast('Đã lưu: '+label+' · không còn video chờ duyệt')}
  }
- catch(e){toast(e.message)}
+ catch(e){window.vfSfx?.play('error');toast(e.message)}
 }
 function renderJobProduct(d){const sel=$('jobProductSelect'),busy=['queued','processing'].includes(d.status),keep=$('jobProductDialog').open?sel.value:'';sel.innerHTML=products.map(p=>`<option value="${esc(p.id)}"${p.id===d.product_id?' selected':''}>${esc(p.sku)} · ${esc(p.name)}</option>`).join('');sel.disabled=busy;$('jobProductApply').disabled=busy;$('jobProductOpen').disabled=busy;$('jobProductOpen').title=busy?'Chờ phân tích xong để đổi sản phẩm':'';if(keep&&products.some(x=>x.id===keep)){sel.value=keep;sel.dispatchEvent(new Event('change'))}}
 async function changeJobProduct(){if(!selected||!currentJob)return;const pid=$('jobProductSelect').value;if(pid===currentJob.product_id)return toast('Video đã gắn sản phẩm này');const p=products.find(x=>x.id===pid);try{const actor=$('reviewer').value.trim()||'reviewer';await post(`/api/jobs/${selected}/product`,{product_id:pid,actor});$('jobProductDialog').close();toast('Đã gắn sản phẩm mới, đang phân tích lại');await refreshAll();await loadJob(selected)}catch(e){toast(e.message)}}
