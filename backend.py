@@ -84,7 +84,7 @@ async def revalidate_ui_assets(request,call_next):
     # but forces a cheap ETag/Last-Modified check (304) on every load.
     response=await call_next(request)
     path=request.url.path
-    if path.startswith('/static/') or path in ('/','/app'):
+    if path.startswith('/static/') or path in ('/','/app','/one-pager'):
         response.headers.setdefault('Cache-Control','no-cache')
     return response
 app.mount('/static',StaticFiles(directory=str(BASE/'static')),name='static')
@@ -232,6 +232,8 @@ def reference_scope(status: str) -> str:
 def home():return FileResponse(BASE/'static'/'home.html')
 @app.get('/app')
 def workspace():return FileResponse(BASE/'static'/'index.html')
+@app.get('/one-pager')
+def one_pager():return FileResponse(BASE/'static'/'one-pager.html')
 @app.get('/api/rules')
 def list_rules():
     return {'version':RULES_VERSION,'rules':RULES,
