@@ -487,7 +487,8 @@ footer{max-width:1180px;margin:8px auto 0;color:var(--muted);font-size:13px;text
     <!-- 08 -->
     <section class="sec" id="tai-lieu-ai" aria-labelledby="h08">
       <span class="eyebrow">08 · Tài liệu AI</span>
-      <h2 id="h08">AI Canvas, Project Charter, Data Audit, Risk Register, System Card</h2>
+      <h2 id="h08">7 biểu mẫu AI của dự án</h2>
+      <p class="sub" style="margin-bottom:8px">AI Canvas · Project Charter · Data Audit · Baseline &amp; Evaluation · AI Risk Register · AI System Card · AI Use Disclosure Log</p>
       <p class="sub">Bản cập nhật theo báo cáo cuối kỳ, phản ánh kết quả Actual Evaluation trên 80 video ngày 02/11/2026.</p>
 
       <h3 id="ai-canvas">AI Canvas</h3>
@@ -538,8 +539,19 @@ footer{max-width:1180px;margin:8px auto 0;color:var(--muted);font-size:13px;text
         <div class="card"><h4>Ground Truth</h4><p>Nhãn nội bộ do nhóm xây dựng để tính chỉ số; không phải kết luận pháp lý. Cần gán nhãn chéo, độc lập trước khi đánh giá trên tập mới.</p></div>
       </div>
 
-      <h3 id="danh-gia">Kết quả đánh giá (Actual Evaluation, 02/11/2026)</h3>
-      <p>Quy ước: Pass là không gắn cờ; Needs Review và Regenerate là có gắn cờ. Đối chiếu với Ground Truth ở cấp video.</p>
+      <h3 id="baseline-evaluation">Baseline &amp; Evaluation</h3>
+      <p><b>Baseline</b> là quy trình kiểm duyệt thủ công 5 bước: nhận nguồn → xem và nghe video → đối chiếu checklist → ghi lỗi → reviewer quyết định. Quy trình này dùng làm cơ sở thiết kế thử nghiệm; chưa được Ecomobi xác nhận là quy trình vận hành thực tế.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Tiêu chí</th><th>Manual Review</th><th>VerifAI-assisted</th></tr></thead>
+        <tbody>
+          <tr><td><b>Thao tác</b></td><td>Tự xem, nghe, tra SKU/claim và ghi lỗi</td><td>AI gợi ý; reviewer tra nguồn và xác minh</td></tr>
+          <tr><td><b>Quyết định</b></td><td>Reviewer</td><td>Reviewer</td></tr>
+          <tr><td><b>Cần đo thực tế</b></td><td>Tổng phút/video; TP/FN/FP theo Ground Truth</td><td>Cùng chỉ số, gồm cả thời gian chờ AI và xác minh cảnh báo nhầm</td></tr>
+          <tr><td><b>Hiện trạng</b></td><td>Đã có quy trình 5 bước; chưa đo đối chứng</td><td>Có prototype; chưa có số đo QA đối chứng</td></tr>
+        </tbody>
+      </table></div>
+      <p><b>Thiết kế thử nghiệm đối chứng (chưa thực hiện):</b> chia video có Ground Truth thành các bộ có độ khó tương đương, cùng reviewer làm thủ công và có VerifAI với thứ tự được cân bằng; đo tổng thời gian (kể cả chờ AI và xác minh cảnh báo), số lỗi phát hiện đúng, bỏ sót và cảnh báo nhầm. Nhóm chưa có số đo này nên không khẳng định VerifAI đã giúp tiết kiệm thời gian kiểm duyệt.</p>
+      <p><b>Evaluation (Actual Evaluation, 02/11/2026).</b> Quy ước: Pass là không gắn cờ; Needs Review và Regenerate là có gắn cờ. Đối chiếu với Ground Truth ở cấp video.</p>
       <div class="stats">
         <div class="stat"><b>83,33%</b><small>Recall (45/54 video có lỗi)</small></div>
         <div class="stat"><b>71,43%</b><small>Precision (45/63 video bị gắn cờ)</small></div>
@@ -612,8 +624,36 @@ footer{max-width:1180px;margin:8px auto 0;color:var(--muted);font-size:13px;text
       </table></div>
       <p>Mục tiêu cho giai đoạn tiếp theo trên dữ liệu độc lập: Recall ≥90%, Precision ≥80%, FPR ≤30% (chỉ tiêu cải thiện, chưa đạt).</p>
 
-      <h3 id="ai-disclosure">AI Use Disclosure</h3>
-      <p>Nhóm dùng công cụ AI ở hai vai trò: (1) hỗ trợ nghiên cứu, chuẩn bị dữ liệu, thiết kế prompt và biên tập tài liệu (ChatGPT, Claude); tạo video gốc và clip lỗi kiểm thử (Veo 3.1); (2) phân tích video trong prototype (Gemini API). Mọi đầu ra AI được nhóm đối chiếu với video, Product Truth, Ground Truth và Sheet kiểm thử trước khi sử dụng; trách nhiệm kiểm chứng và quyết định thuộc về nhóm.</p>
+      <h3 id="ai-disclosure">AI Use Disclosure Log</h3>
+      <p>Bản tóm tắt nhật ký sử dụng AI trong dự án, giai đoạn 10/10-09/11/2026. Các khoảng thời gian ghi "ước tính" được sắp theo giai đoạn và tài liệu hiện có, không phải nhật ký từng phiên. Phần yêu cầu là tóm lược nhiệm vụ, không phải prompt nguyên văn.</p>
+      <div class="grid2">
+        <div class="card"><h4>Công cụ AI và phạm vi</h4><ul class="dots">
+          <li><b>ChatGPT:</b> phân tích vấn đề, rà dữ liệu và Ground Truth, sàng lọc video công khai, diễn giải chỉ số, AI Canvas/pitching, biên tập báo cáo.</li>
+          <li><b>Claude:</b> biên tập, sắp xếp Chương 1, 2, 3, 8, 9 (không đủ dữ liệu để quy từng đoạn văn cho công cụ này).</li>
+          <li><b>Veo 3.1:</b> công cụ đích của hai bộ thẻ prompt tạo video gốc và clip lỗi hình ảnh.</li>
+          <li><b>Gemini API:</b> thành phần phân tích video trong prototype (gemini-3.5-flash trong lần đánh giá 80 video).</li></ul></div>
+        <div class="card"><h4>Nguyên tắc</h4><ul class="dots">
+          <li>Nhóm chịu trách nhiệm cuối cùng về dữ liệu, nhãn Ground Truth, diễn giải cảnh báo, chỉ số và nội dung báo cáo.</li>
+          <li>Đầu ra AI chỉ được dùng sau khi đối chiếu với Sheet kiểm thử, video gốc, tài liệu kỹ thuật hoặc nguồn tham khảo.</li>
+          <li>Có bộ prompt không đồng nghĩa đã chạy đủ mọi lần tạo video; có mô tả kiến trúc không đồng nghĩa mọi tính năng đã triển khai.</li></ul></div>
+      </div>
+      <div class="tbl" style="margin-top:14px"><table>
+        <thead><tr><th>Thời gian</th><th>Công cụ</th><th>Công việc và đầu ra</th><th>Kiểm chứng và điều chỉnh của nhóm</th></tr></thead>
+        <tbody>
+          <tr><td>10-17/10 (ước tính)</td><td>ChatGPT</td><td>Nghiên cứu vấn đề, pain point, stakeholder, phạm vi MVP</td><td>Đối chiếu báo cáo tiến độ và nguồn; chỉ gọi Ecomobi là case study</td></tr>
+          <tr><td>16-24/10 (ước tính)</td><td>Veo 3.1</td><td>12 kịch bản và 24 thẻ prompt cho video gốc 9:16 của sáu dòng sản phẩm</td><td>Đối chiếu 6 video gốc trong dataset với hình sản phẩm và Product Truth; không suy diễn số lượt render</td></tr>
+          <tr><td>20-27/10 (ước tính)</td><td>Veo 3.1 và chỉnh dựng thủ công</td><td>Sáu thẻ clip lỗi hình ảnh cho LOI30-LOI37; hướng dẫn sửa overlay/phụ đề cho 36 video lỗi còn lại</td><td>Kiểm tra từng video lỗi với video gốc, loại lỗi và Product Truth</td></tr>
+          <tr><td>25-30/10 (ước tính)</td><td>Claude, ChatGPT</td><td>Sắp xếp, biên tập Chương 1, 2, 3, 8, 9</td><td>Đối chiếu báo cáo tiến độ, hướng dẫn đồ án; lược bỏ nội dung thiếu nguồn</td></tr>
+          <tr><td>27-30/10 (ước tính)</td><td>ChatGPT</td><td>Chuẩn hóa cấu trúc dữ liệu, nhãn Ground Truth, cách tính TP/TN/FP/FN</td><td>Kiểm tra trực tiếp 80 video và các tab kết quả; tách số mô phỏng khỏi số thực tế</td></tr>
+          <tr><td>31/10-01/11</td><td>ChatGPT</td><td>Tìm và sàng lọc video quảng cáo AI công khai ngành Mẹ &amp; Bé</td><td>Nhóm tự xem, xác nhận và gán nhãn; không coi kết luận của ChatGPT là Ground Truth</td></tr>
+          <tr><td>27/10-02/11</td><td>Gemini API</td><td>Tích hợp vào prototype; chạy Actual Evaluation 80 video (45 TP, 8 TN, 18 FP, 9 FN)</td><td>Đối chiếu Ground Truth; rà 21 video thiếu bằng chứng và 5 bản ghi chưa nhất quán</td></tr>
+          <tr><td>03-05/11</td><td>ChatGPT</td><td>Hoàn thiện AI Canvas, mô hình kinh doanh, nội dung pitching</td><td>Chi phí, ROI, hòa vốn ghi là giả định; không mô tả tự phê duyệt hay tích hợp Ecomobi</td></tr>
+          <tr><td>04-06/11</td><td>ChatGPT</td><td>Diễn giải chỉ số Accuracy, Precision, Recall, F1</td><td>Tự tính lại từ ma trận 45/8/18/9 và đối chiếu Sheet</td></tr>
+          <tr><td>07-09/11</td><td>ChatGPT</td><td>Rà soát, biên tập chéo Chương 6-10</td><td>Tách chức năng đã chứng minh khỏi lộ trình; không nhận kết quả chưa có minh chứng</td></tr>
+          <tr><td>09/11</td><td>ChatGPT</td><td>Biên soạn AI Use Disclosure Log</td><td>Chỉ dùng mốc có bằng chứng hoặc ghi rõ ước tính</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note"><b>Giới hạn:</b> nhật ký không chứa lịch sử prompt nguyên văn cho các tác vụ chưa có bản lưu. Bộ thẻ prompt Veo và tên mô hình trong Sheet là tài liệu truy vết được, nhưng không thay thế log render, mã nguồn, lịch sử gọi API hay kết quả kiểm thử người dùng.</p>
       <p class="src">Khung tham chiếu quản trị rủi ro: NIST AI RMF 1.0 và NIST AI 600-1 (Generative AI Profile). Đây là khung tự nguyện, không phải chứng nhận tuân thủ.</p>
     </section>
 

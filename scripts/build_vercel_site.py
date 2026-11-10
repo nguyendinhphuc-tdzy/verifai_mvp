@@ -31,9 +31,10 @@ DOC_CARDS = [
      [(HS + '#dinh-huong', 'Xem chi tiết')]),
     ('05', 'Quản lý dự án', 'Sprint plan, mốc thời gian, Product Backlog, ma trận RACI và lịch họp nhóm.',
      [(HS + '#quan-ly', 'Xem chi tiết')]),
-    ('08', 'Tài liệu AI', 'Các biểu mẫu AI bản cuối kỳ, thống nhất với kết quả đánh giá trên 80 video.',
+    ('08', 'Tài liệu AI', 'Bảy biểu mẫu AI bản cuối kỳ, thống nhất với kết quả đánh giá trên 80 video.',
      [(HS + '#ai-canvas', 'AI Canvas'), (HS + '#project-charter', 'Project Charter'), (HS + '#data-audit', 'Data Audit'),
-      (HS + '#danh-gia', 'Kết quả đánh giá'), (HS + '#risk-register', 'AI Risk Register'), (HS + '#system-card', 'AI System Card')]),
+      (HS + '#baseline-evaluation', 'Baseline & Evaluation'), (HS + '#risk-register', 'AI Risk Register'),
+      (HS + '#system-card', 'AI System Card'), (HS + '#ai-disclosure', 'AI Use Disclosure Log')]),
     ('03', 'Thỏa thuận nhóm', 'Thỏa thuận làm việc nhóm ngày 09/10/2026: phân công, nguyên tắc phối hợp, ra quyết định và cam kết sử dụng AI.',
      [(HS + '#thoa-thuan', 'Xem chi tiết')]),
 ]
