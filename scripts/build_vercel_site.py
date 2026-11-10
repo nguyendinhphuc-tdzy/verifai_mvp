@@ -34,7 +34,7 @@ DOC_CARDS = [
     ('08', 'Tài liệu AI', 'Các biểu mẫu AI bản cuối kỳ, thống nhất với kết quả đánh giá trên 80 video.',
      [(HS + '#ai-canvas', 'AI Canvas'), (HS + '#project-charter', 'Project Charter'), (HS + '#data-audit', 'Data Audit'),
       (HS + '#danh-gia', 'Kết quả đánh giá'), (HS + '#risk-register', 'AI Risk Register'), (HS + '#system-card', 'AI System Card')]),
-    ('03', 'Thỏa thuận nhóm', 'Thỏa thuận thành lập nhóm và các nguyên tắc làm việc đã thống nhất.',
+    ('03', 'Thỏa thuận nhóm', 'Thỏa thuận làm việc nhóm ngày 09/10/2026: phân công, nguyên tắc phối hợp, ra quyết định và cam kết sử dụng AI.',
      [(HS + '#thoa-thuan', 'Xem chi tiết')]),
 ]
 
