@@ -30,7 +30,7 @@ FINDING_COLUMNS = (
     'job_id', 'filename', 'code', 'severity', 'timestamp',
     'detail', 'source', 'confidence_uncalibrated',
     'linked_evidence_id', 'flag_review', 'reviewer_decision',
-    'review_note',
+    'review_note', 'rule_id', 'review_priority', 'legal_basis',
 )
 
 
@@ -105,6 +105,9 @@ def build_all_sessions_zip(db, get_job, utc):
                     'flag_review':finding.get('flag_review',''),
                     'reviewer_decision':job.get('review_decision',''),
                     'review_note':job.get('review_note',''),
+                    'rule_id':(finding.get('rule') or {}).get('rule_id',''),
+                    'review_priority':(finding.get('rule') or {}).get('review_priority',''),
+                    'legal_basis':(finding.get('rule') or {}).get('legal_basis',''),
                 })
             # Names are generated from a number and a sanitized identifier,
             # never from uploaded filenames or other user-supplied paths.

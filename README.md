@@ -25,7 +25,10 @@ pip install -r requirements.txt
 uvicorn backend:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Open http://127.0.0.1:8000. API docs: http://127.0.0.1:8000/docs.
+Open http://127.0.0.1:8000 (home page) or http://127.0.0.1:8000/app (reviewer
+workspace). API docs: http://127.0.0.1:8000/docs. `tests/test_ui_feature_contract.py`
+fails if a UI change drops a control that a backend feature needs (usage rights,
+AI-generated flag, RULE02 product fields, SKU change, AI label suggestion, rule basis).
 
 With VLM disabled, OpenCV temporal checks still run, and potential visual changes appear as **VIS-SCREEN** low-severity review prompts. This does **not** imply AI-generated defects.
 
@@ -243,6 +246,37 @@ does not upload the file, and reports separate OCR and ASR times.
 `OCR_MAX_FRAMES` defaults to 12 to avoid running expensive OCR on all sampled
 visual frames (up to 60). This trades off speed against coverage.
 `MAX_CONCURRENT_JOBS` defaults to 1 for local CPU operation.
+
+**Speed-ups of 04/11/2026** (all on by default, each can be switched off):
+
+- `VLM_PREFETCH=1`: the three Gemini calls (native video, colour, text) start
+  right after frame sampling and run side by side, in parallel with local
+  OCR/ASR. Results are consumed at the VLM stage exactly as before. Timings
+  record `vlm_<call>_call_seconds` and `vlm_wall_seconds`.
+- Mirror check (VIS-04) reuses the full-video OCR text: a sample whose original
+  frame already reads both the brand and the AI label is skipped, and the
+  original frame is never OCR'd twice (`frame_anomaly.mirror.samples_skipped`).
+- `WARM_MODELS=1`: OCR then ASR load in a background thread at startup
+  (about 36 s on the team laptop), so the first video does not pay for it.
+
+Measured on the team laptop (CPU, one video at a time, Gemini unavailable):
+VID_LOI26 89 s → 62 s (mirror check 12.6 s → 2.3 s). VID_LOI30/LOI32 are still
+flagged VIS-04 and VID_GOC01 is not. OCR is now ~90% of the time; avoid running
+more than 2-3 videos at once on one CPU (8 parallel videos made each 4-6x slower).
+
+**GPU OCR (NVIDIA, tested on RTX 4050 Laptop, driver CUDA 13.1):**
+
+```powershell
+& 'C:\Users\PC\AppData\Local\Programs\Python\Python311\python.exe' -m venv --system-site-packages .venv-gpu
+.venv-gpu\Scripts\python.exe -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+```
+
+`scripts\start_public_demo.ps1` uses `.venv-gpu` automatically when it exists;
+delete the folder to return to CPU. `OCR_DEVICE=cpu|gpu:0` forces a device.
+Same model and frames: 1.05 s → 0.095 s per OCR frame; text identical except one
+already-garbled line. End to end, Gemini off: LOI26 62 s → 13 s, LOI30 152 s → 25 s,
+LOI32 58 s → 11 s, GOC01 118 s → 15 s, with the same findings (VIS-04 on LOI30/32,
+TEXT-02 on LOI26, nothing new on GOC01). Model warm-up 36 s → 18 s.
 
 In-process worker threads can still hang in native inference; no reliable
 in-place cancellation is provided. Stop and restart the **single-worker**
@@ -508,3 +542,91 @@ This change does not remove the current required `product_id` for uploads;
 public videos without a verified product reference still need a separate
 observation-first public-discovery mode. Do not assign the six synthetic SKUs
 to unrelated commercial videos.
+
+
+## Sprint 1 (11/2026): stabilization changes
+
+- **Reproducible environment:** use Python 3.11. `python -m pip install -r requirements-lock.txt -r requirements-dev.txt`
+  installs the exact versions verified by the offline suite; OCR/ASR extras remain in `requirements-ai.txt`.
+  CI now also runs on every push to `main`.
+- **Test isolation:** `tests/conftest.py` points `VERIFAI_DATA` at a temporary directory and removes Gemini keys
+  before `backend` is imported, so `python -m pytest -q` can no longer touch `data/verifai.sqlite3` or call the live API.
+- **Videos without frame-count metadata** (common for WEBM/MKV): frames are now counted by decoding (bounded by
+  `MAX_VIDEO_SECONDS`), so the length limit is enforced and Gemini timeline events after 1 s are no longer dropped.
+  `details.frame_count_source` is `container` or `decoded`.
+- **Usage rights gate for Gemini:** native video stays the default (`VLM_INPUT_MODE=video`), but video or frames are
+  sent to Google only when the upload declares a usage right. The upload form now requires the field. Allowed values:
+  `self_created`, `permission_granted`, `public_review_only`, `unknown`. With `unknown`, OCR/ASR still run,
+  `coverage.vlm=skipped_rights`, and the AI suggestion stays **Needs Review**. Restrict eligible rights with
+  `VLM_CLOUD_RIGHTS` (default `self_created,permission_granted,public_review_only`).
+- **Adaptive full-coverage OCR (default):** `OCR_SCAN_MODE=adaptive` checks every decoded frame but runs OCR only on a
+  <=0.5 s grid, on visual changes (at most every 0.25 s), at text-change boundaries, and re-reads new numeric text at
+  full resolution. Measured 3.2x faster than `all` with 100% stable-text recall on two real clips (99.37% over nine in
+  simulation). `all` stays available as the exhaustive reference. Details and limits:
+  [docs/OCR_ADAPTIVE_S1-2.md](docs/OCR_ADAPTIVE_S1-2.md). Frames saved by full/adaptive OCR (`ocr-XXXXXXXX.jpg`) are now
+  served to the UI (previously rejected by the frame route).
+- **Regenerate is reachable (02/11/2026):** previously every rule emitted `medium`, so the AI suggestion could never
+  be Regenerate (51 of 52 historical jobs were Needs Review). Strong deterministic evidence is now `high`: a wrong price
+  or restricted/high-risk claim read by OCR on >= 2 frames at score >= 0.90 or heard by ASR, a repeated brand
+  transposition or substitution (`SoftCare` for `SoftDry`). Regenerate still requires a reviewed or test-approved
+  Product Truth and complete OCR and ASR; Gemini-only findings never force it.
+- **AI disclosure label (`AI-LABEL-01`):** uploads declare `ai_generated` (`yes`/`no`/`unknown`). For `yes`, every OCR,
+  ASR and Gemini text item is searched for a disclosure such as "Nội dung được tạo bởi AI" (tolerant of OCR dropping
+  diacritics). Missing after a complete OCR scan is `high`; with incomplete OCR it is `medium`.
+- **Lossy OCR tolerance:** claim checks also match accent-free text (`Tăng chiu cao vưt tri` is still the high-risk
+  claim) and flag absolute wording not in Approved Claims as a weaker candidate.
+- **No audio track:** ASR reports `ok` with `audio_stream: false` instead of failing with `IndexError`.
+- **AI-suggested labels:** each completed job exposes `label_suggestion` (label, error types, reason). The session
+  reviewer accepts or overrides it; labels store `ai_suggested_label` and `label_source`. Because the reviewer sees the
+  suggestion first, `/api/metrics` reports these labels as reviewer agreement, not independent accuracy.
+- **Cloud demo:** `Dockerfile` for Hugging Face Spaces, opt-in `VERIFAI_PUBLIC_MODE` with a shared access code,
+  product-only `deploy/seed.sql`, `.env` auto-loading. See [docs/DEPLOY_HF_SPACES.md](docs/DEPLOY_HF_SPACES.md).
+- **Batch evaluation:** `scripts/run_eval_batch.py` runs real videos through the API in an isolated data directory.
+
+## Đánh giá toàn bộ bộ dữ liệu video (`scripts/evaluate_dataset.py`)
+
+Một lệnh chạy toàn bộ video qua pipeline thật (OCR adaptive, ASR, Gemini, rule, đề xuất,
+nhãn gợi ý) và xuất **một sheet session_summary, mỗi video một dòng, không trùng**:
+
+```powershell
+python scripts/evaluate_dataset.py run `
+  --self-dir "C:\...\VIDEO TỰ TẠO" --public-dir "C:\...\VIDEO CÔNG KHAI" `
+  --work-dir eval_runs/full --sheet eval_runs/session_summary_full.csv
+```
+
+* Chạy song song `--shards` luồng (mặc định 3), video tự tạo trước, video công khai từ ngắn đến dài.
+  Mọi thứ chạy trên CPU của máy; máy phải bật suốt quá trình (80 video mất khoảng 3 đến 4 giờ).
+* **Chạy tiếp được:** dừng giữa chừng rồi chạy lại cùng lệnh, video đã xong được bỏ qua; video bị lỗi
+  Gemini tạm thời (503, rớt mạng) được chạy lại. `--only VID_LOI11 --force` chạy lại một số video.
+* `python scripts/evaluate_dataset.py export --work-dir eval_runs/full --sheet <file.csv>` chỉ xuất lại sheet.
+* SKU của từng video lấy từ `scripts/dataset_sku_map.json`. Video tự tạo không có trong bảng dùng SKU xoay vòng
+  và ghi "Suy đoán"; video công khai không có trong bảng dùng sản phẩm NOREF (chưa có Product Truth).
+* Sheet giữ 21 cột của session_summary, thêm: nhóm dữ liệu, loại lỗi, nguồn SKU, nhãn AI gợi ý, loại lỗi AI,
+  chi tiết finding, số frame OCR, video có âm thanh, kiểm tra nhãn AI, thời gian chạy. Cột reviewer để trống.
+* Kết quả lần chạy 02/11/2026 (80/80 video): bắt được 31/44 video lỗi; sai giá 8/8, claim 7/7, thiếu nhãn AI 6/6,
+  sai brand/thông tin 6/7, lỗi hiển thị 2/7, không nhất quán hình ảnh 2/9; 5/6 video gốc được Pass.
+
+## RULE01–RULE10: căn cứ cho từng cảnh báo (04/11/2026)
+
+`verifai_core/rule_registry.py` ánh xạ mỗi mã cảnh báo sang RULE trong tài liệu "Bộ rule 1-10" của nhóm, kèm
+căn cứ pháp lý/chính sách và mức ưu tiên xử lý. Mỗi cảnh báo trên giao diện, `GET /api/jobs/{id}`
+(`findings[].rule`), `ai_findings.csv` và sheet đánh giá (`rule_ids`) đều có thông tin này; `GET /api/rules` trả toàn bộ bảng.
+**Căn cứ do nhóm tổng hợp, chưa được pháp chế kiểm tra; app không kết luận vi phạm pháp luật và không hiển thị mức phạt (RULE05).**
+Mức ưu tiên pháp lý tách riêng khỏi mức độ bằng chứng (quyết định Pass / Needs Review / Regenerate).
+
+| Rule | Mã cảnh báo | Cách phát hiện |
+|---|---|---|
+| RULE01 | CLAIM-01/02, CLAIM-VLM | claim bị hạn chế, cụm rủi ro cao, cách nói tuyệt đối hóa |
+| RULE02 | INFANT-01/02/03 | Product Truth có `category` + `target_age`: sản phẩm thuộc diện cấm quảng cáo theo NĐ 100/2014 Điều 6 (sữa thay thế sữa mẹ ≤ 24 tháng, bình bú/vú ngậm, thức ăn bổ sung ≤ 6 tháng); câu so sánh với sữa mẹ/ti mẹ (chịu được OCR mất dấu); thiếu độ tuổi khuyến nghị |
+| RULE03 | PRICE-01 | so giá với Product Truth |
+| RULE04 | SKU-01, TEXT-01, VARIANT-01 | thương hiệu, chính tả thương hiệu, quy cách |
+| RULE06 | TEXT-02, TEXT-03, VIS-03 | chính tả tên sản phẩm; Gemini tìm chữ vô nghĩa/biến dạng trên 5 khung (`VLM_TEXT_CHECK`) |
+| RULE07 | VIS-02, VIS-04, VIS-05 | Gemini so màu trên 5 khung; **lật gương**: chữ thương hiệu/nhãn AI chỉ đọc được khi lật ngang khung hình; **vỡ ô/mờ**: độ nét tụt < 10% kèm ô vuông lặp đều (`FRAME_ANOMALY_CHECK`) |
+| RULE08 | AI-LABEL-01 | nhãn "Nội dung được tạo bởi AI" khi video được khai báo do AI tạo |
+| RULE05, 09, 10 | — | chưa triển khai (RULE05 chỉ chú giải; 09/10 cần metadata nền tảng và C2PA) |
+
+Đã áp dụng RULE02 cho bộ dữ liệu: SKU002 (bình sữa) = bình bú/vú ngậm, SKU004 (sữa bột) = sữa thay thế sữa mẹ 0–6 tháng,
+nên **mọi video của hai SKU này (kể cả video gốc) sẽ ra Needs Review** theo quyết định của PO ngày 04/11/2026.
+Kiểm chứng trên dữ liệu thật: lật gương bắt đúng LOI30/LOI32, vỡ ô bắt đúng LOI35/LOI37, câu so sánh sữa mẹ chỉ bắt LOI20,
+không báo nhầm trong 84 video. Kiểm tra chữ vô nghĩa (Gemini) bắt 5/7 video công khai có lỗi chữ theo ground truth
+nhưng báo nhầm GOC05 và PUB004 trong thử nghiệm.

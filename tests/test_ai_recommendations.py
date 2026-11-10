@@ -47,7 +47,29 @@ def test_high_severity_requires_evidence_and_not_vlm_only():
     assert recommend_ai(report('REVIEW_REQUIRED'),[{**high,'source':'vlm'}])['decision']=='Needs Review'
     assert recommend_ai(report('REVIEW_REQUIRED'),[{**high,'flag_review':'rejected'}])['decision']=='Needs Review'
     assert recommend_ai(report('REVIEW_REQUIRED',truth='unverified'),[high])['decision']=='Needs Review'
-    assert recommend_ai(report('REVIEW_REQUIRED',vlm='error'),[high])['decision']=='Needs Review'
+    # Regenerate rests on OCR/ASR evidence: those must be complete; VLM need not be.
+    assert recommend_ai(report('REVIEW_REQUIRED',ocr='error'),[high])['decision']=='Needs Review'
+    assert recommend_ai(report('REVIEW_REQUIRED',asr='error'),[high])['decision']=='Needs Review'
+    assert recommend_ai(report('REVIEW_REQUIRED',vlm='skipped_rights'),[high])['decision']=='Regenerate'
+
+
+def test_verified_absence_finding_can_recommend_regenerate():
+    missing={'code':'AI-LABEL-01','severity':'high','source':'ai_label_rule_v1',
+             'evidence_id':None,'metadata':{'absence_verified':True}}
+    assert recommend_ai(report('REVIEW_REQUIRED'),[missing])['decision']=='Regenerate'
+    unverified={**missing,'metadata':{'absence_verified':False}}
+    assert recommend_ai(report('REVIEW_REQUIRED'),[unverified])['decision']=='Needs Review'
+
+
+def test_label_suggestion_follows_recommendation():
+    from verifai_core.label_suggestion import suggest_label
+    regen=suggest_label({'decision':'Regenerate'},[{'code':'PRICE-01','severity':'high'}])
+    assert regen['label']=='error' and regen['error_types']==['Sai giá'] and regen['strength']=='strong'
+    assert suggest_label({'decision':'Pass'},[])['label']=='clean'
+    weak=suggest_label({'decision':'Needs Review'},[{'code':'VIS-03','severity':'medium','source':'vlm'}])
+    assert weak['label']=='error' and weak['strength']=='weak' and weak['error_types']==['Lỗi hiển thị']
+    assert suggest_label({'decision':'Needs Review'},[{'code':'COVERAGE','severity':'medium'}])['label']=='uncertain'
+    assert suggest_label(None) is None
 
 
 def test_old_completed_job_receives_ai_recommendation_without_reanalysis(monkeypatch,tmp_path):

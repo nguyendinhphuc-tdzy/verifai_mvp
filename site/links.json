@@ -1,0 +1,17 @@
+{
+  "_note": "Link cho website Vercel. Điền URL vào giá trị rỗng rồi chạy: python scripts/build_vercel_site.py. Để trống thì nút hiện 'Đang cập nhật'.",
+  "demo_video": "",
+  "repository": "",
+  "team_agreement": "",
+  "product_direction": "",
+  "project_timeline": "",
+  "project_backlog": "",
+  "meeting_notes": "",
+  "raci": "",
+  "ai_canvas": "",
+  "project_charter": "",
+  "data_audit": "",
+  "ai_risk_register": "",
+  "ai_system_card": "",
+  "final_report": ""
+}

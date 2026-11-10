@@ -10,6 +10,7 @@ from typing import Any
 
 DECISIONS = ('Pass', 'Needs Review', 'Regenerate')
 COVERAGE_MODULES = ('ocr', 'asr', 'vlm')
+REGENERATE_MODULES = ('ocr', 'asr')
 
 
 def recommend_ai(
@@ -24,15 +25,22 @@ def recommend_ai(
     report = verification if isinstance(verification, Mapping) else {}
     coverage = report.get('coverage') or {}
     status = str(report.get('status') or '')
+    def _meta(f):
+        meta = f.get('metadata')
+        return meta if isinstance(meta, Mapping) else {}
+
     high = [
         f for f in findings
         if f.get('severity') == 'high'
         and f.get('source') not in ('vlm', 'visual_heuristic')
-        and (f.get('evidence_id') is not None or f.get('evidence_refs'))
+        and (f.get('evidence_id') is not None or f.get('evidence_refs')
+             or _meta(f).get('absence_verified') is True)
         and f.get('flag_review') != 'rejected'
     ]
+    # Regenerate rests on deterministic OCR/ASR evidence, so it needs those two
+    # modules complete; a skipped VLM cannot make an observed error less wrong.
     if high and report.get('reference_status') in ('reviewed', 'test_reference_approved') and all(
-            coverage.get(m) == 'ok' for m in COVERAGE_MODULES):
+            coverage.get(m) == 'ok' for m in REGENERATE_MODULES):
         return {
             'decision': 'Regenerate',
             'reason': 'evidence_linked_high_severity_findings',

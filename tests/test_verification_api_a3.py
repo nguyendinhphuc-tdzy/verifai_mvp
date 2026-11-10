@@ -49,7 +49,8 @@ def test_verification_report_persisted_and_exported(tmp_path, monkeypatch):
         time.sleep(.05)
     assert job['status']=='completed',job['details']
     assert job['review_decision'] is None
-    assert job['decision']=='Needs Review'
+    # Reviewed reference + OCR-read wrong price and asserted restricted claim.
+    assert job['decision']=='Regenerate'
     assert job['details']['verification_version']=='verification-v3.0-alpha3'
     verify=job['details']['verification']
     assert verify['status']=='REVIEW_REQUIRED'

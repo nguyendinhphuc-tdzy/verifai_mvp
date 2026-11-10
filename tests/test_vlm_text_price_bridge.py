@@ -52,7 +52,7 @@ def _run_case(tmp_path, monkeypatch, visible_text, category='visible_text', fail
     video=tmp_path/'test.mp4'
     _video(video)
     with video.open('rb') as stream:
-        upload=client.post('/api/jobs',data={'product_id':prod.json()['id']},
+        upload=client.post('/api/jobs',data={'product_id':prod.json()['id'],'rights':'self_created'},
                           files={'file':('test.mp4',stream,'video/mp4')})
     assert upload.status_code==200,upload.text
     jid=upload.json()['id']

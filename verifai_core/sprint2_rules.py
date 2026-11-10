@@ -48,6 +48,9 @@ def _canonical(text: str) -> str:
 def _specs(text: str) -> set[tuple[str, str]]:
     result = set()
     normalized = _canonical(text)[:1500]
+    # OCR drops the 'ờ' of "tờ" ("Gói 100 t", "Gói 100 tà"); after "gói N"
+    # a lone t/tà/tò/tớ can only be the sheet count unit.
+    normalized = re.sub(r'(g[oó]i\s*\d+\s*)t[aàoòóớờ]?(?![\w])', r'\g<1>tờ', normalized)
     for match in _SPEC.finditer(normalized):
         # Ranges like "6-11kg" are not a single 11kg package weight.
         before = normalized[max(0, match.start()-12):match.start()]
@@ -129,6 +132,10 @@ def check_brand_typo(text: str, brand: str, supporting_frames: int = 0) -> list[
         candidate = token.casefold()
         if candidate == truth:
             continue
+        # OCR on moving packaging crops words ('NutriGro', 'iniFeed') and
+        # misreads the final glyph ('NutriGrov'); neither is a printed typo.
+        if candidate in truth or (len(candidate) == len(truth) and candidate[:-1] == truth[:-1]):
+            continue
         exact = KNOWN_BRAND_TYPOS.get(candidate) == truth
         near = (abs(len(candidate) - len(truth)) <= 1 and
                 SequenceMatcher(None, candidate, truth).ratio() >= 0.83)
@@ -136,3 +143,147 @@ def check_brand_typo(text: str, brand: str, supporting_frames: int = 0) -> list[
             matches.append(RuleCandidate(
                 'TEXT-01', token, brand, 'ocr_brand_typo_repeated_in_frames'))
     return matches
+
+
+# --- Lossy-OCR tolerant checks (02/11/2026) ---------------------------------
+# PaddleOCR's Vietnamese (latin) recognizer often drops diacritic letters, e.g.
+# "Tăng chiu cao vưt tri" for "Tăng chiều cao vượt trội", so exact matching misses
+# claims that are plainly visible. These checks compare accent-free letters.
+
+def fold(text: str) -> str:
+    text = unicodedata.normalize('NFKD', str(text or '').replace('đ', 'd').replace('Đ', 'D'))
+    text = ''.join(ch for ch in text if not unicodedata.combining(ch)).casefold()
+    return re.sub(r'[^a-z0-9%]', '', text)
+
+
+def _fuzzy_contains(haystack: str, needle: str, threshold: float) -> bool:
+    if not needle or not haystack:
+        return False
+    if needle in haystack:
+        return True
+    size = len(needle)
+    if len(haystack) <= size:
+        return SequenceMatcher(None, haystack, needle).ratio() >= threshold
+    return any(SequenceMatcher(None, haystack[i:i + size], needle).ratio() >= threshold
+               for i in range(0, len(haystack) - size + 1))
+
+
+_NEGATION_FOLDED = ('khong', 'chua', 'khongphai')
+# Absolute/superlative advertising wording that needs an approved-claim basis.
+SUPERLATIVE_MARKERS = ('vuottroi', 'tuyetdoi', 'hoantoan', 'chisau', 'gapdoi',
+                       'tot nhat', 'totnhat', 'duynhat', '100%', '999%', 'ngaylap tuc',
+                       'ngaylaptuc', 'cam ket', 'camket', 'than ky', 'thanky')
+
+
+def check_unapproved_claims_fuzzy(text: str, approved: list[str],
+                                  restricted: list[str]) -> list[RuleCandidate]:
+    """CLAIM-02 candidates robust to diacritic loss.
+
+    * curated high-risk phrases (Sprint-2 scenarios) matched fuzzily, reason
+      'high_risk_phrase_fuzzy';
+    * any line with superlative/absolute wording that is not an approved claim,
+      reason 'superlative_not_in_approved_claims' (weaker, generic).
+    """
+    folded = fold(text)
+    if len(folded) < 8 or any(folded.startswith(n) for n in _NEGATION_FOLDED):
+        return []
+    approved_f = [fold(a) for a in approved if fold(a)]
+    restricted_f = [fold(r) for r in restricted if fold(r)]
+    if any(_fuzzy_contains(folded, a, 0.85) or _fuzzy_contains(a, folded, 0.85) for a in approved_f):
+        return []
+    for phrase in HIGH_RISK_CLAIMS:
+        needle = fold(phrase)
+        if any(needle in r for r in restricted_f):
+            continue  # restricted claims are reported by CLAIM-01
+        if _fuzzy_contains(folded, needle, 0.80):
+            return [RuleCandidate('CLAIM-02', text, '; '.join(approved), 'high_risk_phrase_fuzzy')]
+    markers = [m.replace(' ', '') for m in SUPERLATIVE_MARKERS]
+    hits = [folded.find(m) for m in markers if m in folded]
+    # "số 1" only as a standalone phrase ('so 16m g0i' is OCR noise).
+    spaced = re.sub(r'[^a-z0-9% ]', ' ', unicodedata.normalize('NFKD', str(text).replace('đ', 'd'))
+                    .encode('ascii', 'ignore').decode().casefold())
+    number_one = re.search(r'(?<![a-z0-9])so\s*1(?![0-9a-z])', spaced)
+    if number_one:
+        hits.append(folded.find('so1') if 'so1' in folded else 0)
+    # A negation before the wording ("không chữa khỏi hoàn toàn") is a denial.
+    negated = hits and any(n in folded[:min(hits)] for n in _NEGATION_FOLDED)
+    if hits and not negated:
+        return [RuleCandidate('CLAIM-02', text, '; '.join(approved),
+                              'superlative_not_in_approved_claims')]
+    return []
+
+
+def check_brand_substitution(text: str, brand: str, supporting_frames: int = 0) -> list[RuleCandidate]:
+    """SKU-01 candidate: a different brand name sharing the reference's stem.
+
+    'SoftCare' vs reference 'SoftDry' (same 4+ letter prefix, different name).
+    Crops of the true brand ('ftDry', 'NutriGro') and near-typos (TEXT-01) are
+    excluded. Requires the reading on >= 2 frames.
+    """
+    if supporting_frames < 2 or not brand:
+        return []
+    results = []
+    for word in re.findall(r'[A-Za-z]{5,}', brand):
+        truth = word.casefold()
+        for token in set(re.findall(r'\b[A-Za-z]{5,}\b', text or '')):
+            cand = token.casefold()
+            if cand == truth or cand in truth or truth in cand:
+                continue
+            if SequenceMatcher(None, cand, truth).ratio() >= 0.83:
+                continue  # typo-level difference, handled by TEXT-01
+            shared_prefix = len(_common_prefix(cand, truth))
+            rest_cand, rest_truth = cand[shared_prefix:], truth[shared_prefix:]
+            # 'BabyGer' vs 'BabyGentle': the differing part starts like the true
+            # one, so it is a truncated/misread reading, not another brand.
+            if len(rest_cand) < 3 or (rest_truth and rest_cand[0] == rest_truth[0]):
+                continue
+            if shared_prefix >= 4 and not token.islower() and not token.isupper():
+                results.append(RuleCandidate('SKU-01', token, word, 'brand_name_substituted'))
+    return results
+
+
+def _common_prefix(a: str, b: str) -> str:
+    out = []
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        out.append(x)
+    return ''.join(out)
+
+
+# --- Product-name spelling on lossy OCR (04/11/2026) -------------------------
+# PaddleOCR drops accented VOWELS ("Sữa bột" -> "Sa bt") but keeps consonants,
+# so names are compared on per-word consonant skeletons:
+#   "Sữa bộtt" -> ["s", "btt"]  vs  "Sữa bột" -> ["s", "bt"]   (VID_LOI26)
+#   "Sa tm toàn thân" -> ["s","tm","tn","thn"] vs ["s","tm","g","tn","thn"] (VID_LOI13)
+_VOWELS = set('aeiouy')
+
+
+def _skeleton_words(text: str) -> list[str]:
+    folded = unicodedata.normalize('NFKD', str(text or '').replace('đ', 'd').replace('Đ', 'D'))
+    folded = ''.join(ch for ch in folded if not unicodedata.combining(ch)).casefold()
+    words = re.findall(r'[a-z]+', folded)
+    return [''.join(ch for ch in w if ch not in _VOWELS) for w in words]
+
+
+def _one_consonant_inserted(observed: str, truth: str) -> bool:
+    return (len(observed) == len(truth) + 1 and truth != ''
+            and any(observed[:i] + observed[i + 1:] == truth for i in range(len(observed))))
+
+
+def check_product_name(text: str, name: str) -> list[RuleCandidate]:
+    """TEXT-02 candidates: the product name line with an extra letter in one
+    word, or with an interior word missing. Truncated readings (first/last word
+    cut off by motion) and different lines are ignored."""
+    truth, seen = _skeleton_words(name), _skeleton_words(text)
+    if len(truth) < 2 or any(not w for w in truth):
+        return []
+    if len(seen) == len(truth):
+        diffs = [i for i in range(len(truth)) if seen[i] != truth[i]]
+        if len(diffs) == 1 and _one_consonant_inserted(seen[diffs[0]], truth[diffs[0]]):
+            return [RuleCandidate('TEXT-02', text, name, 'product_name_extra_letter')]
+    elif len(truth) >= 3 and len(seen) == len(truth) - 1:
+        for j in range(1, len(truth) - 1):
+            if truth[:j] + truth[j + 1:] == seen:
+                return [RuleCandidate('TEXT-02', text, name, 'product_name_word_missing')]
+    return []

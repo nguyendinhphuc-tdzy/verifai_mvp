@@ -55,7 +55,10 @@ def test_price_v3_findings_and_evidence_are_persisted(tmp_path, monkeypatch):
     assert job['decision']=='Needs Review', 'Price mismatch is reviewer candidate, not automatic rejection'
     price_flags=[f for f in job['findings'] if f['code']=='PRICE-01']
     assert price_flags,job['findings']
-    assert all(f['severity']=='medium' and f['source']=='price_rule_v3' for f in price_flags)
+    # OCR score>=0.90 on >=2 frames is strong evidence; Product Truth is unverified,
+    # so the decision above still stays Needs Review.
+    assert all(f['severity'] in ('high','medium') and f['source']=='price_rule_v3' for f in price_flags)
+    assert any(f['severity']=='high' for f in price_flags)
     assert all(f['evidence_id'] in {e['id'] for e in job['evidence']} for f in price_flags)
     assert all(f['metadata']['price_assessment']['status']=='MISMATCH' for f in price_flags)
     # Real OCR variants from VID_LOI01: preserve the raw string and its

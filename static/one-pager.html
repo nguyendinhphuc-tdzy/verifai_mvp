@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="VerifAI: công cụ kiểm duyệt chất lượng video quảng cáo do AI tạo trước khi đăng.">
+<meta name="theme-color" content="#10362e">
+<title>VerifAI · Product one-pager</title>
+<script>try{if(localStorage.getItem('vfTheme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lexend:wght@500;600;700&display=swap">
+<style>
+/* Layout: one paper sheet in the VerifAI web look. A painted band opens it,
+   sections follow the app's bordered regions with "leaf" corners, gold marker
+   highlights mark the key phrase of each section. */
+:root{
+  --paper:#f4ebdb;            /* page ground, same as the web */
+  --sheet:#fffcf6;            /* region surface */
+  --edge:#d6c8ac;             /* region border */
+  --hair:#e7dcc6;
+  --ink:#10362e;              /* headings, deep forest green */
+  --text:#2b3d36;
+  --muted:#55645d;
+  --label:#9a6a12;            /* eyebrow labels */
+  --accent:#1f7a67;
+  --tint:#e3f1ea;             /* highlighted step */
+  --marker:rgba(232,182,74,.45);
+  --gold:#e8b64a;
+  --tex:url(/static/home/paper.webp);
+  --display:"Lexend","Be Vietnam Pro",system-ui,sans-serif;
+  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --leaf:16px 16px 36px 16px;
+  --leaf-lg:22px 22px 56px 22px;
+}
+:root[data-theme="dark"]{
+  --paper:#0b1915;--sheet:#10231e;--edge:rgba(255,255,255,.16);--hair:rgba(255,255,255,.09);
+  --ink:#f1e7cf;--text:#d3dfd9;--muted:#a3b8b0;--label:#e8c46a;--accent:#7fd3b8;--tint:#173a32;
+  --marker:rgba(232,182,74,.3);--gold:#e8c46a;--tex:none;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper) var(--tex) 0 0/512px 512px;color:var(--text);font:15px/1.6 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px}
+.sheet{max-width:1000px;margin:0 auto;background:var(--sheet);border:1.5px solid var(--edge);border-radius:var(--leaf-lg);overflow:hidden}
+h1,h2,h3{font-family:var(--display);color:var(--ink);text-wrap:balance;margin:0}
+p{margin:0}
+.mk{background:linear-gradient(transparent 58%,var(--marker) 0);padding:0 .1em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.eyebrow{display:block;font:700 12px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--label);margin-bottom:14px}
+
+/* ---------- Painted band ---------- */
+.band{position:relative;aspect-ratio:2.35;overflow:hidden;background:#9fd6e8}
+.scene{position:absolute;left:0;top:0;width:100%;aspect-ratio:1672/941;transform:translateY(-12%)}
+.scene>img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.tree{position:absolute;left:var(--x);top:var(--y);width:var(--w);height:var(--h);transform-origin:var(--ox) var(--oy);animation:sway 6s ease-in-out infinite alternate;animation-delay:var(--d)}
+.tree img{width:100%;height:100%;display:block}
+@keyframes sway{from{transform:rotate(-1.2deg)}to{transform:rotate(1.2deg)}}
+@media (prefers-reduced-motion:reduce){.tree{animation:none}}
+header{position:relative}
+.band-copy{position:absolute;left:5.5%;top:5%;max-width:52%}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.band-copy .eyebrow{color:#1c4a40;margin-bottom:10px}
+.band-copy h1{font-size:clamp(40px,7vw,68px);line-height:1;letter-spacing:-.02em;color:#10362e}
+.band-copy .sub{margin-top:10px;font:600 clamp(15px,1.9vw,19px)/1.35 var(--display);color:#1c4a40}
+
+/* ---------- Intro ---------- */
+.intro{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:36px;padding:30px 44px 32px;border-bottom:1.5px solid var(--edge)}
+.lead{font-size:17px;line-height:1.65;color:var(--text);max-width:60ch}
+.facts{display:grid;gap:12px;margin:0;padding-left:24px;border-left:1.5px solid var(--hair)}
+.facts dt{font-size:12.5px;color:var(--muted)}
+.facts dd{margin:2px 0 0;font-weight:600;color:var(--ink)}
+
+/* ---------- Sections ---------- */
+.sec{padding:34px 44px;border-bottom:1px solid var(--hair)}
+.sec:last-of-type{border-bottom:0}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:44px}
+.split>.sec{padding:0}
+.row{padding:34px 44px;border-bottom:1px solid var(--hair)}
+h2{font-size:22px;line-height:1.3;margin-bottom:16px}
+.statement{font:600 18px/1.5 var(--display);color:var(--ink);margin-bottom:18px}
+.list{display:grid;gap:14px}
+.list p b{color:var(--ink)}
+.stat{margin-top:20px;padding:16px 18px;border-radius:var(--leaf);background:var(--tint);display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;align-items:start}
+.stat .num{font:700 34px/1 var(--display);color:var(--ink);grid-row:span 2;font-variant-numeric:tabular-nums}
+.stat p{font-size:14px;color:var(--text)}
+.src{font-size:12.5px;color:var(--muted)}
+.src a{color:var(--accent);text-underline-offset:2px}
+
+.users{display:grid;gap:0}
+.user{padding:12px 0;border-top:1px solid var(--hair)}
+.user:first-child{border-top:0;padding-top:0}
+.user small{display:block;font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.user h3{font-size:16.5px;margin:3px 0 2px}
+.user p{font-size:14px;color:var(--text)}
+
+/* Solution */
+.sol{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:44px;align-items:start}
+.sol .statement{font-weight:500;font-size:18px}
+.sol .statement b{font-weight:700}
+.where{list-style:none;margin:0;padding:0;display:grid;gap:8px;counter-reset:w}
+.where li{counter-increment:w;display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--hair);border-radius:12px;font-size:14.5px;color:var(--text)}
+.where li::before{content:counter(w);font:700 14px/1 var(--display);color:var(--muted);text-align:center}
+.where li.me{background:var(--tint);border-color:var(--accent);color:var(--ink);font-weight:700}
+.where li.me::before{color:var(--accent)}
+
+/* Features */
+.features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px 30px;margin-top:6px}
+.feat{border-top:2px solid var(--ink);padding-top:12px}
+.feat h3{font-size:16px;margin-bottom:6px}
+.feat p{font-size:14px;color:var(--text)}
+.checks{margin-top:26px;padding:16px 20px;border:1.5px dashed var(--edge);border-radius:var(--leaf);font-size:14px}
+.checks b{color:var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tags span{padding:5px 12px;border-radius:999px;border:1.5px solid var(--edge);background:var(--sheet);font-size:13px;font-weight:600;color:var(--ink)}
+.note{margin-top:10px;font-size:12.5px;color:var(--muted)}
+
+/* Process: a real sequence, so numbered */
+.steps{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px;position:relative}
+.steps::before{content:"";position:absolute;left:24px;right:24px;top:24px;border-top:2px dashed var(--edge)}
+.steps li{position:relative}
+.steps .n{position:relative;display:grid;place-items:center;width:48px;height:48px;border-radius:16px 16px 28px 16px;background:var(--ink);color:var(--sheet);font:700 18px/1 var(--display);margin-bottom:14px;font-variant-numeric:tabular-nums}
+.steps li:last-child .n{background:var(--gold);color:#1b1405}
+.steps h3{font-size:15.5px;margin-bottom:4px}
+.steps p{font-size:13.5px;color:var(--text)}
+.decisions{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;align-items:center;font-size:13.5px;color:var(--muted)}
+.pill{display:inline-block;padding:4px 12px;border-radius:999px;font-weight:700;font-size:13px}
+.pill.ok{background:#dcefe6;color:#14513f}
+.pill.rv{background:#fbecc4;color:#6b4700}
+.pill.rd{background:#f6dcd2;color:#7a2e17}
+
+/* Benefits */
+.benefits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 44px}
+.ben{display:grid;grid-template-columns:132px minmax(0,1fr);gap:16px;padding:14px 0;border-top:1px solid var(--hair)}
+.ben:nth-child(-n+2){border-top:0;padding-top:4px}
+.ben h3{font-size:14.5px;line-height:1.4}
+.ben p{font-size:14px;color:var(--text)}
+
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 24px;padding:18px 44px 22px;background:var(--tint);font-size:12.5px;color:var(--muted)}
+.foot b{color:var(--ink);font-family:var(--display)}
+
+@media (max-width:820px){
+  .intro,.split,.sol{grid-template-columns:minmax(0,1fr);gap:28px}
+  .facts{padding-left:0;border-left:0;padding-top:18px;border-top:1.5px solid var(--hair);grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .features{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .steps{grid-template-columns:minmax(0,1fr);gap:16px}
+  .steps::before{left:23px;right:auto;top:24px;bottom:24px;border-top:0;border-left:2px dashed var(--edge)}
+  .steps li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:0 16px}
+  .steps .n{grid-row:span 2;margin:0}
+  .benefits{grid-template-columns:minmax(0,1fr)}
+  .ben:nth-child(2){border-top:1px solid var(--hair);padding-top:14px}
+}
+@media (max-width:640px){
+  body{padding-block:12px 28px}
+  .band{aspect-ratio:1.9}
+  .band-copy{position:static;max-width:none;padding:22px 22px 0}
+  .band-copy .eyebrow{color:var(--label)}
+  .band-copy h1{color:var(--ink)}
+  .band-copy .sub{color:var(--text)}
+  .intro,.sec,.row{padding:24px 22px}
+  .foot{padding:16px 22px}
+  .features{grid-template-columns:minmax(0,1fr)}
+  .ben{grid-template-columns:minmax(0,1fr);gap:4px}
+}
+@page{size:A4;margin:10mm}
+@media print{body{padding:0;background:#fff}.sheet{border:0;border-radius:0}.tree{animation:none}.sec,.row,.steps li,.feat,.ben{break-inside:avoid}}
+/* Web version: top bar with navigation and print */
+.topbar{max-width:1000px;margin:0 auto 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.topbar a,.topbar button{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:999px;font:600 14px/1 var(--body);text-decoration:none;cursor:pointer}
+.topbar .back{color:var(--ink);border:1.5px solid var(--edge);background:var(--sheet)}
+.topbar .back:hover{border-color:var(--ink)}
+.topbar .acts{display:flex;gap:8px;flex-wrap:wrap}
+.topbar .print{color:var(--ink);border:1.5px solid var(--edge);background:var(--sheet)}
+.topbar .print:hover{border-color:var(--ink)}
+.topbar .go{color:#1b1405;background:#e8b64a;border:1.5px solid #946a10}
+.topbar .go:hover{background:#f0c25c}
+.topbar a:focus-visible,.topbar button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media print{.topbar{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+/* Print (A4 is ~720px wide): keep the desktop columns, tighten type and spacing */
+@media print{
+  body{font-size:12.5px;line-height:1.5}
+  .band{aspect-ratio:3.4}
+  .sheet{zoom:.93}
+  .band-copy{top:7%}.band-copy h1{font-size:46px}.band-copy .sub{font-size:15px}.band-copy .eyebrow{margin-bottom:6px}
+  .intro{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:22px;padding:16px 24px}
+  .facts{padding:0 0 0 18px;border-top:0;border-left:1.5px solid var(--hair);grid-template-columns:none;gap:6px}
+  .lead{font-size:13.5px}
+  .row,.sec{padding:16px 24px}
+  .split,.sol{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+  .sol{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+  h2{font-size:16px;margin-bottom:10px}.statement,.sol .statement{font-size:14px;margin-bottom:10px}
+  .eyebrow{font-size:10px;margin-bottom:8px}
+  .list{gap:8px}.list p,.user p,.feat p,.steps p,.ben p,.stat p,.where li{font-size:11.5px}
+  .stat{margin-top:12px;padding:10px 12px}.stat .num{font-size:26px}
+  .user{padding:7px 0}.user h3{font-size:13.5px}
+  .where{gap:5px}.where li{padding:6px 10px}
+  .features{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 18px}
+  .feat{padding-top:8px}.feat h3{font-size:13px;margin-bottom:3px}
+  .sec h3[style]{margin:18px 0 10px!important;font-size:13.5px!important}
+  .checks{margin-top:14px;padding:10px 14px;font-size:12px}.tags{margin-top:6px}.tags span{font-size:11px;padding:3px 10px}.note{font-size:10.5px;margin-top:6px}
+  .steps{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+  .steps::before{left:20px;right:20px;top:20px;bottom:auto;border-left:0;border-top:2px dashed var(--edge)}
+  .steps li{display:block}.steps .n{width:40px;height:40px;font-size:15px;margin:0 0 8px}.steps h3{font-size:13px}
+  .decisions{margin-top:12px;font-size:11.5px}.pill{font-size:11px;padding:3px 10px}
+  .benefits{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 24px}
+  .ben{grid-template-columns:96px minmax(0,1fr);gap:10px;padding:8px 0}.ben:nth-child(2){border-top:0;padding-top:4px}.ben h3{font-size:12.5px}
+  .foot{padding:10px 24px;font-size:10.5px}
+  .sec{break-inside:auto}
+}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Điều hướng">
+  <a class="back" href="/">← Trang chủ</a>
+  <span class="acts"><button class="print" type="button" onclick="window.print()">In / Lưu PDF</button><a class="go" href="/app">Vào ứng dụng →</a></span>
+</nav>
+
+<main class="sheet">
+  <header>
+    <div class="band" role="img" aria-label="Tranh phong cảnh đồi xanh với hai cây, minh họa nhận diện của VerifAI">
+      <div class="scene">
+        <img src="/static/home/landscape.webp" alt="">
+        <div class="tree" style="--x:0%;--y:46.44%;--w:17.70%;--h:40.17%;--ox:25%;--oy:99.2%;--d:0s"><img src="/static/home/tree-l.webp" alt=""></div>
+        <div class="tree" style="--x:80.80%;--y:13.71%;--w:19.20%;--h:47.72%;--ox:91%;--oy:99.3%;--d:-2.3s"><img src="/static/home/tree-r.webp" alt=""></div>
+      </div>
+    </div>
+      <div class="band-copy" id="bandCopy">
+        <span class="eyebrow">Product one-pager</span>
+        <h1>VerifAI</h1>
+        <p class="sub">Kiểm duyệt chất lượng video quảng cáo do AI tạo</p>
+      </div>
+  </header>
+
+  <section class="intro" aria-label="Giới thiệu">
+    <p class="lead">Công cụ kiểm tra video thương mại ngắn do AI tạo <span class="mk">trước khi đăng</span>. VerifAI đối chiếu nội dung video với dữ liệu chuẩn của sản phẩm, chỉ ra điểm sai lệch kèm lý do và bằng chứng, để người duyệt đưa ra quyết định cuối cùng.</p>
+    <dl class="facts">
+      <div><dt>Giai đoạn</dt><dd>MVP</dd></div>
+      <div><dt>Ngành thử nghiệm</dt><dd>Mẹ &amp; Bé, thương mại điện tử</dd></div>
+      <div><dt>Vị trí trong quy trình</dt><dd>Sau bước tạo video, trước bước duyệt</dd></div>
+    </dl>
+  </section>
+
+  <div class="row split">
+    <section class="sec" aria-labelledby="h-problem">
+      <span class="eyebrow">01 · Vấn đề</span>
+      <h2 id="h-problem" class="statement">Video quảng cáo tạo bằng AI được sản xuất ngày càng nhanh, trong khi việc kiểm tra chất lượng <span class="mk">vẫn chủ yếu làm thủ công</span>.</h2>
+      <div class="list">
+        <p><b>Sai thông tin sản phẩm.</b> Video có thể sai tên, giá, SKU, dung tích, nêu claim ngoài danh sách đã duyệt, hoặc thay đổi hình ảnh sản phẩm giữa các cảnh.</p>
+        <p><b>Kiểm duyệt lặp lại.</b> Người duyệt phải xem video, đọc chữ, nghe lời thoại, tra dữ liệu chuẩn và ghi lỗi cho từng video.</p>
+        <p><b>Đánh giá thiếu nhất quán.</b> Cùng một lỗi có thể được xử lý khác nhau giữa các người duyệt. Các yêu cầu tuân thủ như nhãn nội dung AI dễ bị bỏ sót.</p>
+      </div>
+      <div class="stat">
+        <span class="num">34%</span>
+        <p>nhà sáng tạo nội dung xem chất lượng đầu ra không ổn định là rào cản khi sử dụng công cụ AI tạo sinh (khảo sát hơn 16.000 người tại 8 quốc gia, tháng 9/2025).</p>
+        <p class="src">Nguồn: <a href="https://news.adobe.com/news/2025/10/adobe-max-2025-creators-survey" target="_blank" rel="noopener">Adobe Creators' Toolkit Report, 28/10/2025</a></p>
+      </div>
+    </section>
+
+    <section class="sec" aria-labelledby="h-users">
+      <span class="eyebrow">02 · Người dùng</span>
+      <h2 id="h-users" class="sr">Ai sử dụng VerifAI</h2>
+      <div class="users">
+        <div class="user"><small>Người dùng chính</small><h3>Reviewer QC / Content QA</h3><p>Phát hiện lỗi nhanh, biết lỗi nằm ở đâu trong video, giảm thao tác kiểm tra lặp lại.</p></div>
+        <div class="user"><small>Người dùng thứ cấp</small><h3>Đội vận hành / Social Commerce</h3><p>Theo dõi trạng thái kiểm duyệt và số vòng chỉnh sửa của từng video.</p></div>
+        <div class="user"><small>Hưởng lợi gián tiếp</small><h3>Thương hiệu / Nhà bán hàng</h3><p>Nội dung đúng thông tin sản phẩm và đúng hướng dẫn thương hiệu.</p></div>
+        <div class="user"><small>Hưởng lợi gián tiếp</small><h3>Creator / KOC</h3><p>Nhận phản hồi cụ thể theo mốc thời gian để sửa video trước khi đăng.</p></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="sec" aria-labelledby="h-sol">
+    <span class="eyebrow">03 · Giải pháp</span>
+    <div class="sol">
+      <h2 id="h-sol" class="statement">VerifAI là <span class="mk">lớp kiểm tra đặt giữa bước tạo video và bước duyệt</span>. Hệ thống kết hợp <b>AI đa phương thức</b> (chữ trên hình, lời thoại, hình ảnh) với <b>bộ quy tắc kiểm tra</b> để so sánh video với <b>dữ liệu chuẩn của sản phẩm</b>: tên, SKU, biến thể, dung tích, giá và danh sách claim được duyệt.</h2>
+      <ol class="where" aria-label="Vị trí của VerifAI trong quy trình sản xuất video">
+        <li>Tạo video bằng AI</li>
+        <li class="me">VerifAI kiểm tra và đề xuất trạng thái</li>
+        <li>Người duyệt xác minh và quyết định</li>
+        <li>Phát hành hoặc chỉnh sửa</li>
+      </ol>
+    </div>
+
+    <h3 style="margin:34px 0 16px;font-size:16px">Tính năng chính</h3>
+    <div class="features">
+      <div class="feat"><h3>Đối chiếu dữ liệu sản phẩm</h3><p>So sánh chữ, lời thoại và hình ảnh trong video với dữ liệu chuẩn của đúng SKU và biến thể.</p></div>
+      <div class="feat"><h3>Sáu nhóm kiểm tra</h3><p>Thông tin sản phẩm, giá bán, claim quảng cáo, chữ trên hình và phụ đề, hình ảnh giữa các cảnh, nhãn nội dung AI.</p></div>
+      <div class="feat"><h3>Ba mức đề xuất</h3><p>Chấp thuận, Cần kiểm tra hoặc Yêu cầu sửa cho mỗi video, kèm lý do, giúp phân luồng xử lý.</p></div>
+      <div class="feat"><h3>Cảnh báo kèm bằng chứng</h3><p>Mỗi cảnh báo ghi rõ loại lỗi, nội dung quan sát được, mốc thời gian, khung hình và nguồn phát hiện.</p></div>
+      <div class="feat"><h3>Không kết luận khi thiếu căn cứ</h3><p>Khi một nguồn phân tích chưa chạy đủ hoặc dữ liệu sản phẩm chưa được xác minh, hệ thống không đề xuất Chấp thuận mà chuyển sang Cần kiểm tra.</p></div>
+      <div class="feat"><h3>Lưu vết và xuất bằng chứng</h3><p>Lịch sử thao tác của người duyệt được lưu lại. Xuất tệp JSON cho từng video, hoặc tệp ZIP cho toàn bộ phiên duyệt, để đối soát.</p></div>
+    </div>
+
+    <div class="checks">
+      <b>Bộ quy tắc riêng cho ngành Mẹ &amp; Bé</b>
+      <div class="tags"><span>Sản phẩm thuộc diện cấm quảng cáo</span><span>So sánh với sữa mẹ</span><span>Thiếu độ tuổi khuyến nghị</span></div>
+      <p class="note">Đối chiếu theo Nghị định 100/2014/NĐ-CP như cấu hình trong hệ thống. Kết quả là cảnh báo cần bộ phận pháp chế xác nhận, không phải kết luận pháp lý.</p>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="h-flow">
+    <span class="eyebrow">04 · Quy trình kiểm tra</span>
+    <h2 id="h-flow">Năm bước từ video đầu vào <span class="mk">đến quyết định của người duyệt</span></h2>
+    <ol class="steps">
+      <li><span class="n">1</span><h3>Nhận đầu vào</h3><p>Người duyệt tải video và chọn SKU hoặc biến thể sản phẩm cần đối chiếu.</p></li>
+      <li><span class="n">2</span><h3>Trích xuất tín hiệu</h3><p>Nhận diện chữ tiếng Việt trên hình (OCR), chuyển lời thoại thành văn bản (ASR), AI thị giác phân tích khung hình.</p></li>
+      <li><span class="n">3</span><h3>Đối chiếu</h3><p>So sánh với dữ liệu sản phẩm và bộ quy tắc, ghi nhận điểm khác biệt hoặc thiếu căn cứ.</p></li>
+      <li><span class="n">4</span><h3>Trả kết quả</h3><p>Đề xuất trạng thái, danh sách cảnh báo, lý do và bằng chứng theo mốc thời gian.</p></li>
+      <li><span class="n">5</span><h3>Người duyệt quyết định</h3><p>Xác nhận hoặc bác bỏ từng cảnh báo, rồi chọn quyết định cuối cùng cho video.</p></li>
+    </ol>
+    <div class="decisions"><span>Quyết định cuối:</span><span class="pill ok">Chấp thuận</span><span class="pill rv">Cần kiểm tra</span><span class="pill rd">Yêu cầu sửa</span><span>Không có quyết định nào được tự động áp dụng.</span></div>
+  </section>
+
+  <section class="sec" aria-labelledby="h-ben">
+    <span class="eyebrow">05 · Lợi ích</span>
+    <h2 id="h-ben">Giá trị cho từng bên trong quy trình</h2>
+    <div class="benefits">
+      <div class="ben"><h3>Người duyệt</h3><p>Tập trung vào các điểm đã được đánh dấu, xem bằng chứng tại đúng mốc thời gian thay vì xem lại toàn bộ video.</p></div>
+      <div class="ben"><h3>Đội vận hành</h3><p>Áp dụng một bộ tiêu chí thống nhất giữa các người duyệt; trạng thái từng video được hiển thị rõ ràng.</p></div>
+      <div class="ben"><h3>Thương hiệu</h3><p>Phát hiện sớm sai lệch thông tin sản phẩm và claim chưa được duyệt trước khi video được phát hành.</p></div>
+      <div class="ben"><h3>Creator / KOC</h3><p>Nhận danh sách lỗi cụ thể kèm mốc thời gian để chỉnh sửa đúng chỗ.</p></div>
+      <div class="ben"><h3>Quản trị và tuân thủ</h3><p>Mọi xác nhận và quyết định đều có người thực hiện, thời gian và bằng chứng đi kèm, có thể xuất ra để đối soát.</p></div>
+      <div class="ben"><h3>Dữ liệu</h3><p>Mặc định xử lý trên máy cục bộ. Video chỉ được gửi lên dịch vụ AI đám mây khi đã bật cấu hình và đã khai báo quyền sử dụng video.</p></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span><b>VerifAI</b> · Nhóm VerifAI, 2026</span>
+    <span>VerifAI hỗ trợ kiểm duyệt. Mọi cảnh báo cần được người duyệt xác minh trước khi quyết định phát hành.</span>
+  </footer>
+</main>
+</body>
+</html>

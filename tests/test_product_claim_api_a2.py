@@ -111,13 +111,14 @@ def test_claim_evidence_and_product_truth_snapshot(tmp_path,monkeypatch):
         if d['status'] in ('completed','failed'):break
         time.sleep(.05)
     assert d['status']=='completed',d['details']
-    assert d['decision']=='Needs Review'
+    # Reviewed Product Truth + asserted restricted claim read by OCR on every frame.
+    assert d['decision']=='Regenerate'
     assert d['details']['claim_rule_version']=='claim-v3.0-alpha2'
     snapshot=d['details']['product_truth_snapshot']
     assert snapshot['revision']==1 and snapshot['reference_status']=='reviewed'
     flags=[f for f in d['findings'] if f['code']=='CLAIM-01']
     assert flags
-    assert all(f['severity']=='medium' and f['source']=='claim_rule_v3' for f in flags)
+    assert all(f['severity'] in ('high','medium') and f['source']=='claim_rule_v3' for f in flags)
     assert all(f['metadata']['claim_assessment']['state']=='asserted' for f in flags)
     assert all(f['evidence_id'] in {e['id'] for e in d['evidence']} for f in flags)
     events=[m for e in d['evidence'] if e['kind'] in ('ocr','asr')

@@ -42,4 +42,12 @@ def test_end_to_end(tmp_path, monkeypatch, stub_perception):
     metrics=client.get('/api/metrics').json()
     assert metrics['evaluated']==0  # single label is insufficient for actual evaluation
     assert metrics['prediction_policy']=='candidate-v1-2026-10'
-    assert client.get('/').status_code==200
+    home_page=client.get('/')
+    assert home_page.status_code==200
+    assert 'Bắt đầu kiểm duyệt' in home_page.text and 'href="/app"' in home_page.text
+    assert 'href="/one-pager"' in home_page.text
+    one_pager=client.get('/one-pager')
+    assert one_pager.status_code==200 and 'Product one-pager' in one_pager.text and 'href="/app"' in one_pager.text
+    workspace=client.get('/app')
+    assert workspace.status_code==200
+    assert 'Danh sách duyệt' in workspace.text
