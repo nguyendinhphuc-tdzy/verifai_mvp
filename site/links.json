@@ -1,17 +1,5 @@
 {
-  "_note": "Link cho website Vercel. Điền URL vào giá trị rỗng rồi chạy: python scripts/build_vercel_site.py. Để trống thì nút hiện 'Đang cập nhật'.",
-  "demo_video": "",
-  "repository": "",
-  "team_agreement": "",
-  "product_direction": "",
-  "project_timeline": "",
-  "project_backlog": "",
-  "meeting_notes": "",
-  "raci": "",
-  "ai_canvas": "",
-  "project_charter": "",
-  "data_audit": "",
-  "ai_risk_register": "",
-  "ai_system_card": "",
-  "final_report": ""
+  "_note": "Link ngoài cho website Vercel. Điền URL rồi chạy: python scripts/build_vercel_site.py. Để trống thì nút hiện 'đang cập nhật'. Nội dung hồ sơ nằm trong site_src/ho-so.html.",
+  "demo_video": "https://drive.google.com/file/d/18nhrztrHlZcnP9e7tKsnjRsJqovjXirf/view?usp=drive_link",
+  "repository": "https://github.com/nguyendinhphuc-tdzy/verifai_mvp"
 }

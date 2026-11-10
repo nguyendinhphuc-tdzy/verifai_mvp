@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Hồ sơ dự án VerifAI: tổng quan, định hướng sản phẩm, quản lý dự án, mã nguồn, demo và tài liệu AI của Nhóm 06.">
+<meta name="theme-color" content="#10362e">
+<title>VerifAI · Hồ sơ dự án</title>
+<script>try{if(localStorage.getItem('vfTheme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lexend:wght@500;600;700&display=swap">
+<style>
+:root{
+  --paper:#f4ebdb;--sheet:#fffcf6;--edge:#d6c8ac;--hair:#e7dcc6;
+  --ink:#10362e;--text:#2b3d36;--muted:#55645d;--label:#9a6a12;--accent:#1f7a67;
+  --tint:#e3f1ea;--warn:#fbecc4;--warn-ink:#6b4700;--bad:#f6dcd2;--bad-ink:#7a2e17;
+  --marker:rgba(232,182,74,.45);--gold:#e8b64a;
+  --tex:url(data:image/webp;base64,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);
+  --display:"Lexend","Be Vietnam Pro",system-ui,sans-serif;
+  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --leaf:16px 16px 36px 16px;--leaf-lg:22px 22px 56px 22px;
+}
+:root[data-theme="dark"]{
+  --paper:#0b1915;--sheet:#10231e;--edge:rgba(255,255,255,.16);--hair:rgba(255,255,255,.09);
+  --ink:#f1e7cf;--text:#d3dfd9;--muted:#a3b8b0;--label:#e8c46a;--accent:#7fd3b8;--tint:#173a32;
+  --warn:#3d3214;--warn-ink:#f3d58a;--bad:#3d2219;--bad-ink:#f2b39e;
+  --marker:rgba(232,182,74,.3);--gold:#e8c46a;--tex:none;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:20px}
+body{margin:0;background:var(--paper) var(--tex) 0 0/512px 512px;color:var(--text);font:15px/1.65 var(--body);
+  padding:24px max(16px,env(safe-area-inset-right,0px)) 56px max(16px,env(safe-area-inset-left,0px))}
+h1,h2,h3,h4{font-family:var(--display);color:var(--ink);text-wrap:balance;margin:0}
+p{margin:0 0 12px}
+a{color:var(--accent);text-underline-offset:2px}
+.mk{background:linear-gradient(transparent 58%,var(--marker) 0);padding:0 .1em}
+.eyebrow{display:block;font:700 12px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--label);margin-bottom:10px}
+
+/* Top bar */
+.topbar{max-width:1180px;margin:0 auto 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.topbar a,.topbar button{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:999px;font:600 14px/1 var(--body);text-decoration:none;cursor:pointer;color:var(--ink);border:1.5px solid var(--edge);background:var(--sheet)}
+.topbar a:hover,.topbar button:hover{border-color:var(--ink)}
+.topbar .go{color:#1b1405;background:#e8b64a;border-color:#946a10}
+.topbar .acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Layout */
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;align-items:start}
+.toc{position:sticky;top:20px;background:var(--sheet);border:1.5px solid var(--edge);border-radius:var(--leaf);padding:18px 16px}
+.toc b{display:block;font:700 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--label);margin-bottom:12px}
+.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.toc a{display:grid;grid-template-columns:28px 1fr;gap:4px;padding:6px 8px;border-radius:10px;color:var(--text);text-decoration:none;font-size:14px;line-height:1.35}
+.toc a span{font:700 12px/1.6 var(--display);color:var(--muted)}
+.toc a:hover,.toc a.on{background:var(--tint);color:var(--ink)}
+main{min-width:0}
+.hero{background:var(--sheet);border:1.5px solid var(--edge);border-radius:var(--leaf-lg);padding:30px 34px;margin-bottom:20px}
+.hero h1{font-size:clamp(30px,4.6vw,46px);line-height:1.08;letter-spacing:-.02em;margin-bottom:12px}
+.hero .lead{font-size:17px;max-width:68ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{display:inline-block;padding:4px 12px;border-radius:999px;border:1.5px solid var(--edge);font-size:13px;font-weight:600;color:var(--ink);background:var(--sheet)}
+.sec{background:var(--sheet);border:1.5px solid var(--edge);border-radius:var(--leaf-lg);padding:30px 34px;margin-bottom:20px}
+.sec>h2{font-size:clamp(22px,2.6vw,28px);line-height:1.25;margin-bottom:6px}
+.sec>.sub{color:var(--muted);margin-bottom:20px}
+.sec h3{font-size:17.5px;margin:26px 0 10px}
+.sec h3:first-of-type{margin-top:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.card{border:1.5px solid var(--hair);border-radius:var(--leaf);padding:16px 18px}
+.card h4{font-size:15.5px;margin-bottom:6px}
+.card p:last-child,.card ul:last-child{margin-bottom:0}
+.card.tint{background:var(--tint);border-color:transparent}
+ul.dots{margin:0 0 12px;padding-left:20px}
+ul.dots li{margin:3px 0}
+.note{margin:14px 0 0;padding:12px 16px;border-left:3px solid var(--gold);background:var(--warn);color:var(--warn-ink);border-radius:0 12px 12px 0;font-size:14px}
+.note b{color:inherit}
+.src{font-size:12.5px;color:var(--muted)}
+.tbl{width:100%;overflow-x:auto;border:1.5px solid var(--hair);border-radius:14px;margin:4px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--hair)}
+th{font:600 13px/1.4 var(--body);color:var(--ink);background:var(--tint);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.c{text-align:center}
+.raci td.c{font-weight:700;color:var(--ink)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap}
+.pill.ok{background:#dcefe6;color:#14513f}.pill.rv{background:#fbecc4;color:#6b4700}.pill.rd{background:#f6dcd2;color:#7a2e17}.pill.mt{background:var(--hair);color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:6px 0 4px}
+.stat{border:1.5px solid var(--hair);border-radius:var(--leaf);padding:14px 16px}
+.stat b{display:block;font:700 26px/1.1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:13px}
+.cm{display:grid;grid-template-columns:auto repeat(2,minmax(0,1fr));gap:6px;max-width:460px;font-size:14px}
+.cm div{padding:10px 12px;border-radius:10px;background:var(--tint);text-align:center}
+.cm .h{background:transparent;font-weight:700;color:var(--ink)}
+.cm .tp{background:#cdebdc;color:#14513f;font-weight:700}.cm .tn{background:#e3e8e5;color:#33433c;font-weight:700}
+.cm .fp{background:#e4dcfa;color:#4b3c86;font-weight:700}.cm .fn{background:#fbe3b4;color:#6b4700;font-weight:700}
+.steps{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;counter-reset:s}
+.steps li{counter-increment:s;border:1.5px solid var(--hair);border-radius:var(--leaf);padding:14px}
+.steps li::before{content:counter(s);display:grid;place-items:center;width:30px;height:30px;border-radius:10px 10px 18px 10px;background:var(--ink);color:var(--sheet);font:700 14px/1 var(--display);margin-bottom:8px}
+.steps li:last-child::before{background:var(--gold);color:#1b1405}
+.steps b{display:block;color:var(--ink);font-size:14.5px;margin-bottom:2px}
+.steps span{font-size:13.5px}
+.canvas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.canvas .card small{display:block;font:700 12px/1 var(--display);color:var(--label);margin-bottom:6px}
+.pending{border:1.5px dashed var(--edge);border-radius:var(--leaf);padding:18px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:999px;font:600 14px/1 var(--body);text-decoration:none;color:#1b1405;background:#e8b64a;border:1.5px solid #946a10;margin-top:4px}
+.btn.pending-link{background:transparent;color:var(--muted);border-style:dashed;border-color:var(--edge);pointer-events:none}
+footer{max-width:1180px;margin:8px auto 0;color:var(--muted);font-size:13px;text-align:center}
+
+@media (max-width:980px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  .toc{position:static}
+  .toc ol{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+  .canvas{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  body{padding-top:12px}
+  .hero,.sec{padding:22px 18px}
+  .grid2,.grid3,.canvas,.steps{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media print{
+  body{background:#fff;padding:0}.topbar,.toc{display:none}.wrap{display:block}
+  .sec,.hero{break-inside:auto;border:0;padding:12px 0}.card,.tbl,tr{break-inside:avoid}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Điều hướng">
+  <a href="index.html">← Trang chủ</a>
+  <span class="acts"><a href="one-pager.html">One-pager</a><button type="button" onclick="window.print()">In / Lưu PDF</button><a class="go" data-link="demo_video" href="#demo">Xem video demo →</a></span>
+</nav>
+
+<div class="wrap">
+  <aside class="toc" aria-label="Mục lục">
+    <b>Hồ sơ dự án</b>
+    <ol>
+      <li><a href="#tong-quan"><span>01</span>Tổng quan dự án</a></li>
+      <li><a href="#thanh-vien"><span>02</span>Thành viên &amp; liên hệ</a></li>
+      <li><a href="#thoa-thuan"><span>03</span>Thỏa thuận nhóm</a></li>
+      <li><a href="#dinh-huong"><span>04</span>Định hướng sản phẩm</a></li>
+      <li><a href="#quan-ly"><span>05</span>Quản lý dự án</a></li>
+      <li><a href="#ma-nguon"><span>06</span>Mã nguồn</a></li>
+      <li><a href="#demo"><span>07</span>Demo / prototype</a></li>
+      <li><a href="#tai-lieu-ai"><span>08</span>Tài liệu AI</a></li>
+      <li><a href="#one-pager"><span>09</span>Product one-pager</a></li>
+    </ol>
+  </aside>
+
+  <main>
+    <header class="hero">
+      <span class="eyebrow">Nhóm 06 · Viện Đổi mới sáng tạo, UEH</span>
+      <h1>Hồ sơ dự án VerifAI</h1>
+      <p class="lead">VerifAI (AI Video Quality &amp; Readiness Checker) là lớp sàng lọc video quảng cáo do AI tạo <span class="mk">trước khi xuất bản</span>: đọc nội dung video, đối chiếu với dữ liệu chuẩn của sản phẩm theo SKU và đưa ra cảnh báo kèm lý do để người duyệt quyết định.</p>
+      <div class="meta"><span class="chip">Giai đoạn: Prototype / MVP</span><span class="chip">Ngành thử nghiệm: Mẹ &amp; Bé</span><span class="chip">Bối cảnh nghiên cứu: Ecomobi (case study)</span><span class="chip">Cập nhật: 10/11/2026</span></div>
+    </header>
+
+    <!-- 01 -->
+    <section class="sec" id="tong-quan" aria-labelledby="h01">
+      <span class="eyebrow">01 · Tổng quan dự án</span>
+      <h2 id="h01">Vấn đề kinh doanh và bối cảnh</h2>
+      <p class="sub">Video quảng cáo tạo bằng AI được sản xuất ngày càng nhanh, trong khi việc kiểm tra chất lượng vẫn chủ yếu làm thủ công.</p>
+
+      <h3>Bối cảnh</h3>
+      <p>Generative AI giúp doanh nghiệp và nhà sáng tạo nội dung làm video quảng cáo nhanh và rẻ hơn. Theo Creators' Toolkit Report của Adobe (khảo sát qua Harris Poll với hơn 16.000 nhà sáng tạo nội dung tại 8 quốc gia, công bố 28/10/2025), 86% người tham gia đang dùng công cụ creative generative AI trong công việc. Tốc độ sản xuất tăng kéo theo yêu cầu kiểm soát chất lượng nội dung trước khi phát hành.</p>
+      <p>Với ngành Mẹ &amp; Bé, sai lệch về công dụng, thành phần, dung tích hoặc hình ảnh sản phẩm ảnh hưởng trực tiếp đến độ tin cậy của quảng cáo, và một số nhóm sản phẩm (như sữa cho trẻ nhỏ) chịu quy định quảng cáo riêng.</p>
+      <p class="src">Nguồn: <a href="https://news.adobe.com/news/2025/10/adobe-max-2025-creators-survey" target="_blank" rel="noopener">Adobe News, 28/10/2025</a>.</p>
+
+      <h3>Ba vấn đề trọng tâm</h3>
+      <div class="grid3">
+        <div class="card"><h4>Sai lệch thông tin</h4><p>Video có thể sai giá, SKU, dung tích, tên sản phẩm, nêu claim ngoài danh sách được duyệt hoặc thay đổi hình ảnh sản phẩm giữa các cảnh.</p></div>
+        <div class="card"><h4>Kiểm duyệt thủ công kéo dài</h4><p>Reviewer phải xem video, đọc chữ, nghe lời thoại, tra dữ liệu chuẩn và ghi lỗi cho từng video. Sản lượng càng tăng, công việc lặp lại càng nhiều.</p></div>
+        <div class="card"><h4>Thiếu nhất quán</h4><p>Cùng một lỗi có thể được xử lý khác nhau giữa các người duyệt; các yêu cầu tuân thủ như nhãn nội dung AI dễ bị bỏ sót.</p></div>
+      </div>
+
+      <h3>Ví dụ thực tế: một video quảng cáo công khai</h3>
+      <div class="grid2">
+        <div class="card tint"><h4>528 ml và 350 ml trong cùng một video</h4><p>Một video quảng cáo công khai (gắn nhãn AI-generated) về sữa dưỡng da ILLIYOON Ceramide Ato: biển trưng bày ghi <b>528 ml</b>, trong khi nhãn chai ở cảnh cận thể hiện <b>350 ml</b>. Trang bán trên Shopee có các lựa chọn 350 ml và 508 ml. Dấu hiệu không khớp xuất hiện khoảng giây 4,6 đến 7,5.</p></div>
+        <div class="card"><h4>VerifAI làm gì trong tình huống này</h4><p>Hướng tới phát hiện điểm không khớp, đối chiếu với dữ liệu chuẩn của sản phẩm (Product Truth) và đưa ra cảnh báo có mốc thời gian để reviewer xác minh. Prototype đã gắn cờ video này với cảnh báo về dung tích không nhất quán.</p></div>
+      </div>
+
+      <h3>Phạm vi dự án</h3>
+      <div class="grid2">
+        <div class="card"><h4>Trong phạm vi</h4><ul class="dots">
+          <li>Kiểm tra video thương mại ngắn có dùng AI, tập trung ngành Mẹ &amp; Bé.</li>
+          <li>Đối chiếu video với Product Truth: SKU, tên, giá, dung tích, claim được duyệt.</li>
+          <li>Phát hiện sai thông tin sản phẩm, hình ảnh không nhất quán, nguy cơ vi phạm quy tắc.</li>
+          <li>Phân loại Pass / Needs Review / Regenerate kèm bằng chứng và vị trí lỗi.</li>
+          <li>Human-in-the-loop: reviewer quyết định cuối cùng.</li></ul></div>
+        <div class="card"><h4>Ngoài phạm vi</h4><ul class="dots">
+          <li>Tạo video, hoặc tự động đăng/gỡ video trên nền tảng.</li>
+          <li>Đưa ra kết luận pháp lý chính thức.</li>
+          <li>Thay thế hoàn toàn reviewer bằng AI.</li>
+          <li>Tích hợp production vào hệ thống của Ecomobi.</li>
+          <li>Phát hiện deepfake tổng quát hoặc mở rộng sang mọi ngành hàng.</li></ul></div>
+      </div>
+      <p class="note"><b>Về Ecomobi:</b> dự án lấy Ecomobi làm bối cảnh nghiên cứu vì doanh nghiệp đã phát triển AI Video cho Creator Commerce. Prototype được nhóm xây dựng độc lập, chưa tích hợp, chưa pilot và chưa được Ecomobi sử dụng; nhóm chưa có quyền truy cập dữ liệu nội bộ của doanh nghiệp.</p>
+    </section>
+
+    <!-- 02 -->
+    <section class="sec" id="thanh-vien" aria-labelledby="h02">
+      <span class="eyebrow">02 · Thành viên &amp; liên hệ</span>
+      <h2 id="h02">Nhóm 06 và vai trò</h2>
+      <p class="sub">Chương trình Cử nhân Công nghệ và Đổi mới sáng tạo, Viện Đổi mới sáng tạo, Đại học Kinh tế TP.HCM (UEH).</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Thành viên</th><th>Vai trò</th><th>Trách nhiệm chính</th></tr></thead>
+        <tbody>
+          <tr><td><b>Trần Thị Thanh Vy</b></td><td>Project Manager / Scrum Master kiêm Data Production Lead</td><td>Điều phối nhóm, Backlog và Sprint; trực tiếp tạo và chỉnh sửa bộ 44 video lỗi kiểm soát; tổng hợp dữ liệu Sprint 2 và báo cáo cuối kỳ.</td></tr>
+          <tr><td><b>Trần Tường Vy</b></td><td>Business Model &amp; Funding Planning kiêm UI/UX Support</td><td>Mô hình kinh doanh và kế hoạch vốn; Data Audit, EDA, kiểm tra leakage; hỗ trợ thiết kế giao diện và trải nghiệm.</td></tr>
+          <tr><td><b>Lê Ngọc Bảo Trâm</b></td><td>AI Strategy &amp; Responsible AI</td><td>So sánh và lựa chọn phương án AI/API; định hướng sản phẩm; quản trị AI có trách nhiệm; tìm nguồn video công khai.</td></tr>
+          <tr><td><b>Phạm Thị Cẩm Thư</b></td><td>Business Analysis &amp; AI System Design</td><td>Phân tích bài toán và yêu cầu nghiệp vụ; kiến trúc Hybrid AI; đánh giá rủi ro; phụ trách kế hoạch User Testing.</td></tr>
+          <tr><td><b>Nguyễn Đình Phúc</b></td><td>Technical / AI Engineering &amp; Prototype Lead</td><td>Xây dựng prototype VerifAI, quy trình xử lý video, logic kiểm tra và ba trạng thái; kiểm thử kỹ thuật, Evidence Export và demo.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Liên hệ nhóm: xem mục <a href="index.html#lien-he">Liên hệ</a> trên trang chủ.</p>
+    </section>
+
+    <!-- 03 -->
+    <section class="sec" id="thoa-thuan" aria-labelledby="h03">
+      <span class="eyebrow">03 · Thỏa thuận nhóm</span>
+      <h2 id="h03">Thỏa thuận thành lập nhóm</h2>
+      <div class="pending"><b>Đang cập nhật.</b> Bản thỏa thuận thành lập nhóm sẽ được đăng sau khi tất cả thành viên xác nhận bản cuối.</div>
+      <h3>Nguyên tắc làm việc đã thống nhất</h3>
+      <ul class="dots">
+        <li>Họp cả nhóm một lần mỗi tuần vào tối thứ Sáu; Thanh Vy điều phối.</li>
+        <li>Quản lý Backlog, Risk Register và tài liệu chung trên Google Sheets và Google Drive.</li>
+        <li>Phân công theo ma trận RACI (xem mục 05); mỗi hạng mục có một người chịu trách nhiệm cuối cùng.</li>
+        <li>Không đánh dấu một hạng mục là hoàn thành khi chưa có minh chứng; kết quả mô phỏng luôn được ghi rõ là mô phỏng.</li>
+      </ul>
+    </section>
+
+    <!-- 04 -->
+    <section class="sec" id="dinh-huong" aria-labelledby="h04">
+      <span class="eyebrow">04 · Định hướng sản phẩm</span>
+      <h2 id="h04">Product Vision, người dùng và kịch bản demo</h2>
+
+      <h3>Product Vision</h3>
+      <p>VerifAI hướng đến trở thành <span class="mk">lớp kiểm soát chất lượng thông minh</span>, giúp doanh nghiệp phát hiện và xử lý sớm sai sót trong video thương mại do AI tạo ra trước khi phát hành. Thay vì chỉ xác định video có do AI tạo hay không, VerifAI đánh giá mức độ chính xác, nhất quán và sẵn sàng xuất bản của nội dung. Hệ thống không thay thế reviewer mà giúp họ quyết định dựa trên bằng chứng và tiêu chí kiểm tra nhất quán.</p>
+
+      <h3>Target Users</h3>
+      <div class="grid2">
+        <div class="card"><h4>Người dùng chính: Reviewer QC / Content QA</h4><p>Kiểm tra và phê duyệt video trước khi phát hành. Cần phát hiện lỗi nhanh, biết lỗi nằm ở đâu, giảm thao tác kiểm tra lặp lại.</p></div>
+        <div class="card"><h4>Người dùng thứ cấp: Operations / Social Commerce</h4><p>Quản lý sản xuất và phân phối video. Cần theo dõi trạng thái kiểm duyệt và số vòng chỉnh sửa.</p></div>
+        <div class="card"><h4>Người quyết định mua</h4><p>Quản lý vận hành hoặc ngân sách tại đơn vị sử dụng.</p></div>
+        <div class="card"><h4>Khách hàng B2B ưu tiên</h4><p>Agency marketing, đơn vị tiếp thị liên kết, tổ chức quản lý video cho nhiều thương hiệu, có quy trình QA và dữ liệu sản phẩm đáng tin cậy. Sàn thương mại điện tử là thị trường dài hạn.</p></div>
+      </div>
+
+      <h3>Điểm khác biệt</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Tiêu chí</th><th>Kiểm duyệt thủ công</th><th>AI đa năng</th><th>VerifAI</th></tr></thead>
+        <tbody>
+          <tr><td><b>Đối chiếu</b></td><td>Reviewer tự xem và tra nguồn</td><td>Cần prompt và nguồn do người dùng cung cấp</td><td>Đối chiếu video với Product Truth theo SKU</td></tr>
+          <tr><td><b>Đầu ra</b></td><td>Ghi chú, checklist</td><td>Phản hồi hội thoại</td><td>Pass / Needs Review / Regenerate kèm lý do và bằng chứng</td></tr>
+          <tr><td><b>Hạn chế</b></td><td>Tốn công khi nhiều video</td><td>Phụ thuộc câu hỏi và dữ liệu đưa vào</td><td>Cần cải thiện độ chính xác và chất lượng cảnh báo</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Ba trạng thái đề xuất</h3>
+      <div class="grid3">
+        <div class="card"><h4><span class="pill ok">Pass</span></h4><p>Chưa phát hiện vấn đề trong phạm vi đã kiểm tra. Không bảo đảm video hoàn toàn đúng và không tự động cho phép xuất bản.</p></div>
+        <div class="card"><h4><span class="pill rv">Needs Review</span></h4><p>Cần người xem lại: có dấu hiệu bất thường, hoặc thiếu dữ liệu để xác minh.</p></div>
+        <div class="card"><h4><span class="pill rd">Regenerate</span></h4><p>Đề xuất sửa hoặc làm lại nội dung khi có lỗi rõ so với dữ liệu sản phẩm. Là khuyến nghị, không phải quyết định tự động.</p></div>
+      </div>
+
+      <h3>Demo Scenario: luồng kiểm tra một video</h3>
+      <ol class="steps">
+        <li><b>Tải video, chọn SKU</b><span>Xác định đúng sản phẩm và biến thể cần đối chiếu.</span></li>
+        <li><b>Trích xuất</b><span>Chữ trên hình (OCR), lời thoại (ASR), hình ảnh và ngữ cảnh (VLM).</span></li>
+        <li><b>Đối chiếu</b><span>So với Product Truth và bộ quy tắc; ghi nhận chỗ thiếu căn cứ.</span></li>
+        <li><b>Kết quả và lý do</b><span>Loại lỗi, mốc thời gian khi đủ bằng chứng.</span></li>
+        <li><b>Reviewer quyết định</b><span>Xác nhận hoặc bác từng cảnh báo, chọn quyết định cuối.</span></li>
+      </ol>
+
+      <h3>Tình huống minh họa: sai giá (VID_GOC01 và VID_LOI01)</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Nội dung</th><th>VID_GOC01</th><th>VID_LOI01</th></tr></thead>
+        <tbody>
+          <tr><td>Sản phẩm</td><td colspan="2">SKU001, sữa tắm gội trẻ em (dữ liệu giả lập để kiểm thử)</td></tr>
+          <tr><td>Loại video</td><td>Video gốc đối chứng</td><td>Video cài lỗi có kiểm soát</td></tr>
+          <tr><td>Giá trong video</td><td>149.000 VND</td><td>99.000 VND (giá tham chiếu 149.000 VND)</td></tr>
+          <tr><td>Kết quả VerifAI</td><td><span class="pill ok">Pass</span></td><td><span class="pill rd">Regenerate</span> · lỗi "Sai giá" · RULE03</td></tr>
+          <tr><td>Việc của reviewer</td><td>Vẫn xác minh trước khi duyệt</td><td>Đối chiếu giá với Product Truth, xác nhận lỗi, yêu cầu sửa giá</td></tr>
+        </tbody>
+      </table></div>
+      <p>Tình huống thứ hai (PUB007.mov) minh họa luồng lưu quyết định: AI đề xuất Needs Review, reviewer xác nhận một cảnh báo là lỗi và chọn "Yêu cầu sửa"; tệp bằng chứng xuất ra ghi nhận quyết định Regenerate.</p>
+
+      <h3>Mô hình kinh doanh đề xuất</h3>
+      <div class="tbl"><table>
+        <tbody>
+          <tr><th>Customer Segments</th><td>Agency marketing/affiliate và thương hiệu có QA nội bộ, Product Truth đã xác minh; sàn TMĐT là thị trường dài hạn.</td></tr>
+          <tr><th>Value Propositions</th><td>Sàng lọc trước khi đăng; đối chiếu giá, claim, thông tin sản phẩm; cung cấp bằng chứng và lý do cho reviewer.</td></tr>
+          <tr><th>Channels</th><td>B2B trực tiếp, demo và pilot có giám sát, web app; API ở giai đoạn sau.</td></tr>
+          <tr><th>Customer Relationships</th><td>Onboarding dữ liệu, hỗ trợ cấu hình, tiếp nhận phản hồi reviewer.</td></tr>
+          <tr><th>Revenue Streams</th><td>Phí pilot theo dự án; sau kiểm chứng: gói cam kết theo tháng kèm phí video vượt định mức (mức giá còn là đề xuất).</td></tr>
+          <tr><th>Key Resources</th><td>Hybrid AI, Product Truth Store, Ground Truth độc lập, Rule Engine.</td></tr>
+          <tr><th>Key Activities</th><td>Xử lý video, xác minh nguồn, giảm bỏ sót và cảnh báo nhầm, kiểm soát chi phí.</td></tr>
+          <tr><th>Key Partners</th><td>Nhà cung cấp AI/cloud, agency và thương hiệu pilot, chủ dữ liệu sản phẩm, chuyên gia QA.</td></tr>
+          <tr><th>Cost Structure</th><td>Nhân sự kỹ thuật, dữ liệu và xác minh nhãn, Gemini API, hạ tầng, onboarding, bán hàng, bảo mật.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 05 -->
+    <section class="sec" id="quan-ly" aria-labelledby="h05">
+      <span class="eyebrow">05 · Quản lý dự án</span>
+      <h2 id="h05">CPMAI kết hợp Agile/Scrum</h2>
+      <p class="sub">Dự án chia thành bốn Sprint, mỗi Sprint khoảng hai tuần, đi qua các bước CPMAI: hiểu bài toán kinh doanh, chuẩn bị dữ liệu, thiết kế và thử nghiệm AI, đánh giá, lập kế hoạch vận hành.</p>
+
+      <h3>Sprint plan</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Sprint</th><th>Mục tiêu</th><th>Backlog</th><th>Đầu ra cần có</th><th>Phụ trách chính</th></tr></thead>
+        <tbody>
+          <tr><td><b>Sprint 1</b><br>Tuần 1-2</td><td>Chốt bài toán, phạm vi và yêu cầu</td><td>PB01-PB06</td><td>Scope, stakeholder, yêu cầu nghiệp vụ, checklist lỗi, cấu trúc dữ liệu</td><td>Trâm, Cẩm Thư, Thanh Vy, Tường Vy</td></tr>
+          <tr><td><b>Sprint 2</b><br>Tuần 3-4</td><td>Dataset phiên bản đầu, kiểm chứng kỹ thuật</td><td>PB07-PB12</td><td>Video công khai và video lỗi kiểm soát, Ground Truth, thử OCR/VLM</td><td>Thanh Vy, Cẩm Thư, Trâm, Phúc, Tường Vy</td></tr>
+          <tr><td><b>Sprint 3</b><br>Tuần 5-6</td><td>MVP nhận video, phát hiện lỗi, trả ba trạng thái</td><td>PB13-PB18</td><td>Prototype, bộ 80 video có Ground Truth, Actual Evaluation</td><td>Phúc, Trâm, Tường Vy, Thanh Vy, Cẩm Thư</td></tr>
+          <tr><td><b>Sprint 4</b><br>Tuần 7-8</td><td>Kiểm tra tính hữu ích với người dùng, hoàn thiện kết luận</td><td>PB19-PB21</td><td>User test, Business Case cập nhật, báo cáo cuối kỳ</td><td>Cẩm Thư, Tường Vy, Trâm, Thanh Vy</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Mốc thời gian chính</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Ngày</th><th>Mốc</th></tr></thead>
+        <tbody>
+          <tr><td>02/10, 09/10, 16/10, 23/10, 30/10, 06/11/2026</td><td>Họp nhóm tối thứ Sáu hằng tuần, gắn với Sprint 1-4</td></tr>
+          <tr><td>03/10/2026</td><td>Báo cáo tiến độ lần 1</td></tr>
+          <tr><td>24/10/2026</td><td>Risk Register v2 (18 rủi ro) sau Sprint 2</td></tr>
+          <tr><td>27/10/2026</td><td>Kế hoạch nước rút: chuyển sang hai luồng song song (prototype/dữ liệu và đánh giá/báo cáo)</td></tr>
+          <tr><td>02/11/2026</td><td>Chạy Actual Evaluation trên 80 video</td></tr>
+          <tr><td>06/11/2026</td><td>Thuyết trình</td></tr>
+          <tr><td>09/11/2026</td><td>Rà soát báo cáo cuối kỳ; bổ sung minh chứng Audit Log (PB17)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Product Backlog (PB01-PB21)</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>ID</th><th>Hạng mục</th><th>Phụ trách</th><th>Ưu tiên</th><th>Tình trạng đến 09/11/2026</th></tr></thead>
+        <tbody>
+          <tr><td>PB01</td><td>Xác định vấn đề và phạm vi case Ecomobi</td><td>Trâm</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> Problem Statement, phạm vi</td></tr>
+          <tr><td>PB02</td><td>Business Understanding, business case ban đầu</td><td>Cẩm Thư</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> số liệu doanh nghiệp chưa kiểm chứng độc lập</td></tr>
+          <tr><td>PB03</td><td>Stakeholder và yêu cầu nghiệp vụ</td><td>Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> Stakeholder Map, yêu cầu</td></tr>
+          <tr><td>PB04</td><td>Phạm vi MVP và workflow</td><td>Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> mô tả MVP, user workflow</td></tr>
+          <tr><td>PB05</td><td>Danh mục lỗi cần kiểm tra</td><td>Cẩm Thư</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> danh mục lỗi và RULE01-RULE10</td></tr>
+          <tr><td>PB06</td><td>Data Inventory và cấu trúc dataset</td><td>Tường Vy, Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> Data Dictionary; cần thống nhất phiên bản</td></tr>
+          <tr><td>PB07</td><td>Thu thập video AI công khai</td><td>Cẩm Thư, Trâm, Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> 30 video công khai</td></tr>
+          <tr><td>PB08</td><td>Tạo video lỗi có kiểm soát</td><td>Thanh Vy, Phúc</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> 44 video lỗi từ 6 video gốc</td></tr>
+          <tr><td>PB09</td><td>Dữ liệu sản phẩm và claim được duyệt (Product Truth)</td><td>Phúc</td><td>Must</td><td><span class="pill rv">Một phần</span> nhiều video công khai chưa đủ thông tin xác minh</td></tr>
+          <tr><td>PB10</td><td>Hướng dẫn và tổ chức gán nhãn</td><td>Tường Vy, nhóm</td><td>Must</td><td><span class="pill rv">Một phần</span> có Ground Truth 80 video; chưa gán nhãn độc lập 2-3 người</td></tr>
+          <tr><td>PB11</td><td>Tiền xử lý video (frame, audio, OCR)</td><td>Phúc</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> pipeline trích xuất trong prototype</td></tr>
+          <tr><td>PB12</td><td>Thử nghiệm API/mô hình hiểu video</td><td>Trâm</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> chọn Gemini API; chưa đo hallucination độc lập</td></tr>
+          <tr><td>PB13</td><td>Baseline 1: rule-based</td><td>Thanh Vy</td><td>Must</td><td><span class="pill rv">Một phần</span> có thiết kế; chưa có kết quả baseline độc lập</td></tr>
+          <tr><td>PB14</td><td>Baseline 2: VLM kết hợp rule</td><td>Trâm, Phúc</td><td>Must</td><td><span class="pill rv">Một phần</span> có thiết kế Hybrid AI; chưa đo riêng</td></tr>
+          <tr><td>PB15</td><td>Scoring và logic ba trạng thái</td><td>Phúc</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> còn 5 bản ghi cần đối chiếu lý do và trạng thái</td></tr>
+          <tr><td>PB16</td><td>Prototype MVP và hàng chờ reviewer</td><td>Phúc, Tường Vy, Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> prototype và demo</td></tr>
+          <tr><td>PB17</td><td>Audit log</td><td>Cẩm Thư, Phúc</td><td>Should</td><td><span class="pill ok">Có đầu ra</span> Evidence Export JSON, lịch sử quyết định; chưa nghiệm thu phân quyền, chống sửa log</td></tr>
+          <tr><td>PB18</td><td>Đánh giá mô hình trên tập gán nhãn</td><td>Phúc, Cẩm Thư, Tường Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> Actual Evaluation 80 video; chưa đo thời gian và chi phí</td></tr>
+          <tr><td>PB19</td><td>Thử nghiệm với người dùng</td><td>Cẩm Thư</td><td>Must</td><td><span class="pill mt">Chưa có minh chứng</span></td></tr>
+          <tr><td>PB20</td><td>Cập nhật Business Case sau pilot</td><td>Tường Vy, Trâm</td><td>Should</td><td><span class="pill mt">Chưa có minh chứng</span> mới có kịch bản giả định</td></tr>
+          <tr><td>PB21</td><td>Báo cáo và tài liệu trình bày</td><td>Thanh Vy, cả nhóm</td><td>Must</td><td><span class="pill rv">Đang hoàn thiện</span></td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Ma trận RACI theo giai đoạn CPMAI</h3>
+      <p class="src">R: thực hiện · A: chịu trách nhiệm cuối cùng · C: tham vấn · I: được cập nhật</p>
+      <div class="tbl raci"><table>
+        <thead><tr><th>Hạng mục</th><th class="c">Thanh Vy</th><th class="c">Tường Vy</th><th class="c">Trâm</th><th class="c">Cẩm Thư</th><th class="c">Phúc</th></tr></thead>
+        <tbody>
+          <tr><td>Business Understanding, Business Model / Funding</td><td class="c">A</td><td class="c">R</td><td class="c">C</td><td class="c">R</td><td class="c">I</td></tr>
+          <tr><td>Project Charter &amp; Scope</td><td class="c">R, A</td><td class="c">C</td><td class="c">C</td><td class="c">C</td><td class="c">C</td></tr>
+          <tr><td>Data Production &amp; dataset Sprint 2</td><td class="c">R, A</td><td class="c">C</td><td class="c">R</td><td class="c">R</td><td class="c">R</td></tr>
+          <tr><td>Data Audit, EDA &amp; Data Leakage Check</td><td class="c">C</td><td class="c">R, A</td><td class="c">I</td><td class="c">C</td><td class="c">C</td></tr>
+          <tr><td>AI System Design &amp; Modeling</td><td class="c">A</td><td class="c">I</td><td class="c">C</td><td class="c">R</td><td class="c">R</td></tr>
+          <tr><td>Model Evaluation</td><td class="c">C</td><td class="c">R</td><td class="c">C</td><td class="c">R</td><td class="c">R, A</td></tr>
+          <tr><td>Risk Register &amp; Governance</td><td class="c">A</td><td class="c">R</td><td class="c">R</td><td class="c">R</td><td class="c">R</td></tr>
+          <tr><td>Backlog &amp; Sprint Management</td><td class="c">R, A</td><td class="c">C</td><td class="c">C</td><td class="c">C</td><td class="c">C</td></tr>
+          <tr><td>Prototype, Demo &amp; User Workflow</td><td class="c">A</td><td class="c">R</td><td class="c">I</td><td class="c">C</td><td class="c">R</td></tr>
+          <tr><td>User Testing (Sprint 4)</td><td class="c">I</td><td class="c">I</td><td class="c">C</td><td class="c">R, A</td><td class="c">C</td></tr>
+          <tr><td>Operationalization Plan</td><td class="c">A</td><td class="c">C</td><td class="c">C</td><td class="c">C</td><td class="c">R</td></tr>
+          <tr><td>Báo cáo cuối kỳ &amp; Thuyết trình</td><td class="c">R, A</td><td class="c">R</td><td class="c">R</td><td class="c">R</td><td class="c">R</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Họp nhóm và nhật ký quyết định</h3>
+      <div class="grid2">
+        <div class="card"><h4>Lịch họp</h4><p>Họp cả nhóm vào tối thứ Sáu hằng tuần: 02/10, 09/10, 16/10, 23/10, 30/10 và 06/11/2026. Nội dung: Sprint Goal, tiến độ Backlog, rủi ro phát sinh, thay đổi ưu tiên. Ngoài ra nhóm dữ liệu và nhóm kỹ thuật trao đổi khi có thay đổi nhãn hoặc kết quả thử nghiệm mới.</p></div>
+        <div class="card"><h4>Quyết định 27/10/2026</h4><p>Chuyển từ làm tuần tự sang hai luồng song song: prototype/dữ liệu và Actual Evaluation/báo cáo, để kịp mốc 02/11 và buổi thuyết trình 06/11. Ảnh hưởng tới PB10, PB16, PB18-PB21 và các rủi ro E1-E3, D6.</p></div>
+      </div>
+      <p class="note">Biên bản từng buổi họp được tổng hợp từ Backlog, báo cáo tiến độ và Sheet kiểm thử; giờ họp, thành phần tham dự và nội dung từng buổi vẫn đang được nhóm xác nhận từ chứng cứ gốc.</p>
+    </section>
+
+    <!-- 06 -->
+    <section class="sec" id="ma-nguon" aria-labelledby="h06">
+      <span class="eyebrow">06 · Mã nguồn</span>
+      <h2 id="h06">Repository và kiến trúc kỹ thuật</h2>
+      <p class="sub">Prototype là ứng dụng web chạy cục bộ: backend FastAPI, cơ sở dữ liệu SQLite, xử lý video bằng OpenCV và FFmpeg.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Thư mục / tệp</th><th>Nội dung</th></tr></thead>
+        <tbody>
+          <tr><td><code>backend.py</code></td><td>API, hàng chờ phân tích, luồng xử lý video và lưu kết quả</td></tr>
+          <tr><td><code>verifai_core/</code></td><td>Các module kiểm tra: OCR thích ứng, đối chiếu giá, claim, thương hiệu, nhãn AI, nhất quán màu sắc và chữ, kết nối Gemini, logic khuyến nghị</td></tr>
+          <tr><td><code>static/</code></td><td>Giao diện reviewer, trang chủ, one-pager</td></tr>
+          <tr><td><code>scripts/</code></td><td>Chạy đánh giá theo lô, dựng dữ liệu demo, script khởi động demo công khai, dựng website này</td></tr>
+          <tr><td><code>tests/</code></td><td>Bộ kiểm thử tự động (333 test tại thời điểm 10/11/2026)</td></tr>
+          <tr><td><code>docs/</code></td><td>Tài liệu kỹ thuật: kiến trúc, quy tắc, xác minh giá, triển khai</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Thành phần AI</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Thành phần</th><th>Vai trò</th><th>Lưu ý</th></tr></thead>
+        <tbody>
+          <tr><td>OCR (PaddleOCR)</td><td>Đọc chữ, giá và thông tin trên video</td><td>Chữ nhỏ hoặc mờ có thể bị sót</td></tr>
+          <tr><td>ASR (Whisper)</td><td>Chuyển lời thoại thành văn bản</td><td>Phụ thuộc chất lượng âm thanh</td></tr>
+          <tr><td>Gemini / VLM</td><td>Phân tích hình ảnh và ngữ cảnh quảng cáo</td><td>Có thể suy đoán; phải đối chiếu</td></tr>
+          <tr><td>OpenCV</td><td>Tách khung hình, mốc thời gian, sàng lọc hình ảnh</td><td>Không tự chứng minh đúng vị trí lỗi</td></tr>
+          <tr><td>Product Truth + Rule Engine</td><td>Đối chiếu SKU, giá, claim với nguồn chuẩn</td><td>Phụ thuộc chất lượng dữ liệu tham chiếu</td></tr>
+          <tr><td>Reviewer</td><td>Kiểm tra bằng chứng, quyết định cuối</td><td>Pass không tự động cho xuất bản</td></tr>
+        </tbody>
+      </table></div>
+      <a class="btn" data-link="repository" href="#ma-nguon">Mở repository →</a>
+    </section>
+
+    <!-- 07 -->
+    <section class="sec" id="demo" aria-labelledby="h07">
+      <span class="eyebrow">07 · Demo / prototype</span>
+      <h2 id="h07">Prototype VerifAI</h2>
+      <p class="sub">Giao diện dành cho reviewer: tải video, xem cảnh báo theo mốc thời gian, xác nhận hoặc bác từng cảnh báo, chốt quyết định và xuất bằng chứng.</p>
+      <div class="grid2">
+        <div class="card"><h4>Chức năng chính</h4><ul class="dots">
+          <li>Tải video và chọn sản phẩm tham chiếu (SKU).</li>
+          <li>Phân tích chữ, lời thoại, hình ảnh; hiển thị cảnh báo kèm khung hình và mốc thời gian.</li>
+          <li>Đề xuất Pass / Needs Review / Regenerate kèm lý do.</li>
+          <li>Reviewer xác nhận hoặc bác cảnh báo, chọn Chấp thuận, Cần kiểm tra hoặc Yêu cầu sửa.</li>
+          <li>Lưu lịch sử thao tác; xuất bằng chứng dạng JSON cho từng video hoặc ZIP cho cả phiên duyệt.</li></ul></div>
+        <div class="card"><h4>Cách xem demo</h4><p>Video demo ghi lại toàn bộ luồng kiểm tra trên prototype. Bản chạy trực tiếp được nhóm mở theo từng buổi trình bày, vì prototype chạy trên máy cục bộ.</p>
+          <a class="btn" data-link="demo_video" href="#demo">Xem video demo →</a></div>
+      </div>
+      <p class="note">Prototype chưa được kiểm thử với người dùng thực tế (PB19) và chưa có số đo đối chứng về thời gian kiểm duyệt; không dùng để phê duyệt video tự động.</p>
+    </section>
+
+    <!-- 08 -->
+    <section class="sec" id="tai-lieu-ai" aria-labelledby="h08">
+      <span class="eyebrow">08 · Tài liệu AI</span>
+      <h2 id="h08">AI Canvas, Project Charter, Data Audit, Risk Register, System Card</h2>
+      <p class="sub">Bản cập nhật theo báo cáo cuối kỳ, phản ánh kết quả Actual Evaluation trên 80 video ngày 02/11/2026.</p>
+
+      <h3 id="ai-canvas">AI Canvas</h3>
+      <div class="canvas">
+        <div class="card"><small>01 · Vấn đề</small><p>Đội QA cần kiểm tra video quảng cáo AI trước khi đăng; kiểm duyệt thủ công dễ bỏ sót lỗi giá, SKU, claim.</p></div>
+        <div class="card"><small>02 · Quyết định</small><p>AI gợi ý 3 trạng thái; reviewer quyết định cuối cùng, không tự động phê duyệt hay đăng.</p></div>
+        <div class="card"><small>03 · Giá trị</small><p>Cảnh báo có căn cứ, kèm bằng chứng; hướng đến giảm công kiểm duyệt.</p></div>
+        <div class="card"><small>04 · Tích hợp</small><p>Video + SKU → AI → Product Truth → reviewer; lưu kết quả để truy vết.</p></div>
+        <div class="card"><small>05 · Dữ liệu</small><p>80 video (6 gốc, 44 cài lỗi, 30 công khai), Product Truth để đối chiếu, Ground Truth để đánh giá.</p></div>
+        <div class="card"><small>06 · Công nghệ</small><p>Hybrid AI: Gemini/VLM, OCR/ASR, OpenCV và Rule Engine.</p></div>
+        <div class="card"><small>07 · Rủi ro</small><p>9 bỏ sót, 18 cảnh báo nhầm; Product Truth còn thiếu; Ground Truth chưa xác minh độc lập.</p></div>
+        <div class="card"><small>08 · Đầu ra</small><p>Pass / Needs Review / Regenerate kèm lý do và bằng chứng.</p></div>
+      </div>
+
+      <h3 id="project-charter">Project Charter</h3>
+      <div class="tbl"><table>
+        <tbody>
+          <tr><th>Tên dự án</th><td>VerifAI: AI Video Quality &amp; Readiness Checker (công cụ AI hỗ trợ kiểm tra chất lượng và mức sẵn sàng đăng tải của video thương mại ngắn do AI tạo)</td></tr>
+          <tr><th>Mục tiêu</th><td>Phát triển và đánh giá prototype hỗ trợ reviewer phát hiện sai lệch thông tin sản phẩm trong video quảng cáo AI, trên bộ kiểm thử 80 video</td></tr>
+          <tr><th>Người dùng</th><td>QA Reviewer, đội sản xuất video và quản lý</td></tr>
+          <tr><th>Trong phạm vi</th><td>Phân tích video, đối chiếu thông tin sản phẩm, cảnh báo lỗi, tạo báo cáo</td></tr>
+          <tr><th>Ngoài phạm vi</th><td>Tự động xuất bản video, thay thế hoàn toàn QA, dự đoán doanh thu, tích hợp Ecomobi</td></tr>
+          <tr><th>Dữ liệu</th><td>80 bản ghi: 6 video gốc, 44 lỗi kiểm soát, 30 video công khai</td></tr>
+          <tr><th>Phương pháp AI</th><td>Hybrid AI: Gemini API, OCR, ASR, OpenCV và Rule Engine</td></tr>
+          <tr><th>Sản phẩm bàn giao</th><td>Prototype, chức năng kiểm tra video, báo cáo đánh giá, tài liệu dự án</td></tr>
+          <tr><th>Tiêu chí thành công</th><td>Mục tiêu: Recall lỗi nghiêm trọng ≥80%, Precision ≥70% trên tập kiểm thử độc lập. Bộ 80 video đạt Precision 71,43%, Recall 83,33% theo quy ước gắn cờ; chưa xác minh trên tập độc lập</td></tr>
+          <tr><th>Rủi ro chính</th><td>Bỏ sót và cảnh báo nhầm, thiếu Product Truth, Ground Truth chưa xác minh độc lập, nguy cơ leakage, chi phí API, bảo vệ dữ liệu</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="data-audit">Data Audit</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Nhóm video</th><th class="num">Số video</th><th class="num">Có lỗi</th><th class="num">Không lỗi</th><th>Vai trò</th></tr></thead>
+        <tbody>
+          <tr><td>Video gốc</td><td class="num">6</td><td class="num">0</td><td class="num">6</td><td>Đối chứng, nền tảng tạo video lỗi</td></tr>
+          <tr><td>Video lỗi có kiểm soát</td><td class="num">44</td><td class="num">44</td><td class="num">0</td><td>Kiểm tra các dạng sai lệch đã biết: giá, thông tin sản phẩm, claim, chữ, hình ảnh, nhãn AI</td></tr>
+          <tr><td>Video công khai</td><td class="num">30</td><td class="num">10</td><td class="num">20</td><td>Bổ sung nguồn và cách thể hiện đa dạng hơn</td></tr>
+          <tr><td><b>Tổng</b></td><td class="num"><b>80</b></td><td class="num"><b>54</b></td><td class="num"><b>26</b></td><td></td></tr>
+        </tbody>
+      </table></div>
+      <div class="grid2">
+        <div class="card"><h4>Chất lượng dữ liệu</h4><ul class="dots">
+          <li>Đủ để đánh giá ban đầu theo kịch bản; mẫu còn nhỏ.</li>
+          <li>Nhãn "Có lỗi" chiếm 67,5% do nhóm chủ động tạo nhiều tình huống sai lệch; không phản ánh tỷ lệ lỗi ngoài thị trường.</li>
+          <li>Một số video công khai thiếu nguồn chuẩn đúng biến thể sản phẩm.</li></ul></div>
+        <div class="card"><h4>Data Leakage</h4><p>44 video lỗi đều phát triển từ 6 video gốc, nên 50 video này chỉ thuộc 6 nhóm nguồn nội dung. Đánh giá tiếp theo cần chia tập theo nhóm nguồn (group-based split).</p></div>
+        <div class="card"><h4>Quyền riêng tư</h4><p>Video có thể chứa khuôn mặt, giọng nói, tài khoản người sáng tạo và hình ảnh trẻ em. Nhóm ưu tiên liên kết tham chiếu, hạn chế sao chép video không cần thiết và bảo vệ thông tin nhận diện khi trích ảnh minh chứng.</p></div>
+        <div class="card"><h4>Ground Truth</h4><p>Nhãn nội bộ do nhóm xây dựng để tính chỉ số; không phải kết luận pháp lý. Cần gán nhãn chéo, độc lập trước khi đánh giá trên tập mới.</p></div>
+      </div>
+
+      <h3 id="danh-gia">Kết quả đánh giá (Actual Evaluation, 02/11/2026)</h3>
+      <p>Quy ước: Pass là không gắn cờ; Needs Review và Regenerate là có gắn cờ. Đối chiếu với Ground Truth ở cấp video.</p>
+      <div class="stats">
+        <div class="stat"><b>83,33%</b><small>Recall (45/54 video có lỗi)</small></div>
+        <div class="stat"><b>71,43%</b><small>Precision (45/63 video bị gắn cờ)</small></div>
+        <div class="stat"><b>76,92%</b><small>F1-score</small></div>
+        <div class="stat"><b>69,23%</b><small>FPR (18/26 video không lỗi bị gắn cờ)</small></div>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <div class="cm" role="table" aria-label="Confusion matrix">
+            <div class="h">Ground Truth</div><div class="h">AI cảnh báo</div><div class="h">Không cảnh báo</div>
+            <div class="h">Có lỗi (54)</div><div class="tp">TP = 45</div><div class="fn">FN = 9</div>
+            <div class="h">Không lỗi (26)</div><div class="fp">FP = 18</div><div class="tn">TN = 8</div>
+          </div>
+          <p class="src" style="margin-top:8px">Accuracy 66,25% (53/80 video).</p>
+        </div>
+        <div class="tbl"><table>
+          <thead><tr><th>Nhóm lỗi cài sẵn</th><th class="num">Số video</th><th class="num">Gắn cờ</th></tr></thead>
+          <tbody>
+            <tr><td>Sai giá bán</td><td class="num">8</td><td class="num">8</td></tr>
+            <tr><td>Sai tên / thông tin sản phẩm</td><td class="num">7</td><td class="num">7</td></tr>
+            <tr><td>Claim ngoài danh sách duyệt</td><td class="num">7</td><td class="num">7</td></tr>
+            <tr><td>Thiếu nhãn AI</td><td class="num">6</td><td class="num">6</td></tr>
+            <tr><td>Lỗi chữ và hiển thị</td><td class="num">7</td><td class="num">4</td></tr>
+            <tr><td>Không nhất quán hình ảnh</td><td class="num">9</td><td class="num">3</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <p class="note"><b>Giới hạn:</b> 18 cảnh báo nhầm đều nằm ở nhóm video công khai, trong đó 15 trường hợp do thiếu bằng chứng tham chiếu chứ chưa hẳn là AI nhận diện sai. Kết quả là gắn cờ nhị phân trên bộ 80 video với nhãn nội bộ; chưa chứng minh đúng loại lỗi, Recall riêng lỗi nghiêm trọng hay hiệu năng trên tập độc lập. Kết quả mô phỏng trước đó (Accuracy 85,00%) không đại diện hiệu năng thực tế.</p>
+
+      <h3 id="risk-register">AI Risk Register (bản cuối kỳ)</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Mã</th><th>Phát hiện</th><th>Ưu tiên</th><th>Biện pháp</th><th>Trạng thái 09/11/2026</th></tr></thead>
+        <tbody>
+          <tr><td>T1</td><td>9 video lỗi bị bỏ sót (3 lỗi chữ, 6 lỗi hình ảnh)</td><td>Cao</td><td>Rà từng trường hợp; tăng kiểm tra đa khung hình, OCR/VLM và bước reviewer</td><td>Đã ghi nhận; chưa có bằng chứng khắc phục</td></tr>
+          <tr><td>T2</td><td>18 cảnh báo nhầm ở video công khai, 15/18 do thiếu bằng chứng</td><td>Cao</td><td>Tách cảnh báo thiếu dữ liệu khỏi lỗi nội dung; phân tích và giảm cảnh báo nhầm</td><td>Đã phân tích; chưa chứng minh đã giảm</td></tr>
+          <tr><td>E3</td><td>21/30 video công khai thiếu bằng chứng xác minh</td><td>Cao</td><td>Chuẩn hóa nguồn, phiên bản Product Truth; yêu cầu reviewer xác minh</td><td>Đã ghi nhận; chưa xử lý xong</td></tr>
+          <tr><td>E2</td><td>Hiệu năng khác nhau giữa video lỗi kiểm soát và video công khai</td><td>Cao</td><td>Đánh giá riêng theo nhóm nguồn, mở rộng dữ liệu độc lập</td><td>Đã đối chiếu theo nguồn; chưa có kiểm thử độc lập bổ sung</td></tr>
+          <tr><td>D2</td><td>Ground Truth chưa xác nhận độc lập; 5 bản ghi đầu ra chưa nhất quán</td><td>Cao</td><td>Đối soát GOC06, LOI13, LOI25, LOI29, LOI38; gán nhãn chéo</td><td>Cần xác minh</td></tr>
+          <tr><td>D6</td><td>44 video lỗi tạo từ 6 video gốc (nguy cơ leakage)</td><td>Trung bình</td><td>Chia tập theo nhóm video gốc</td><td>Đã nhận diện; chưa có chứng cứ rò rỉ thực tế</td></tr>
+          <tr><td>E1</td><td>Kết quả mô phỏng (85,00%) có thể bị hiểu nhầm là kết quả thực tế (66,25%)</td><td>Trung bình</td><td>Gắn nhãn từng bộ kết quả trong báo cáo và slide</td><td>Đã phân biệt trong báo cáo</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="system-card">AI System Card</h3>
+      <div class="tbl"><table>
+        <tbody>
+          <tr><th>Người dùng mục tiêu</th><td>Reviewer QC trong quy trình QA, đội vận hành nội dung, đơn vị quản lý video quảng cáo</td></tr>
+          <tr><th>Mục đích sử dụng</th><td>Sàng lọc lỗi, hỗ trợ đối chiếu Product Truth và đưa ra đề xuất kiểm duyệt</td></tr>
+          <tr><th>Không dùng cho</th><td>Phê duyệt tự động, kết luận pháp lý, phát hiện deepfake tổng quát, thay thế reviewer</td></tr>
+          <tr><th>Dữ liệu</th><td>80 video (6 gốc, 44 lỗi kiểm soát, 30 công khai); Ground Truth nội bộ</td></tr>
+          <tr><th>Mô hình / API</th><td>Gemini (gemini-3.5-flash trong lần đánh giá 80 video), OCR, ASR, OpenCV, Product Truth và Rule Engine</td></tr>
+          <tr><th>Chỉ số kỹ thuật</th><td>Accuracy 66,25%; Precision 71,43%; Recall 83,33%; F1-score 76,92%; FPR 69,23%</td></tr>
+          <tr><th>Chỉ số kinh doanh</th><td>Mục tiêu giảm thời gian review và số vòng sửa; chưa có thử nghiệm đối chứng</td></tr>
+          <tr><th>Rủi ro</th><td>Bỏ sót, cảnh báo nhầm, hallucination, dữ liệu tham chiếu sai, thiên lệch, quyền riêng tư, phụ thuộc API</td></tr>
+          <tr><th>Kiểm soát</th><td>Xuất bằng chứng JSON theo lượt kiểm tra; giao diện xác nhận cảnh báo, chốt quyết định reviewer, lịch sử xử lý. Ở cấp prototype; chưa kiểm chứng phân quyền, chống sửa log, giám sát production</td></tr>
+          <tr><th>Giám sát khi triển khai</th><td>Recall, Precision, FPR, thời gian xử lý, chi phí/video, phản hồi reviewer, lỗi API, thay đổi Product Truth (kế hoạch)</td></tr>
+          <tr><th>Owner sau go-live</th><td>Đề xuất: Product Owner, AI/Technical Lead, Data/QA Lead, Governance Lead</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="go-no-go">Quyết định Go/No-Go</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Phạm vi sử dụng</th><th>Quyết định</th><th>Cơ sở</th></tr></thead>
+        <tbody>
+          <tr><td>Tiếp tục nghiên cứu, hoàn thiện prototype</td><td><span class="pill ok">Go</span></td><td>Đã có kết quả chạy thực tế và xác định được vấn đề cần cải thiện</td></tr>
+          <tr><td>Pilot có giám sát</td><td><span class="pill rv">Go có điều kiện</span></td><td>Cần Product Truth phù hợp, reviewer quyết định cuối, cơ chế theo dõi chất lượng</td></tr>
+          <tr><td>Tự động phê duyệt video</td><td><span class="pill rd">No-Go</span></td><td>Vẫn có video có lỗi nhận Pass</td></tr>
+          <tr><td>Thương mại hóa diện rộng</td><td><span class="pill rd">Chưa đủ điều kiện</span></td><td>Chưa có tập đánh giá độc lập, số đo hiệu quả kiểm duyệt và chi phí vận hành thực tế</td></tr>
+        </tbody>
+      </table></div>
+      <p>Mục tiêu cho giai đoạn tiếp theo trên dữ liệu độc lập: Recall ≥90%, Precision ≥80%, FPR ≤30% (chỉ tiêu cải thiện, chưa đạt).</p>
+
+      <h3 id="ai-disclosure">AI Use Disclosure</h3>
+      <p>Nhóm dùng công cụ AI ở hai vai trò: (1) hỗ trợ nghiên cứu, chuẩn bị dữ liệu, thiết kế prompt và biên tập tài liệu (ChatGPT, Claude); tạo video gốc và clip lỗi kiểm thử (Veo 3.1); (2) phân tích video trong prototype (Gemini API). Mọi đầu ra AI được nhóm đối chiếu với video, Product Truth, Ground Truth và Sheet kiểm thử trước khi sử dụng; trách nhiệm kiểm chứng và quyết định thuộc về nhóm.</p>
+      <p class="src">Khung tham chiếu quản trị rủi ro: NIST AI RMF 1.0 và NIST AI 600-1 (Generative AI Profile). Đây là khung tự nguyện, không phải chứng nhận tuân thủ.</p>
+    </section>
+
+    <!-- 09 -->
+    <section class="sec" id="one-pager" aria-labelledby="h09">
+      <span class="eyebrow">09 · Product one-pager</span>
+      <h2 id="h09">Một trang giới thiệu VerifAI</h2>
+      <p>Tóm tắt vấn đề, người dùng, giải pháp, tính năng chính, quy trình kiểm tra và lợi ích, có thể in hoặc lưu thành PDF.</p>
+      <a class="btn" href="one-pager.html">Xem one-pager →</a>
+    </section>
+  </main>
+</div>
+<footer>VerifAI · Nhóm 06, 2026. VerifAI hỗ trợ kiểm duyệt; mọi cảnh báo cần được người duyệt xác minh trước khi quyết định phát hành.</footer>
+<script>
+(() => {
+  const links = [...document.querySelectorAll('.toc a')];
+  const map = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { links.forEach(a => a.classList.remove('on')); map.get(e.target.id)?.classList.add('on'); }
+  }), { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('main section[id]').forEach(s => io.observe(s));
+})();
+</script>
+<script>window.VF_LINKS={"demo_video": "https://drive.google.com/file/d/18nhrztrHlZcnP9e7tKsnjRsJqovjXirf/view?usp=drive_link", "repository": "https://github.com/nguyendinhphuc-tdzy/verifai_mvp"};</script>
+<script>
+(() => {
+  const L = window.VF_LINKS || {};
+  document.querySelectorAll('[data-link]').forEach(a => {
+    const url = (L[a.dataset.link] || '').trim();
+    if (url) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.classList.remove('pending'); a.removeAttribute('aria-disabled'); }
+    else {
+      a.title = 'Đang cập nhật';
+      const chip = a.closest('.doclinks'), btn = a.classList.contains('btn');
+      if (chip || btn) { a.classList.add(chip ? 'pending' : 'pending-link'); a.setAttribute('aria-disabled', 'true'); a.removeAttribute('href'); a.textContent = a.textContent.replace(/\s*→\s*$/, '') + ' (đang cập nhật)'; }
+    }
+  });
+})();
+</script>
+</body>
+</html>

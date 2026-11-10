@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Hồ sơ dự án VerifAI: tổng quan, định hướng sản phẩm, quản lý dự án, mã nguồn, demo và tài liệu AI của Nhóm 06.">
+<meta name="theme-color" content="#10362e">
+<title>VerifAI · Hồ sơ dự án</title>
+<script>try{if(localStorage.getItem('vfTheme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lexend:wght@500;600;700&display=swap">
+<style>
+:root{
+  --paper:#f4ebdb;--sheet:#fffcf6;--edge:#d6c8ac;--hair:#e7dcc6;
+  --ink:#10362e;--text:#2b3d36;--muted:#55645d;--label:#9a6a12;--accent:#1f7a67;
+  --tint:#e3f1ea;--warn:#fbecc4;--warn-ink:#6b4700;--bad:#f6dcd2;--bad-ink:#7a2e17;
+  --marker:rgba(232,182,74,.45);--gold:#e8b64a;
+  --tex:url(/static/home/paper.webp);
+  --display:"Lexend","Be Vietnam Pro",system-ui,sans-serif;
+  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --leaf:16px 16px 36px 16px;--leaf-lg:22px 22px 56px 22px;
+}
+:root[data-theme="dark"]{
+  --paper:#0b1915;--sheet:#10231e;--edge:rgba(255,255,255,.16);--hair:rgba(255,255,255,.09);
+  --ink:#f1e7cf;--text:#d3dfd9;--muted:#a3b8b0;--label:#e8c46a;--accent:#7fd3b8;--tint:#173a32;
+  --warn:#3d3214;--warn-ink:#f3d58a;--bad:#3d2219;--bad-ink:#f2b39e;
+  --marker:rgba(232,182,74,.3);--gold:#e8c46a;--tex:none;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:20px}
+body{margin:0;background:var(--paper) var(--tex) 0 0/512px 512px;color:var(--text);font:15px/1.65 var(--body);
+  padding:24px max(16px,env(safe-area-inset-right,0px)) 56px max(16px,env(safe-area-inset-left,0px))}
+h1,h2,h3,h4{font-family:var(--display);color:var(--ink);text-wrap:balance;margin:0}
+p{margin:0 0 12px}
+a{color:var(--accent);text-underline-offset:2px}
+.mk{background:linear-gradient(transparent 58%,var(--marker) 0);padding:0 .1em}
+.eyebrow{display:block;font:700 12px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--label);margin-bottom:10px}
+
+/* Top bar */
+.topbar{max-width:1180px;margin:0 auto 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.topbar a,.topbar button{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:999px;font:600 14px/1 var(--body);text-decoration:none;cursor:pointer;color:var(--ink);border:1.5px solid var(--edge);background:var(--sheet)}
+.topbar a:hover,.topbar button:hover{border-color:var(--ink)}
+.topbar .go{color:#1b1405;background:#e8b64a;border-color:#946a10}
+.topbar .acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Layout */
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;align-items:start}
+.toc{position:sticky;top:20px;background:var(--sheet);border:1.5px solid var(--edge);border-radius:var(--leaf);padding:18px 16px}
+.toc b{display:block;font:700 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--label);margin-bottom:12px}
+.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.toc a{display:grid;grid-template-columns:28px 1fr;gap:4px;padding:6px 8px;border-radius:10px;color:var(--text);text-decoration:none;font-size:14px;line-height:1.35}
+.toc a span{font:700 12px/1.6 var(--display);color:var(--muted)}
+.toc a:hover,.toc a.on{background:var(--tint);color:var(--ink)}
+main{min-width:0}
+.hero{background:var(--sheet);border:1.5px solid var(--edge);border-radius:var(--leaf-lg);padding:30px 34px;margin-bottom:20px}
+.hero h1{font-size:clamp(30px,4.6vw,46px);line-height:1.08;letter-spacing:-.02em;margin-bottom:12px}
+.hero .lead{font-size:17px;max-width:68ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{display:inline-block;padding:4px 12px;border-radius:999px;border:1.5px solid var(--edge);font-size:13px;font-weight:600;color:var(--ink);background:var(--sheet)}
+.sec{background:var(--sheet);border:1.5px solid var(--edge);border-radius:var(--leaf-lg);padding:30px 34px;margin-bottom:20px}
+.sec>h2{font-size:clamp(22px,2.6vw,28px);line-height:1.25;margin-bottom:6px}
+.sec>.sub{color:var(--muted);margin-bottom:20px}
+.sec h3{font-size:17.5px;margin:26px 0 10px}
+.sec h3:first-of-type{margin-top:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.card{border:1.5px solid var(--hair);border-radius:var(--leaf);padding:16px 18px}
+.card h4{font-size:15.5px;margin-bottom:6px}
+.card p:last-child,.card ul:last-child{margin-bottom:0}
+.card.tint{background:var(--tint);border-color:transparent}
+ul.dots{margin:0 0 12px;padding-left:20px}
+ul.dots li{margin:3px 0}
+.note{margin:14px 0 0;padding:12px 16px;border-left:3px solid var(--gold);background:var(--warn);color:var(--warn-ink);border-radius:0 12px 12px 0;font-size:14px}
+.note b{color:inherit}
+.src{font-size:12.5px;color:var(--muted)}
+.tbl{width:100%;overflow-x:auto;border:1.5px solid var(--hair);border-radius:14px;margin:4px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--hair)}
+th{font:600 13px/1.4 var(--body);color:var(--ink);background:var(--tint);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.c{text-align:center}
+.raci td.c{font-weight:700;color:var(--ink)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap}
+.pill.ok{background:#dcefe6;color:#14513f}.pill.rv{background:#fbecc4;color:#6b4700}.pill.rd{background:#f6dcd2;color:#7a2e17}.pill.mt{background:var(--hair);color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:6px 0 4px}
+.stat{border:1.5px solid var(--hair);border-radius:var(--leaf);padding:14px 16px}
+.stat b{display:block;font:700 26px/1.1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:13px}
+.cm{display:grid;grid-template-columns:auto repeat(2,minmax(0,1fr));gap:6px;max-width:460px;font-size:14px}
+.cm div{padding:10px 12px;border-radius:10px;background:var(--tint);text-align:center}
+.cm .h{background:transparent;font-weight:700;color:var(--ink)}
+.cm .tp{background:#cdebdc;color:#14513f;font-weight:700}.cm .tn{background:#e3e8e5;color:#33433c;font-weight:700}
+.cm .fp{background:#e4dcfa;color:#4b3c86;font-weight:700}.cm .fn{background:#fbe3b4;color:#6b4700;font-weight:700}
+.steps{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;counter-reset:s}
+.steps li{counter-increment:s;border:1.5px solid var(--hair);border-radius:var(--leaf);padding:14px}
+.steps li::before{content:counter(s);display:grid;place-items:center;width:30px;height:30px;border-radius:10px 10px 18px 10px;background:var(--ink);color:var(--sheet);font:700 14px/1 var(--display);margin-bottom:8px}
+.steps li:last-child::before{background:var(--gold);color:#1b1405}
+.steps b{display:block;color:var(--ink);font-size:14.5px;margin-bottom:2px}
+.steps span{font-size:13.5px}
+.canvas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.canvas .card small{display:block;font:700 12px/1 var(--display);color:var(--label);margin-bottom:6px}
+.pending{border:1.5px dashed var(--edge);border-radius:var(--leaf);padding:18px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:999px;font:600 14px/1 var(--body);text-decoration:none;color:#1b1405;background:#e8b64a;border:1.5px solid #946a10;margin-top:4px}
+.btn.pending-link{background:transparent;color:var(--muted);border-style:dashed;border-color:var(--edge);pointer-events:none}
+footer{max-width:1180px;margin:8px auto 0;color:var(--muted);font-size:13px;text-align:center}
+
+@media (max-width:980px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  .toc{position:static}
+  .toc ol{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+  .canvas{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  body{padding-top:12px}
+  .hero,.sec{padding:22px 18px}
+  .grid2,.grid3,.canvas,.steps{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media print{
+  body{background:#fff;padding:0}.topbar,.toc{display:none}.wrap{display:block}
+  .sec,.hero{break-inside:auto;border:0;padding:12px 0}.card,.tbl,tr{break-inside:avoid}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Điều hướng">
+  <a href="index.html">← Trang chủ</a>
+  <span class="acts"><a href="one-pager.html">One-pager</a><button type="button" onclick="window.print()">In / Lưu PDF</button><a class="go" data-link="demo_video" href="#demo">Xem video demo →</a></span>
+</nav>
+
+<div class="wrap">
+  <aside class="toc" aria-label="Mục lục">
+    <b>Hồ sơ dự án</b>
+    <ol>
+      <li><a href="#tong-quan"><span>01</span>Tổng quan dự án</a></li>
+      <li><a href="#thanh-vien"><span>02</span>Thành viên &amp; liên hệ</a></li>
+      <li><a href="#thoa-thuan"><span>03</span>Thỏa thuận nhóm</a></li>
+      <li><a href="#dinh-huong"><span>04</span>Định hướng sản phẩm</a></li>
+      <li><a href="#quan-ly"><span>05</span>Quản lý dự án</a></li>
+      <li><a href="#ma-nguon"><span>06</span>Mã nguồn</a></li>
+      <li><a href="#demo"><span>07</span>Demo / prototype</a></li>
+      <li><a href="#tai-lieu-ai"><span>08</span>Tài liệu AI</a></li>
+      <li><a href="#one-pager"><span>09</span>Product one-pager</a></li>
+    </ol>
+  </aside>
+
+  <main>
+    <header class="hero">
+      <span class="eyebrow">Nhóm 06 · Viện Đổi mới sáng tạo, UEH</span>
+      <h1>Hồ sơ dự án VerifAI</h1>
+      <p class="lead">VerifAI (AI Video Quality &amp; Readiness Checker) là lớp sàng lọc video quảng cáo do AI tạo <span class="mk">trước khi xuất bản</span>: đọc nội dung video, đối chiếu với dữ liệu chuẩn của sản phẩm theo SKU và đưa ra cảnh báo kèm lý do để người duyệt quyết định.</p>
+      <div class="meta"><span class="chip">Giai đoạn: Prototype / MVP</span><span class="chip">Ngành thử nghiệm: Mẹ &amp; Bé</span><span class="chip">Bối cảnh nghiên cứu: Ecomobi (case study)</span><span class="chip">Cập nhật: 10/11/2026</span></div>
+    </header>
+
+    <!-- 01 -->
+    <section class="sec" id="tong-quan" aria-labelledby="h01">
+      <span class="eyebrow">01 · Tổng quan dự án</span>
+      <h2 id="h01">Vấn đề kinh doanh và bối cảnh</h2>
+      <p class="sub">Video quảng cáo tạo bằng AI được sản xuất ngày càng nhanh, trong khi việc kiểm tra chất lượng vẫn chủ yếu làm thủ công.</p>
+
+      <h3>Bối cảnh</h3>
+      <p>Generative AI giúp doanh nghiệp và nhà sáng tạo nội dung làm video quảng cáo nhanh và rẻ hơn. Theo Creators' Toolkit Report của Adobe (khảo sát qua Harris Poll với hơn 16.000 nhà sáng tạo nội dung tại 8 quốc gia, công bố 28/10/2025), 86% người tham gia đang dùng công cụ creative generative AI trong công việc. Tốc độ sản xuất tăng kéo theo yêu cầu kiểm soát chất lượng nội dung trước khi phát hành.</p>
+      <p>Với ngành Mẹ &amp; Bé, sai lệch về công dụng, thành phần, dung tích hoặc hình ảnh sản phẩm ảnh hưởng trực tiếp đến độ tin cậy của quảng cáo, và một số nhóm sản phẩm (như sữa cho trẻ nhỏ) chịu quy định quảng cáo riêng.</p>
+      <p class="src">Nguồn: <a href="https://news.adobe.com/news/2025/10/adobe-max-2025-creators-survey" target="_blank" rel="noopener">Adobe News, 28/10/2025</a>.</p>
+
+      <h3>Ba vấn đề trọng tâm</h3>
+      <div class="grid3">
+        <div class="card"><h4>Sai lệch thông tin</h4><p>Video có thể sai giá, SKU, dung tích, tên sản phẩm, nêu claim ngoài danh sách được duyệt hoặc thay đổi hình ảnh sản phẩm giữa các cảnh.</p></div>
+        <div class="card"><h4>Kiểm duyệt thủ công kéo dài</h4><p>Reviewer phải xem video, đọc chữ, nghe lời thoại, tra dữ liệu chuẩn và ghi lỗi cho từng video. Sản lượng càng tăng, công việc lặp lại càng nhiều.</p></div>
+        <div class="card"><h4>Thiếu nhất quán</h4><p>Cùng một lỗi có thể được xử lý khác nhau giữa các người duyệt; các yêu cầu tuân thủ như nhãn nội dung AI dễ bị bỏ sót.</p></div>
+      </div>
+
+      <h3>Ví dụ thực tế: một video quảng cáo công khai</h3>
+      <div class="grid2">
+        <div class="card tint"><h4>528 ml và 350 ml trong cùng một video</h4><p>Một video quảng cáo công khai (gắn nhãn AI-generated) về sữa dưỡng da ILLIYOON Ceramide Ato: biển trưng bày ghi <b>528 ml</b>, trong khi nhãn chai ở cảnh cận thể hiện <b>350 ml</b>. Trang bán trên Shopee có các lựa chọn 350 ml và 508 ml. Dấu hiệu không khớp xuất hiện khoảng giây 4,6 đến 7,5.</p></div>
+        <div class="card"><h4>VerifAI làm gì trong tình huống này</h4><p>Hướng tới phát hiện điểm không khớp, đối chiếu với dữ liệu chuẩn của sản phẩm (Product Truth) và đưa ra cảnh báo có mốc thời gian để reviewer xác minh. Prototype đã gắn cờ video này với cảnh báo về dung tích không nhất quán.</p></div>
+      </div>
+
+      <h3>Phạm vi dự án</h3>
+      <div class="grid2">
+        <div class="card"><h4>Trong phạm vi</h4><ul class="dots">
+          <li>Kiểm tra video thương mại ngắn có dùng AI, tập trung ngành Mẹ &amp; Bé.</li>
+          <li>Đối chiếu video với Product Truth: SKU, tên, giá, dung tích, claim được duyệt.</li>
+          <li>Phát hiện sai thông tin sản phẩm, hình ảnh không nhất quán, nguy cơ vi phạm quy tắc.</li>
+          <li>Phân loại Pass / Needs Review / Regenerate kèm bằng chứng và vị trí lỗi.</li>
+          <li>Human-in-the-loop: reviewer quyết định cuối cùng.</li></ul></div>
+        <div class="card"><h4>Ngoài phạm vi</h4><ul class="dots">
+          <li>Tạo video, hoặc tự động đăng/gỡ video trên nền tảng.</li>
+          <li>Đưa ra kết luận pháp lý chính thức.</li>
+          <li>Thay thế hoàn toàn reviewer bằng AI.</li>
+          <li>Tích hợp production vào hệ thống của Ecomobi.</li>
+          <li>Phát hiện deepfake tổng quát hoặc mở rộng sang mọi ngành hàng.</li></ul></div>
+      </div>
+      <p class="note"><b>Về Ecomobi:</b> dự án lấy Ecomobi làm bối cảnh nghiên cứu vì doanh nghiệp đã phát triển AI Video cho Creator Commerce. Prototype được nhóm xây dựng độc lập, chưa tích hợp, chưa pilot và chưa được Ecomobi sử dụng; nhóm chưa có quyền truy cập dữ liệu nội bộ của doanh nghiệp.</p>
+    </section>
+
+    <!-- 02 -->
+    <section class="sec" id="thanh-vien" aria-labelledby="h02">
+      <span class="eyebrow">02 · Thành viên &amp; liên hệ</span>
+      <h2 id="h02">Nhóm 06 và vai trò</h2>
+      <p class="sub">Chương trình Cử nhân Công nghệ và Đổi mới sáng tạo, Viện Đổi mới sáng tạo, Đại học Kinh tế TP.HCM (UEH).</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Thành viên</th><th>Vai trò</th><th>Trách nhiệm chính</th></tr></thead>
+        <tbody>
+          <tr><td><b>Trần Thị Thanh Vy</b></td><td>Project Manager / Scrum Master kiêm Data Production Lead</td><td>Điều phối nhóm, Backlog và Sprint; trực tiếp tạo và chỉnh sửa bộ 44 video lỗi kiểm soát; tổng hợp dữ liệu Sprint 2 và báo cáo cuối kỳ.</td></tr>
+          <tr><td><b>Trần Tường Vy</b></td><td>Business Model &amp; Funding Planning kiêm UI/UX Support</td><td>Mô hình kinh doanh và kế hoạch vốn; Data Audit, EDA, kiểm tra leakage; hỗ trợ thiết kế giao diện và trải nghiệm.</td></tr>
+          <tr><td><b>Lê Ngọc Bảo Trâm</b></td><td>AI Strategy &amp; Responsible AI</td><td>So sánh và lựa chọn phương án AI/API; định hướng sản phẩm; quản trị AI có trách nhiệm; tìm nguồn video công khai.</td></tr>
+          <tr><td><b>Phạm Thị Cẩm Thư</b></td><td>Business Analysis &amp; AI System Design</td><td>Phân tích bài toán và yêu cầu nghiệp vụ; kiến trúc Hybrid AI; đánh giá rủi ro; phụ trách kế hoạch User Testing.</td></tr>
+          <tr><td><b>Nguyễn Đình Phúc</b></td><td>Technical / AI Engineering &amp; Prototype Lead</td><td>Xây dựng prototype VerifAI, quy trình xử lý video, logic kiểm tra và ba trạng thái; kiểm thử kỹ thuật, Evidence Export và demo.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Liên hệ nhóm: xem mục <a href="index.html#lien-he">Liên hệ</a> trên trang chủ.</p>
+    </section>
+
+    <!-- 03 -->
+    <section class="sec" id="thoa-thuan" aria-labelledby="h03">
+      <span class="eyebrow">03 · Thỏa thuận nhóm</span>
+      <h2 id="h03">Thỏa thuận thành lập nhóm</h2>
+      <div class="pending"><b>Đang cập nhật.</b> Bản thỏa thuận thành lập nhóm sẽ được đăng sau khi tất cả thành viên xác nhận bản cuối.</div>
+      <h3>Nguyên tắc làm việc đã thống nhất</h3>
+      <ul class="dots">
+        <li>Họp cả nhóm một lần mỗi tuần vào tối thứ Sáu; Thanh Vy điều phối.</li>
+        <li>Quản lý Backlog, Risk Register và tài liệu chung trên Google Sheets và Google Drive.</li>
+        <li>Phân công theo ma trận RACI (xem mục 05); mỗi hạng mục có một người chịu trách nhiệm cuối cùng.</li>
+        <li>Không đánh dấu một hạng mục là hoàn thành khi chưa có minh chứng; kết quả mô phỏng luôn được ghi rõ là mô phỏng.</li>
+      </ul>
+    </section>
+
+    <!-- 04 -->
+    <section class="sec" id="dinh-huong" aria-labelledby="h04">
+      <span class="eyebrow">04 · Định hướng sản phẩm</span>
+      <h2 id="h04">Product Vision, người dùng và kịch bản demo</h2>
+
+      <h3>Product Vision</h3>
+      <p>VerifAI hướng đến trở thành <span class="mk">lớp kiểm soát chất lượng thông minh</span>, giúp doanh nghiệp phát hiện và xử lý sớm sai sót trong video thương mại do AI tạo ra trước khi phát hành. Thay vì chỉ xác định video có do AI tạo hay không, VerifAI đánh giá mức độ chính xác, nhất quán và sẵn sàng xuất bản của nội dung. Hệ thống không thay thế reviewer mà giúp họ quyết định dựa trên bằng chứng và tiêu chí kiểm tra nhất quán.</p>
+
+      <h3>Target Users</h3>
+      <div class="grid2">
+        <div class="card"><h4>Người dùng chính: Reviewer QC / Content QA</h4><p>Kiểm tra và phê duyệt video trước khi phát hành. Cần phát hiện lỗi nhanh, biết lỗi nằm ở đâu, giảm thao tác kiểm tra lặp lại.</p></div>
+        <div class="card"><h4>Người dùng thứ cấp: Operations / Social Commerce</h4><p>Quản lý sản xuất và phân phối video. Cần theo dõi trạng thái kiểm duyệt và số vòng chỉnh sửa.</p></div>
+        <div class="card"><h4>Người quyết định mua</h4><p>Quản lý vận hành hoặc ngân sách tại đơn vị sử dụng.</p></div>
+        <div class="card"><h4>Khách hàng B2B ưu tiên</h4><p>Agency marketing, đơn vị tiếp thị liên kết, tổ chức quản lý video cho nhiều thương hiệu, có quy trình QA và dữ liệu sản phẩm đáng tin cậy. Sàn thương mại điện tử là thị trường dài hạn.</p></div>
+      </div>
+
+      <h3>Điểm khác biệt</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Tiêu chí</th><th>Kiểm duyệt thủ công</th><th>AI đa năng</th><th>VerifAI</th></tr></thead>
+        <tbody>
+          <tr><td><b>Đối chiếu</b></td><td>Reviewer tự xem và tra nguồn</td><td>Cần prompt và nguồn do người dùng cung cấp</td><td>Đối chiếu video với Product Truth theo SKU</td></tr>
+          <tr><td><b>Đầu ra</b></td><td>Ghi chú, checklist</td><td>Phản hồi hội thoại</td><td>Pass / Needs Review / Regenerate kèm lý do và bằng chứng</td></tr>
+          <tr><td><b>Hạn chế</b></td><td>Tốn công khi nhiều video</td><td>Phụ thuộc câu hỏi và dữ liệu đưa vào</td><td>Cần cải thiện độ chính xác và chất lượng cảnh báo</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Ba trạng thái đề xuất</h3>
+      <div class="grid3">
+        <div class="card"><h4><span class="pill ok">Pass</span></h4><p>Chưa phát hiện vấn đề trong phạm vi đã kiểm tra. Không bảo đảm video hoàn toàn đúng và không tự động cho phép xuất bản.</p></div>
+        <div class="card"><h4><span class="pill rv">Needs Review</span></h4><p>Cần người xem lại: có dấu hiệu bất thường, hoặc thiếu dữ liệu để xác minh.</p></div>
+        <div class="card"><h4><span class="pill rd">Regenerate</span></h4><p>Đề xuất sửa hoặc làm lại nội dung khi có lỗi rõ so với dữ liệu sản phẩm. Là khuyến nghị, không phải quyết định tự động.</p></div>
+      </div>
+
+      <h3>Demo Scenario: luồng kiểm tra một video</h3>
+      <ol class="steps">
+        <li><b>Tải video, chọn SKU</b><span>Xác định đúng sản phẩm và biến thể cần đối chiếu.</span></li>
+        <li><b>Trích xuất</b><span>Chữ trên hình (OCR), lời thoại (ASR), hình ảnh và ngữ cảnh (VLM).</span></li>
+        <li><b>Đối chiếu</b><span>So với Product Truth và bộ quy tắc; ghi nhận chỗ thiếu căn cứ.</span></li>
+        <li><b>Kết quả và lý do</b><span>Loại lỗi, mốc thời gian khi đủ bằng chứng.</span></li>
+        <li><b>Reviewer quyết định</b><span>Xác nhận hoặc bác từng cảnh báo, chọn quyết định cuối.</span></li>
+      </ol>
+
+      <h3>Tình huống minh họa: sai giá (VID_GOC01 và VID_LOI01)</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Nội dung</th><th>VID_GOC01</th><th>VID_LOI01</th></tr></thead>
+        <tbody>
+          <tr><td>Sản phẩm</td><td colspan="2">SKU001, sữa tắm gội trẻ em (dữ liệu giả lập để kiểm thử)</td></tr>
+          <tr><td>Loại video</td><td>Video gốc đối chứng</td><td>Video cài lỗi có kiểm soát</td></tr>
+          <tr><td>Giá trong video</td><td>149.000 VND</td><td>99.000 VND (giá tham chiếu 149.000 VND)</td></tr>
+          <tr><td>Kết quả VerifAI</td><td><span class="pill ok">Pass</span></td><td><span class="pill rd">Regenerate</span> · lỗi "Sai giá" · RULE03</td></tr>
+          <tr><td>Việc của reviewer</td><td>Vẫn xác minh trước khi duyệt</td><td>Đối chiếu giá với Product Truth, xác nhận lỗi, yêu cầu sửa giá</td></tr>
+        </tbody>
+      </table></div>
+      <p>Tình huống thứ hai (PUB007.mov) minh họa luồng lưu quyết định: AI đề xuất Needs Review, reviewer xác nhận một cảnh báo là lỗi và chọn "Yêu cầu sửa"; tệp bằng chứng xuất ra ghi nhận quyết định Regenerate.</p>
+
+      <h3>Mô hình kinh doanh đề xuất</h3>
+      <div class="tbl"><table>
+        <tbody>
+          <tr><th>Customer Segments</th><td>Agency marketing/affiliate và thương hiệu có QA nội bộ, Product Truth đã xác minh; sàn TMĐT là thị trường dài hạn.</td></tr>
+          <tr><th>Value Propositions</th><td>Sàng lọc trước khi đăng; đối chiếu giá, claim, thông tin sản phẩm; cung cấp bằng chứng và lý do cho reviewer.</td></tr>
+          <tr><th>Channels</th><td>B2B trực tiếp, demo và pilot có giám sát, web app; API ở giai đoạn sau.</td></tr>
+          <tr><th>Customer Relationships</th><td>Onboarding dữ liệu, hỗ trợ cấu hình, tiếp nhận phản hồi reviewer.</td></tr>
+          <tr><th>Revenue Streams</th><td>Phí pilot theo dự án; sau kiểm chứng: gói cam kết theo tháng kèm phí video vượt định mức (mức giá còn là đề xuất).</td></tr>
+          <tr><th>Key Resources</th><td>Hybrid AI, Product Truth Store, Ground Truth độc lập, Rule Engine.</td></tr>
+          <tr><th>Key Activities</th><td>Xử lý video, xác minh nguồn, giảm bỏ sót và cảnh báo nhầm, kiểm soát chi phí.</td></tr>
+          <tr><th>Key Partners</th><td>Nhà cung cấp AI/cloud, agency và thương hiệu pilot, chủ dữ liệu sản phẩm, chuyên gia QA.</td></tr>
+          <tr><th>Cost Structure</th><td>Nhân sự kỹ thuật, dữ liệu và xác minh nhãn, Gemini API, hạ tầng, onboarding, bán hàng, bảo mật.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 05 -->
+    <section class="sec" id="quan-ly" aria-labelledby="h05">
+      <span class="eyebrow">05 · Quản lý dự án</span>
+      <h2 id="h05">CPMAI kết hợp Agile/Scrum</h2>
+      <p class="sub">Dự án chia thành bốn Sprint, mỗi Sprint khoảng hai tuần, đi qua các bước CPMAI: hiểu bài toán kinh doanh, chuẩn bị dữ liệu, thiết kế và thử nghiệm AI, đánh giá, lập kế hoạch vận hành.</p>
+
+      <h3>Sprint plan</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Sprint</th><th>Mục tiêu</th><th>Backlog</th><th>Đầu ra cần có</th><th>Phụ trách chính</th></tr></thead>
+        <tbody>
+          <tr><td><b>Sprint 1</b><br>Tuần 1-2</td><td>Chốt bài toán, phạm vi và yêu cầu</td><td>PB01-PB06</td><td>Scope, stakeholder, yêu cầu nghiệp vụ, checklist lỗi, cấu trúc dữ liệu</td><td>Trâm, Cẩm Thư, Thanh Vy, Tường Vy</td></tr>
+          <tr><td><b>Sprint 2</b><br>Tuần 3-4</td><td>Dataset phiên bản đầu, kiểm chứng kỹ thuật</td><td>PB07-PB12</td><td>Video công khai và video lỗi kiểm soát, Ground Truth, thử OCR/VLM</td><td>Thanh Vy, Cẩm Thư, Trâm, Phúc, Tường Vy</td></tr>
+          <tr><td><b>Sprint 3</b><br>Tuần 5-6</td><td>MVP nhận video, phát hiện lỗi, trả ba trạng thái</td><td>PB13-PB18</td><td>Prototype, bộ 80 video có Ground Truth, Actual Evaluation</td><td>Phúc, Trâm, Tường Vy, Thanh Vy, Cẩm Thư</td></tr>
+          <tr><td><b>Sprint 4</b><br>Tuần 7-8</td><td>Kiểm tra tính hữu ích với người dùng, hoàn thiện kết luận</td><td>PB19-PB21</td><td>User test, Business Case cập nhật, báo cáo cuối kỳ</td><td>Cẩm Thư, Tường Vy, Trâm, Thanh Vy</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Mốc thời gian chính</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Ngày</th><th>Mốc</th></tr></thead>
+        <tbody>
+          <tr><td>02/10, 09/10, 16/10, 23/10, 30/10, 06/11/2026</td><td>Họp nhóm tối thứ Sáu hằng tuần, gắn với Sprint 1-4</td></tr>
+          <tr><td>03/10/2026</td><td>Báo cáo tiến độ lần 1</td></tr>
+          <tr><td>24/10/2026</td><td>Risk Register v2 (18 rủi ro) sau Sprint 2</td></tr>
+          <tr><td>27/10/2026</td><td>Kế hoạch nước rút: chuyển sang hai luồng song song (prototype/dữ liệu và đánh giá/báo cáo)</td></tr>
+          <tr><td>02/11/2026</td><td>Chạy Actual Evaluation trên 80 video</td></tr>
+          <tr><td>06/11/2026</td><td>Thuyết trình</td></tr>
+          <tr><td>09/11/2026</td><td>Rà soát báo cáo cuối kỳ; bổ sung minh chứng Audit Log (PB17)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Product Backlog (PB01-PB21)</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>ID</th><th>Hạng mục</th><th>Phụ trách</th><th>Ưu tiên</th><th>Tình trạng đến 09/11/2026</th></tr></thead>
+        <tbody>
+          <tr><td>PB01</td><td>Xác định vấn đề và phạm vi case Ecomobi</td><td>Trâm</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> Problem Statement, phạm vi</td></tr>
+          <tr><td>PB02</td><td>Business Understanding, business case ban đầu</td><td>Cẩm Thư</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> số liệu doanh nghiệp chưa kiểm chứng độc lập</td></tr>
+          <tr><td>PB03</td><td>Stakeholder và yêu cầu nghiệp vụ</td><td>Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> Stakeholder Map, yêu cầu</td></tr>
+          <tr><td>PB04</td><td>Phạm vi MVP và workflow</td><td>Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> mô tả MVP, user workflow</td></tr>
+          <tr><td>PB05</td><td>Danh mục lỗi cần kiểm tra</td><td>Cẩm Thư</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> danh mục lỗi và RULE01-RULE10</td></tr>
+          <tr><td>PB06</td><td>Data Inventory và cấu trúc dataset</td><td>Tường Vy, Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> Data Dictionary; cần thống nhất phiên bản</td></tr>
+          <tr><td>PB07</td><td>Thu thập video AI công khai</td><td>Cẩm Thư, Trâm, Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> 30 video công khai</td></tr>
+          <tr><td>PB08</td><td>Tạo video lỗi có kiểm soát</td><td>Thanh Vy, Phúc</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> 44 video lỗi từ 6 video gốc</td></tr>
+          <tr><td>PB09</td><td>Dữ liệu sản phẩm và claim được duyệt (Product Truth)</td><td>Phúc</td><td>Must</td><td><span class="pill rv">Một phần</span> nhiều video công khai chưa đủ thông tin xác minh</td></tr>
+          <tr><td>PB10</td><td>Hướng dẫn và tổ chức gán nhãn</td><td>Tường Vy, nhóm</td><td>Must</td><td><span class="pill rv">Một phần</span> có Ground Truth 80 video; chưa gán nhãn độc lập 2-3 người</td></tr>
+          <tr><td>PB11</td><td>Tiền xử lý video (frame, audio, OCR)</td><td>Phúc</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> pipeline trích xuất trong prototype</td></tr>
+          <tr><td>PB12</td><td>Thử nghiệm API/mô hình hiểu video</td><td>Trâm</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> chọn Gemini API; chưa đo hallucination độc lập</td></tr>
+          <tr><td>PB13</td><td>Baseline 1: rule-based</td><td>Thanh Vy</td><td>Must</td><td><span class="pill rv">Một phần</span> có thiết kế; chưa có kết quả baseline độc lập</td></tr>
+          <tr><td>PB14</td><td>Baseline 2: VLM kết hợp rule</td><td>Trâm, Phúc</td><td>Must</td><td><span class="pill rv">Một phần</span> có thiết kế Hybrid AI; chưa đo riêng</td></tr>
+          <tr><td>PB15</td><td>Scoring và logic ba trạng thái</td><td>Phúc</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> còn 5 bản ghi cần đối chiếu lý do và trạng thái</td></tr>
+          <tr><td>PB16</td><td>Prototype MVP và hàng chờ reviewer</td><td>Phúc, Tường Vy, Thanh Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> prototype và demo</td></tr>
+          <tr><td>PB17</td><td>Audit log</td><td>Cẩm Thư, Phúc</td><td>Should</td><td><span class="pill ok">Có đầu ra</span> Evidence Export JSON, lịch sử quyết định; chưa nghiệm thu phân quyền, chống sửa log</td></tr>
+          <tr><td>PB18</td><td>Đánh giá mô hình trên tập gán nhãn</td><td>Phúc, Cẩm Thư, Tường Vy</td><td>Must</td><td><span class="pill ok">Có đầu ra</span> Actual Evaluation 80 video; chưa đo thời gian và chi phí</td></tr>
+          <tr><td>PB19</td><td>Thử nghiệm với người dùng</td><td>Cẩm Thư</td><td>Must</td><td><span class="pill mt">Chưa có minh chứng</span></td></tr>
+          <tr><td>PB20</td><td>Cập nhật Business Case sau pilot</td><td>Tường Vy, Trâm</td><td>Should</td><td><span class="pill mt">Chưa có minh chứng</span> mới có kịch bản giả định</td></tr>
+          <tr><td>PB21</td><td>Báo cáo và tài liệu trình bày</td><td>Thanh Vy, cả nhóm</td><td>Must</td><td><span class="pill rv">Đang hoàn thiện</span></td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Ma trận RACI theo giai đoạn CPMAI</h3>
+      <p class="src">R: thực hiện · A: chịu trách nhiệm cuối cùng · C: tham vấn · I: được cập nhật</p>
+      <div class="tbl raci"><table>
+        <thead><tr><th>Hạng mục</th><th class="c">Thanh Vy</th><th class="c">Tường Vy</th><th class="c">Trâm</th><th class="c">Cẩm Thư</th><th class="c">Phúc</th></tr></thead>
+        <tbody>
+          <tr><td>Business Understanding, Business Model / Funding</td><td class="c">A</td><td class="c">R</td><td class="c">C</td><td class="c">R</td><td class="c">I</td></tr>
+          <tr><td>Project Charter &amp; Scope</td><td class="c">R, A</td><td class="c">C</td><td class="c">C</td><td class="c">C</td><td class="c">C</td></tr>
+          <tr><td>Data Production &amp; dataset Sprint 2</td><td class="c">R, A</td><td class="c">C</td><td class="c">R</td><td class="c">R</td><td class="c">R</td></tr>
+          <tr><td>Data Audit, EDA &amp; Data Leakage Check</td><td class="c">C</td><td class="c">R, A</td><td class="c">I</td><td class="c">C</td><td class="c">C</td></tr>
+          <tr><td>AI System Design &amp; Modeling</td><td class="c">A</td><td class="c">I</td><td class="c">C</td><td class="c">R</td><td class="c">R</td></tr>
+          <tr><td>Model Evaluation</td><td class="c">C</td><td class="c">R</td><td class="c">C</td><td class="c">R</td><td class="c">R, A</td></tr>
+          <tr><td>Risk Register &amp; Governance</td><td class="c">A</td><td class="c">R</td><td class="c">R</td><td class="c">R</td><td class="c">R</td></tr>
+          <tr><td>Backlog &amp; Sprint Management</td><td class="c">R, A</td><td class="c">C</td><td class="c">C</td><td class="c">C</td><td class="c">C</td></tr>
+          <tr><td>Prototype, Demo &amp; User Workflow</td><td class="c">A</td><td class="c">R</td><td class="c">I</td><td class="c">C</td><td class="c">R</td></tr>
+          <tr><td>User Testing (Sprint 4)</td><td class="c">I</td><td class="c">I</td><td class="c">C</td><td class="c">R, A</td><td class="c">C</td></tr>
+          <tr><td>Operationalization Plan</td><td class="c">A</td><td class="c">C</td><td class="c">C</td><td class="c">C</td><td class="c">R</td></tr>
+          <tr><td>Báo cáo cuối kỳ &amp; Thuyết trình</td><td class="c">R, A</td><td class="c">R</td><td class="c">R</td><td class="c">R</td><td class="c">R</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Họp nhóm và nhật ký quyết định</h3>
+      <div class="grid2">
+        <div class="card"><h4>Lịch họp</h4><p>Họp cả nhóm vào tối thứ Sáu hằng tuần: 02/10, 09/10, 16/10, 23/10, 30/10 và 06/11/2026. Nội dung: Sprint Goal, tiến độ Backlog, rủi ro phát sinh, thay đổi ưu tiên. Ngoài ra nhóm dữ liệu và nhóm kỹ thuật trao đổi khi có thay đổi nhãn hoặc kết quả thử nghiệm mới.</p></div>
+        <div class="card"><h4>Quyết định 27/10/2026</h4><p>Chuyển từ làm tuần tự sang hai luồng song song: prototype/dữ liệu và Actual Evaluation/báo cáo, để kịp mốc 02/11 và buổi thuyết trình 06/11. Ảnh hưởng tới PB10, PB16, PB18-PB21 và các rủi ro E1-E3, D6.</p></div>
+      </div>
+      <p class="note">Biên bản từng buổi họp được tổng hợp từ Backlog, báo cáo tiến độ và Sheet kiểm thử; giờ họp, thành phần tham dự và nội dung từng buổi vẫn đang được nhóm xác nhận từ chứng cứ gốc.</p>
+    </section>
+
+    <!-- 06 -->
+    <section class="sec" id="ma-nguon" aria-labelledby="h06">
+      <span class="eyebrow">06 · Mã nguồn</span>
+      <h2 id="h06">Repository và kiến trúc kỹ thuật</h2>
+      <p class="sub">Prototype là ứng dụng web chạy cục bộ: backend FastAPI, cơ sở dữ liệu SQLite, xử lý video bằng OpenCV và FFmpeg.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Thư mục / tệp</th><th>Nội dung</th></tr></thead>
+        <tbody>
+          <tr><td><code>backend.py</code></td><td>API, hàng chờ phân tích, luồng xử lý video và lưu kết quả</td></tr>
+          <tr><td><code>verifai_core/</code></td><td>Các module kiểm tra: OCR thích ứng, đối chiếu giá, claim, thương hiệu, nhãn AI, nhất quán màu sắc và chữ, kết nối Gemini, logic khuyến nghị</td></tr>
+          <tr><td><code>static/</code></td><td>Giao diện reviewer, trang chủ, one-pager</td></tr>
+          <tr><td><code>scripts/</code></td><td>Chạy đánh giá theo lô, dựng dữ liệu demo, script khởi động demo công khai, dựng website này</td></tr>
+          <tr><td><code>tests/</code></td><td>Bộ kiểm thử tự động (333 test tại thời điểm 10/11/2026)</td></tr>
+          <tr><td><code>docs/</code></td><td>Tài liệu kỹ thuật: kiến trúc, quy tắc, xác minh giá, triển khai</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Thành phần AI</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Thành phần</th><th>Vai trò</th><th>Lưu ý</th></tr></thead>
+        <tbody>
+          <tr><td>OCR (PaddleOCR)</td><td>Đọc chữ, giá và thông tin trên video</td><td>Chữ nhỏ hoặc mờ có thể bị sót</td></tr>
+          <tr><td>ASR (Whisper)</td><td>Chuyển lời thoại thành văn bản</td><td>Phụ thuộc chất lượng âm thanh</td></tr>
+          <tr><td>Gemini / VLM</td><td>Phân tích hình ảnh và ngữ cảnh quảng cáo</td><td>Có thể suy đoán; phải đối chiếu</td></tr>
+          <tr><td>OpenCV</td><td>Tách khung hình, mốc thời gian, sàng lọc hình ảnh</td><td>Không tự chứng minh đúng vị trí lỗi</td></tr>
+          <tr><td>Product Truth + Rule Engine</td><td>Đối chiếu SKU, giá, claim với nguồn chuẩn</td><td>Phụ thuộc chất lượng dữ liệu tham chiếu</td></tr>
+          <tr><td>Reviewer</td><td>Kiểm tra bằng chứng, quyết định cuối</td><td>Pass không tự động cho xuất bản</td></tr>
+        </tbody>
+      </table></div>
+      <a class="btn" data-link="repository" href="#ma-nguon">Mở repository →</a>
+    </section>
+
+    <!-- 07 -->
+    <section class="sec" id="demo" aria-labelledby="h07">
+      <span class="eyebrow">07 · Demo / prototype</span>
+      <h2 id="h07">Prototype VerifAI</h2>
+      <p class="sub">Giao diện dành cho reviewer: tải video, xem cảnh báo theo mốc thời gian, xác nhận hoặc bác từng cảnh báo, chốt quyết định và xuất bằng chứng.</p>
+      <div class="grid2">
+        <div class="card"><h4>Chức năng chính</h4><ul class="dots">
+          <li>Tải video và chọn sản phẩm tham chiếu (SKU).</li>
+          <li>Phân tích chữ, lời thoại, hình ảnh; hiển thị cảnh báo kèm khung hình và mốc thời gian.</li>
+          <li>Đề xuất Pass / Needs Review / Regenerate kèm lý do.</li>
+          <li>Reviewer xác nhận hoặc bác cảnh báo, chọn Chấp thuận, Cần kiểm tra hoặc Yêu cầu sửa.</li>
+          <li>Lưu lịch sử thao tác; xuất bằng chứng dạng JSON cho từng video hoặc ZIP cho cả phiên duyệt.</li></ul></div>
+        <div class="card"><h4>Cách xem demo</h4><p>Video demo ghi lại toàn bộ luồng kiểm tra trên prototype. Bản chạy trực tiếp được nhóm mở theo từng buổi trình bày, vì prototype chạy trên máy cục bộ.</p>
+          <a class="btn" data-link="demo_video" href="#demo">Xem video demo →</a></div>
+      </div>
+      <p class="note">Prototype chưa được kiểm thử với người dùng thực tế (PB19) và chưa có số đo đối chứng về thời gian kiểm duyệt; không dùng để phê duyệt video tự động.</p>
+    </section>
+
+    <!-- 08 -->
+    <section class="sec" id="tai-lieu-ai" aria-labelledby="h08">
+      <span class="eyebrow">08 · Tài liệu AI</span>
+      <h2 id="h08">AI Canvas, Project Charter, Data Audit, Risk Register, System Card</h2>
+      <p class="sub">Bản cập nhật theo báo cáo cuối kỳ, phản ánh kết quả Actual Evaluation trên 80 video ngày 02/11/2026.</p>
+
+      <h3 id="ai-canvas">AI Canvas</h3>
+      <div class="canvas">
+        <div class="card"><small>01 · Vấn đề</small><p>Đội QA cần kiểm tra video quảng cáo AI trước khi đăng; kiểm duyệt thủ công dễ bỏ sót lỗi giá, SKU, claim.</p></div>
+        <div class="card"><small>02 · Quyết định</small><p>AI gợi ý 3 trạng thái; reviewer quyết định cuối cùng, không tự động phê duyệt hay đăng.</p></div>
+        <div class="card"><small>03 · Giá trị</small><p>Cảnh báo có căn cứ, kèm bằng chứng; hướng đến giảm công kiểm duyệt.</p></div>
+        <div class="card"><small>04 · Tích hợp</small><p>Video + SKU → AI → Product Truth → reviewer; lưu kết quả để truy vết.</p></div>
+        <div class="card"><small>05 · Dữ liệu</small><p>80 video (6 gốc, 44 cài lỗi, 30 công khai), Product Truth để đối chiếu, Ground Truth để đánh giá.</p></div>
+        <div class="card"><small>06 · Công nghệ</small><p>Hybrid AI: Gemini/VLM, OCR/ASR, OpenCV và Rule Engine.</p></div>
+        <div class="card"><small>07 · Rủi ro</small><p>9 bỏ sót, 18 cảnh báo nhầm; Product Truth còn thiếu; Ground Truth chưa xác minh độc lập.</p></div>
+        <div class="card"><small>08 · Đầu ra</small><p>Pass / Needs Review / Regenerate kèm lý do và bằng chứng.</p></div>
+      </div>
+
+      <h3 id="project-charter">Project Charter</h3>
+      <div class="tbl"><table>
+        <tbody>
+          <tr><th>Tên dự án</th><td>VerifAI: AI Video Quality &amp; Readiness Checker (công cụ AI hỗ trợ kiểm tra chất lượng và mức sẵn sàng đăng tải của video thương mại ngắn do AI tạo)</td></tr>
+          <tr><th>Mục tiêu</th><td>Phát triển và đánh giá prototype hỗ trợ reviewer phát hiện sai lệch thông tin sản phẩm trong video quảng cáo AI, trên bộ kiểm thử 80 video</td></tr>
+          <tr><th>Người dùng</th><td>QA Reviewer, đội sản xuất video và quản lý</td></tr>
+          <tr><th>Trong phạm vi</th><td>Phân tích video, đối chiếu thông tin sản phẩm, cảnh báo lỗi, tạo báo cáo</td></tr>
+          <tr><th>Ngoài phạm vi</th><td>Tự động xuất bản video, thay thế hoàn toàn QA, dự đoán doanh thu, tích hợp Ecomobi</td></tr>
+          <tr><th>Dữ liệu</th><td>80 bản ghi: 6 video gốc, 44 lỗi kiểm soát, 30 video công khai</td></tr>
+          <tr><th>Phương pháp AI</th><td>Hybrid AI: Gemini API, OCR, ASR, OpenCV và Rule Engine</td></tr>
+          <tr><th>Sản phẩm bàn giao</th><td>Prototype, chức năng kiểm tra video, báo cáo đánh giá, tài liệu dự án</td></tr>
+          <tr><th>Tiêu chí thành công</th><td>Mục tiêu: Recall lỗi nghiêm trọng ≥80%, Precision ≥70% trên tập kiểm thử độc lập. Bộ 80 video đạt Precision 71,43%, Recall 83,33% theo quy ước gắn cờ; chưa xác minh trên tập độc lập</td></tr>
+          <tr><th>Rủi ro chính</th><td>Bỏ sót và cảnh báo nhầm, thiếu Product Truth, Ground Truth chưa xác minh độc lập, nguy cơ leakage, chi phí API, bảo vệ dữ liệu</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="data-audit">Data Audit</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Nhóm video</th><th class="num">Số video</th><th class="num">Có lỗi</th><th class="num">Không lỗi</th><th>Vai trò</th></tr></thead>
+        <tbody>
+          <tr><td>Video gốc</td><td class="num">6</td><td class="num">0</td><td class="num">6</td><td>Đối chứng, nền tảng tạo video lỗi</td></tr>
+          <tr><td>Video lỗi có kiểm soát</td><td class="num">44</td><td class="num">44</td><td class="num">0</td><td>Kiểm tra các dạng sai lệch đã biết: giá, thông tin sản phẩm, claim, chữ, hình ảnh, nhãn AI</td></tr>
+          <tr><td>Video công khai</td><td class="num">30</td><td class="num">10</td><td class="num">20</td><td>Bổ sung nguồn và cách thể hiện đa dạng hơn</td></tr>
+          <tr><td><b>Tổng</b></td><td class="num"><b>80</b></td><td class="num"><b>54</b></td><td class="num"><b>26</b></td><td></td></tr>
+        </tbody>
+      </table></div>
+      <div class="grid2">
+        <div class="card"><h4>Chất lượng dữ liệu</h4><ul class="dots">
+          <li>Đủ để đánh giá ban đầu theo kịch bản; mẫu còn nhỏ.</li>
+          <li>Nhãn "Có lỗi" chiếm 67,5% do nhóm chủ động tạo nhiều tình huống sai lệch; không phản ánh tỷ lệ lỗi ngoài thị trường.</li>
+          <li>Một số video công khai thiếu nguồn chuẩn đúng biến thể sản phẩm.</li></ul></div>
+        <div class="card"><h4>Data Leakage</h4><p>44 video lỗi đều phát triển từ 6 video gốc, nên 50 video này chỉ thuộc 6 nhóm nguồn nội dung. Đánh giá tiếp theo cần chia tập theo nhóm nguồn (group-based split).</p></div>
+        <div class="card"><h4>Quyền riêng tư</h4><p>Video có thể chứa khuôn mặt, giọng nói, tài khoản người sáng tạo và hình ảnh trẻ em. Nhóm ưu tiên liên kết tham chiếu, hạn chế sao chép video không cần thiết và bảo vệ thông tin nhận diện khi trích ảnh minh chứng.</p></div>
+        <div class="card"><h4>Ground Truth</h4><p>Nhãn nội bộ do nhóm xây dựng để tính chỉ số; không phải kết luận pháp lý. Cần gán nhãn chéo, độc lập trước khi đánh giá trên tập mới.</p></div>
+      </div>
+
+      <h3 id="danh-gia">Kết quả đánh giá (Actual Evaluation, 02/11/2026)</h3>
+      <p>Quy ước: Pass là không gắn cờ; Needs Review và Regenerate là có gắn cờ. Đối chiếu với Ground Truth ở cấp video.</p>
+      <div class="stats">
+        <div class="stat"><b>83,33%</b><small>Recall (45/54 video có lỗi)</small></div>
+        <div class="stat"><b>71,43%</b><small>Precision (45/63 video bị gắn cờ)</small></div>
+        <div class="stat"><b>76,92%</b><small>F1-score</small></div>
+        <div class="stat"><b>69,23%</b><small>FPR (18/26 video không lỗi bị gắn cờ)</small></div>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <div class="cm" role="table" aria-label="Confusion matrix">
+            <div class="h">Ground Truth</div><div class="h">AI cảnh báo</div><div class="h">Không cảnh báo</div>
+            <div class="h">Có lỗi (54)</div><div class="tp">TP = 45</div><div class="fn">FN = 9</div>
+            <div class="h">Không lỗi (26)</div><div class="fp">FP = 18</div><div class="tn">TN = 8</div>
+          </div>
+          <p class="src" style="margin-top:8px">Accuracy 66,25% (53/80 video).</p>
+        </div>
+        <div class="tbl"><table>
+          <thead><tr><th>Nhóm lỗi cài sẵn</th><th class="num">Số video</th><th class="num">Gắn cờ</th></tr></thead>
+          <tbody>
+            <tr><td>Sai giá bán</td><td class="num">8</td><td class="num">8</td></tr>
+            <tr><td>Sai tên / thông tin sản phẩm</td><td class="num">7</td><td class="num">7</td></tr>
+            <tr><td>Claim ngoài danh sách duyệt</td><td class="num">7</td><td class="num">7</td></tr>
+            <tr><td>Thiếu nhãn AI</td><td class="num">6</td><td class="num">6</td></tr>
+            <tr><td>Lỗi chữ và hiển thị</td><td class="num">7</td><td class="num">4</td></tr>
+            <tr><td>Không nhất quán hình ảnh</td><td class="num">9</td><td class="num">3</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <p class="note"><b>Giới hạn:</b> 18 cảnh báo nhầm đều nằm ở nhóm video công khai, trong đó 15 trường hợp do thiếu bằng chứng tham chiếu chứ chưa hẳn là AI nhận diện sai. Kết quả là gắn cờ nhị phân trên bộ 80 video với nhãn nội bộ; chưa chứng minh đúng loại lỗi, Recall riêng lỗi nghiêm trọng hay hiệu năng trên tập độc lập. Kết quả mô phỏng trước đó (Accuracy 85,00%) không đại diện hiệu năng thực tế.</p>
+
+      <h3 id="risk-register">AI Risk Register (bản cuối kỳ)</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Mã</th><th>Phát hiện</th><th>Ưu tiên</th><th>Biện pháp</th><th>Trạng thái 09/11/2026</th></tr></thead>
+        <tbody>
+          <tr><td>T1</td><td>9 video lỗi bị bỏ sót (3 lỗi chữ, 6 lỗi hình ảnh)</td><td>Cao</td><td>Rà từng trường hợp; tăng kiểm tra đa khung hình, OCR/VLM và bước reviewer</td><td>Đã ghi nhận; chưa có bằng chứng khắc phục</td></tr>
+          <tr><td>T2</td><td>18 cảnh báo nhầm ở video công khai, 15/18 do thiếu bằng chứng</td><td>Cao</td><td>Tách cảnh báo thiếu dữ liệu khỏi lỗi nội dung; phân tích và giảm cảnh báo nhầm</td><td>Đã phân tích; chưa chứng minh đã giảm</td></tr>
+          <tr><td>E3</td><td>21/30 video công khai thiếu bằng chứng xác minh</td><td>Cao</td><td>Chuẩn hóa nguồn, phiên bản Product Truth; yêu cầu reviewer xác minh</td><td>Đã ghi nhận; chưa xử lý xong</td></tr>
+          <tr><td>E2</td><td>Hiệu năng khác nhau giữa video lỗi kiểm soát và video công khai</td><td>Cao</td><td>Đánh giá riêng theo nhóm nguồn, mở rộng dữ liệu độc lập</td><td>Đã đối chiếu theo nguồn; chưa có kiểm thử độc lập bổ sung</td></tr>
+          <tr><td>D2</td><td>Ground Truth chưa xác nhận độc lập; 5 bản ghi đầu ra chưa nhất quán</td><td>Cao</td><td>Đối soát GOC06, LOI13, LOI25, LOI29, LOI38; gán nhãn chéo</td><td>Cần xác minh</td></tr>
+          <tr><td>D6</td><td>44 video lỗi tạo từ 6 video gốc (nguy cơ leakage)</td><td>Trung bình</td><td>Chia tập theo nhóm video gốc</td><td>Đã nhận diện; chưa có chứng cứ rò rỉ thực tế</td></tr>
+          <tr><td>E1</td><td>Kết quả mô phỏng (85,00%) có thể bị hiểu nhầm là kết quả thực tế (66,25%)</td><td>Trung bình</td><td>Gắn nhãn từng bộ kết quả trong báo cáo và slide</td><td>Đã phân biệt trong báo cáo</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="system-card">AI System Card</h3>
+      <div class="tbl"><table>
+        <tbody>
+          <tr><th>Người dùng mục tiêu</th><td>Reviewer QC trong quy trình QA, đội vận hành nội dung, đơn vị quản lý video quảng cáo</td></tr>
+          <tr><th>Mục đích sử dụng</th><td>Sàng lọc lỗi, hỗ trợ đối chiếu Product Truth và đưa ra đề xuất kiểm duyệt</td></tr>
+          <tr><th>Không dùng cho</th><td>Phê duyệt tự động, kết luận pháp lý, phát hiện deepfake tổng quát, thay thế reviewer</td></tr>
+          <tr><th>Dữ liệu</th><td>80 video (6 gốc, 44 lỗi kiểm soát, 30 công khai); Ground Truth nội bộ</td></tr>
+          <tr><th>Mô hình / API</th><td>Gemini (gemini-3.5-flash trong lần đánh giá 80 video), OCR, ASR, OpenCV, Product Truth và Rule Engine</td></tr>
+          <tr><th>Chỉ số kỹ thuật</th><td>Accuracy 66,25%; Precision 71,43%; Recall 83,33%; F1-score 76,92%; FPR 69,23%</td></tr>
+          <tr><th>Chỉ số kinh doanh</th><td>Mục tiêu giảm thời gian review và số vòng sửa; chưa có thử nghiệm đối chứng</td></tr>
+          <tr><th>Rủi ro</th><td>Bỏ sót, cảnh báo nhầm, hallucination, dữ liệu tham chiếu sai, thiên lệch, quyền riêng tư, phụ thuộc API</td></tr>
+          <tr><th>Kiểm soát</th><td>Xuất bằng chứng JSON theo lượt kiểm tra; giao diện xác nhận cảnh báo, chốt quyết định reviewer, lịch sử xử lý. Ở cấp prototype; chưa kiểm chứng phân quyền, chống sửa log, giám sát production</td></tr>
+          <tr><th>Giám sát khi triển khai</th><td>Recall, Precision, FPR, thời gian xử lý, chi phí/video, phản hồi reviewer, lỗi API, thay đổi Product Truth (kế hoạch)</td></tr>
+          <tr><th>Owner sau go-live</th><td>Đề xuất: Product Owner, AI/Technical Lead, Data/QA Lead, Governance Lead</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 id="go-no-go">Quyết định Go/No-Go</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Phạm vi sử dụng</th><th>Quyết định</th><th>Cơ sở</th></tr></thead>
+        <tbody>
+          <tr><td>Tiếp tục nghiên cứu, hoàn thiện prototype</td><td><span class="pill ok">Go</span></td><td>Đã có kết quả chạy thực tế và xác định được vấn đề cần cải thiện</td></tr>
+          <tr><td>Pilot có giám sát</td><td><span class="pill rv">Go có điều kiện</span></td><td>Cần Product Truth phù hợp, reviewer quyết định cuối, cơ chế theo dõi chất lượng</td></tr>
+          <tr><td>Tự động phê duyệt video</td><td><span class="pill rd">No-Go</span></td><td>Vẫn có video có lỗi nhận Pass</td></tr>
+          <tr><td>Thương mại hóa diện rộng</td><td><span class="pill rd">Chưa đủ điều kiện</span></td><td>Chưa có tập đánh giá độc lập, số đo hiệu quả kiểm duyệt và chi phí vận hành thực tế</td></tr>
+        </tbody>
+      </table></div>
+      <p>Mục tiêu cho giai đoạn tiếp theo trên dữ liệu độc lập: Recall ≥90%, Precision ≥80%, FPR ≤30% (chỉ tiêu cải thiện, chưa đạt).</p>
+
+      <h3 id="ai-disclosure">AI Use Disclosure</h3>
+      <p>Nhóm dùng công cụ AI ở hai vai trò: (1) hỗ trợ nghiên cứu, chuẩn bị dữ liệu, thiết kế prompt và biên tập tài liệu (ChatGPT, Claude); tạo video gốc và clip lỗi kiểm thử (Veo 3.1); (2) phân tích video trong prototype (Gemini API). Mọi đầu ra AI được nhóm đối chiếu với video, Product Truth, Ground Truth và Sheet kiểm thử trước khi sử dụng; trách nhiệm kiểm chứng và quyết định thuộc về nhóm.</p>
+      <p class="src">Khung tham chiếu quản trị rủi ro: NIST AI RMF 1.0 và NIST AI 600-1 (Generative AI Profile). Đây là khung tự nguyện, không phải chứng nhận tuân thủ.</p>
+    </section>
+
+    <!-- 09 -->
+    <section class="sec" id="one-pager" aria-labelledby="h09">
+      <span class="eyebrow">09 · Product one-pager</span>
+      <h2 id="h09">Một trang giới thiệu VerifAI</h2>
+      <p>Tóm tắt vấn đề, người dùng, giải pháp, tính năng chính, quy trình kiểm tra và lợi ích, có thể in hoặc lưu thành PDF.</p>
+      <a class="btn" href="one-pager.html">Xem one-pager →</a>
+    </section>
+  </main>
+</div>
+<footer>VerifAI · Nhóm 06, 2026. VerifAI hỗ trợ kiểm duyệt; mọi cảnh báo cần được người duyệt xác minh trước khi quyết định phát hành.</footer>
+<script>
+(() => {
+  const links = [...document.querySelectorAll('.toc a')];
+  const map = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { links.forEach(a => a.classList.remove('on')); map.get(e.target.id)?.classList.add('on'); }
+  }), { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('main section[id]').forEach(s => io.observe(s));
+})();
+</script>
+</body>
+</html>

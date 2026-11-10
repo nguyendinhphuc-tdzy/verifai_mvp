@@ -19,21 +19,23 @@ ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / 'static'
 SITE = ROOT / 'site'
 
-# key in links.json -> (section no. in the team sheet, title, description, [(key, label)])
+# (section no. in the team sheet, title, description, [(target, label)]).
+# target "link:<key>" = external URL from links.json; anything else = page anchor.
+HS = 'ho-so.html'
 DOC_CARDS = [
     ('07', 'Video demo', 'Video minh họa VerifAI kiểm tra một video quảng cáo, từ lúc tải lên đến quyết định của người duyệt.',
-     [('demo_video', 'Xem video demo')]),
-    ('06', 'Mã nguồn', 'Mã nguồn MVP, prompt và tài liệu kỹ thuật.',
-     [('repository', 'Mở repository')]),
-    ('04', 'Định hướng sản phẩm', 'Product Vision, Target Users và kịch bản demo kiểm tra video.',
-     [('product_direction', 'Xem tài liệu')]),
-    ('05', 'Quản lý dự án', 'Kế hoạch sprint, backlog, biên bản họp và ma trận RACI.',
-     [('project_timeline', 'Timeline'), ('project_backlog', 'Backlog'), ('meeting_notes', 'Biên bản họp'), ('raci', 'RACI')]),
-    ('08', 'Tài liệu AI', 'Các tài liệu AI bản cập nhật mới nhất, thống nhất với báo cáo cuối kỳ.',
-     [('ai_canvas', 'AI Canvas'), ('project_charter', 'Project Charter'), ('data_audit', 'Data Audit'),
-      ('ai_risk_register', 'AI Risk Register'), ('ai_system_card', 'AI System Card'), ('final_report', 'Final Report')]),
-    ('03', 'Thỏa thuận nhóm', 'Thỏa thuận thành lập nhóm đã được các thành viên thống nhất.',
-     [('team_agreement', 'Xem thỏa thuận')]),
+     [('link:demo_video', 'Xem video demo'), (HS + '#demo', 'Chức năng prototype')]),
+    ('06', 'Mã nguồn', 'Repository của prototype, cấu trúc mã nguồn và các thành phần AI.',
+     [('link:repository', 'Mở repository'), (HS + '#ma-nguon', 'Kiến trúc kỹ thuật')]),
+    ('04', 'Định hướng sản phẩm', 'Product Vision, người dùng mục tiêu, điểm khác biệt và kịch bản demo kiểm tra video.',
+     [(HS + '#dinh-huong', 'Xem chi tiết')]),
+    ('05', 'Quản lý dự án', 'Sprint plan, mốc thời gian, Product Backlog, ma trận RACI và lịch họp nhóm.',
+     [(HS + '#quan-ly', 'Xem chi tiết')]),
+    ('08', 'Tài liệu AI', 'Các biểu mẫu AI bản cuối kỳ, thống nhất với kết quả đánh giá trên 80 video.',
+     [(HS + '#ai-canvas', 'AI Canvas'), (HS + '#project-charter', 'Project Charter'), (HS + '#data-audit', 'Data Audit'),
+      (HS + '#danh-gia', 'Kết quả đánh giá'), (HS + '#risk-register', 'AI Risk Register'), (HS + '#system-card', 'AI System Card')]),
+    ('03', 'Thỏa thuận nhóm', 'Thỏa thuận thành lập nhóm và các nguyên tắc làm việc đã thống nhất.',
+     [(HS + '#thoa-thuan', 'Xem chi tiết')]),
 ]
 
 DOC_ICON = ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
@@ -55,7 +57,11 @@ LINKS_JS = """<script>
   document.querySelectorAll('[data-link]').forEach(a => {
     const url = (L[a.dataset.link] || '').trim();
     if (url) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.classList.remove('pending'); a.removeAttribute('aria-disabled'); }
-    else { a.title = 'Đang cập nhật'; if (a.closest('.doclinks')) { a.classList.add('pending'); a.setAttribute('aria-disabled', 'true'); a.removeAttribute('href'); a.textContent += ' (đang cập nhật)'; } }
+    else {
+      a.title = 'Đang cập nhật';
+      const chip = a.closest('.doclinks'), btn = a.classList.contains('btn');
+      if (chip || btn) { a.classList.add(chip ? 'pending' : 'pending-link'); a.setAttribute('aria-disabled', 'true'); a.removeAttribute('href'); a.textContent = a.textContent.replace(/\s*→\s*$/, '') + ' (đang cập nhật)'; }
+    }
   });
 })();
 </script>"""
@@ -92,7 +98,8 @@ def esc(s: str) -> str:
 def docs_section() -> str:
     cards = []
     for i, (no, title, desc, links) in enumerate(DOC_CARDS):
-        a = ''.join(f'<a data-link="{k}" href="#ho-so">{esc(label)}</a>' for k, label in links)
+        a = ''.join(f'<a data-link="{t[5:]}" href="#ho-so">{esc(label)}</a>' if t.startswith('link:')
+                    else f'<a href="{t}">{esc(label)}</a>' for t, label in links)
         cards.append(f'<article class="card spot reveal" style="--d:{i % 3 * .08:.2f}s"><div class="ic">{DOC_ICON}</div>'
                      f'<span class="doc-no">Mục {no}</span><h3>{esc(title)}</h3><p>{esc(desc)}</p>'
                      f'<div class="doclinks">{a}</div></article>')
@@ -102,7 +109,7 @@ def docs_section() -> str:
       <div class="head reveal">
         <span class="eyebrow">06 · Hồ sơ dự án</span>
         <h2>Tài liệu <span class="grad">dự án.</span></h2>
-        <p>Video demo, mã nguồn và các tài liệu quản lý, tài liệu AI của nhóm. Bản one-pager tóm tắt sản phẩm xem <a href="one-pager.html" style="color:inherit;font-weight:700">tại đây</a>.</p>
+        <p>Video demo, mã nguồn, tài liệu quản lý dự án và tài liệu AI của nhóm. Xem toàn bộ tại <a href="ho-so.html" style="color:inherit;font-weight:700">trang Hồ sơ dự án</a>, hoặc bản <a href="one-pager.html" style="color:inherit;font-weight:700">one-pager</a>.</p>
       </div>
       <div class="bento">
         {''.join(cards)}
@@ -150,12 +157,19 @@ def build_one_pager(links: dict) -> str:
     return replace(p, '</body>', links_script(links) + '\n</body>')
 
 
+def build_dossier(links: dict) -> str:
+    d = (ROOT / 'site_src' / 'ho-so.html').read_text(encoding='utf-8')
+    d = inline_assets(d)
+    return replace(d, '</body>', links_script(links) + '\n</body>')
+
+
 def main():
     links = json.loads((SITE / 'links.json').read_text(encoding='utf-8'))
-    unknown = {k for _, _, _, ls in DOC_CARDS for k, _ in ls} - set(links)
+    unknown = {t[5:] for _, _, _, ls in DOC_CARDS for t, _ in ls if t.startswith('link:')} - set(links)
     if unknown:
         raise SystemExit(f'links.json is missing keys: {sorted(unknown)}')
-    for name, html in (('index.html', build_home(links)), ('one-pager.html', build_one_pager(links))):
+    for name, html in (('index.html', build_home(links)), ('one-pager.html', build_one_pager(links)),
+                       ('ho-so.html', build_dossier(links))):
         (SITE / name).write_text(html, encoding='utf-8', newline='\n')
         print(f'site/{name}: {len(html.encode("utf-8")) / 1024:.0f} KB')
     empty = [k for k, v in links.items() if not k.startswith('_') and not v.strip()]
