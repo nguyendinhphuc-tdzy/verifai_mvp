@@ -34,7 +34,7 @@ DOC_CARDS = [
     ('08', 'Tài liệu AI', 'Các biểu mẫu AI bản cuối kỳ, thống nhất với kết quả đánh giá trên 80 video.',
      [(HS + '#ai-canvas', 'AI Canvas'), (HS + '#project-charter', 'Project Charter'), (HS + '#data-audit', 'Data Audit'),
       (HS + '#danh-gia', 'Kết quả đánh giá'), (HS + '#risk-register', 'AI Risk Register'), (HS + '#system-card', 'AI System Card')]),
-    ('03', 'Thỏa thuận nhóm', 'Thỏa thuận thành lập nhóm và các nguyên tắc làm việc đã thống nhất.',
+    ('03', 'Thỏa thuận nhóm', 'Thỏa thuận làm việc nhóm ngày 09/10/2026: phân công, nguyên tắc phối hợp, ra quyết định và cam kết sử dụng AI.',
      [(HS + '#thoa-thuan', 'Xem chi tiết')]),
 ]
 
@@ -138,6 +138,8 @@ def build_home(links: dict) -> str:
     h = replace(h, 'href="/app" data-enter>Phân tích video', 'data-link="demo_video" href="#ho-so">Xem video demo')
     h = replace(h, '<a href="/app" data-enter>Vào ứng dụng</a>', '<a data-link="demo_video" href="#ho-so">Video demo</a>')
     assert 'href="/app"' not in h, 'a link to /app is left'
+    # The illustrated app window shows a local address; neutral label on the public site.
+    h = replace(h, '<div class="addr">127.0.0.1:8000/app</div>', '<div class="addr">VerifAI · Duyệt video</div>')
     h = replace(h, 'href="/one-pager"', 'href="one-pager.html"', count=None)
     # Documents section before the team, listed in the nav; team becomes section 07.
     h = replace(h, '      <a href="#nhom">Nhóm</a>', '      <a href="#ho-so">Hồ sơ</a>\n      <a href="#nhom">Nhóm</a>')

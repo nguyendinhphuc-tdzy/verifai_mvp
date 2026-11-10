@@ -363,6 +363,11 @@ body.ready .hero .stagger{animation:fadeUp .8s var(--ease) both;animation-delay:
 .contact p{margin:0;color:var(--muted)}
 .mail{display:inline-block;margin-top:22px;font-size:clamp(1.05rem,2.6vw,1.6rem);font-weight:700;color:var(--white);letter-spacing:-.02em;word-break:break-all;background:linear-gradient(currentColor,currentColor) 0 100%/0 2px no-repeat;transition:background-size .4s var(--ease),color .3s}
 .mail:hover{background-size:100% 2px;color:var(--gold-2)}
+.mail-list{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:10px}
+.mail-list li{display:grid;gap:1px}
+.mail-list span{font-size:.82rem;color:var(--muted)}
+.mail-list a{font-weight:700;color:var(--white);word-break:break-all;text-decoration:none;background:linear-gradient(currentColor,currentColor) 0 100%/0 2px no-repeat;transition:background-size .4s var(--ease),color .3s}
+.mail-list a:hover{background-size:100% 2px;color:#f3cd72}
 .contact-actions{display:flex;flex-direction:column;gap:12px;align-items:stretch}
 .contact-actions .btn{justify-content:center}
 
@@ -1048,12 +1053,18 @@ body.leaving main,body.leaving .nav-inner,body.leaving footer{transition-delay:.
           <span class="eyebrow">Liên hệ</span>
           <h2>Liên hệ nhóm VerifAI</h2>
           <p>Để góp ý, đăng ký dùng thử hoặc trao đổi hợp tác, vui lòng gửi email cho nhóm. Chúng tôi sẽ phản hồi trong thời gian sớm nhất.</p>
-          <a class="mail" href="mailto:tranthithanhvy1120@gmail.com">tranthithanhvy1120@gmail.com</a>
+          <ul class="mail-list">
+            <li><span>Trần Thị Thanh Vy · Quản lý dự án</span><a href="mailto:vytran.31241022428@st.ueh.edu.vn">vytran.31241022428@st.ueh.edu.vn</a></li>
+            <li><span>Nguyễn Đình Phúc · Kỹ thuật và prototype</span><a href="mailto:phucnguyen.31241027906@st.ueh.edu.vn">phucnguyen.31241027906@st.ueh.edu.vn</a></li>
+            <li><span>Trần Tường Vy · Chiến lược kinh doanh</span><a href="mailto:vytran.31241024527@st.ueh.edu.vn">vytran.31241024527@st.ueh.edu.vn</a></li>
+            <li><span>Lê Ngọc Bảo Trâm · Chiến lược AI</span><a href="mailto:tramle.31241022539@st.ueh.edu.vn">tramle.31241022539@st.ueh.edu.vn</a></li>
+            <li><span>Phạm Thị Cẩm Thư · Phân tích nghiệp vụ</span><a href="mailto:thupham.31241024888@st.ueh.edu.vn">thupham.31241024888@st.ueh.edu.vn</a></li>
+          </ul>
         </div>
         <div class="contact-actions">
-          <a class="btn btn-gold magnetic" href="mailto:tranthithanhvy1120@gmail.com?subject=Li%C3%AAn%20h%E1%BB%87%20VerifAI">Gửi email cho nhóm
+          <a class="btn btn-gold magnetic" href="mailto:vytran.31241022428@st.ueh.edu.vn,phucnguyen.31241027906@st.ueh.edu.vn,vytran.31241024527@st.ueh.edu.vn,tramle.31241022539@st.ueh.edu.vn,thupham.31241024888@st.ueh.edu.vn?subject=Li%C3%AAn%20h%E1%BB%87%20VerifAI">Gửi email cho cả nhóm
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
-          <button class="btn btn-ghost magnetic" id="copyMail" type="button">Sao chép địa chỉ email</button>
+          <button class="btn btn-ghost magnetic" id="copyMail" type="button">Sao chép email cả nhóm</button>
         </div>
       </div>
     </div>
@@ -1432,7 +1443,7 @@ body.leaving main,body.leaving .nav-inner,body.leaving footer{transition-delay:.
   let toastT;
   function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toast.classList.remove('show'), 2200); }
   $('#copyMail').addEventListener('click', async () => {
-    const mail = 'tranthithanhvy1120@gmail.com';
+    const mail = [...document.querySelectorAll('.mail-list a')].map(a => a.textContent.trim()).join(', ');
     try { await navigator.clipboard.writeText(mail); }
     catch { const t = document.createElement('textarea'); t.value = mail; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
     showToast('Đã sao chép địa chỉ email');
