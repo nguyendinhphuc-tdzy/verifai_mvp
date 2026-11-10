@@ -138,6 +138,8 @@ def build_home(links: dict) -> str:
     h = replace(h, 'href="/app" data-enter>Phân tích video', 'data-link="demo_video" href="#ho-so">Xem video demo')
     h = replace(h, '<a href="/app" data-enter>Vào ứng dụng</a>', '<a data-link="demo_video" href="#ho-so">Video demo</a>')
     assert 'href="/app"' not in h, 'a link to /app is left'
+    # The illustrated app window shows a local address; neutral label on the public site.
+    h = replace(h, '<div class="addr">127.0.0.1:8000/app</div>', '<div class="addr">VerifAI · Duyệt video</div>')
     h = replace(h, 'href="/one-pager"', 'href="one-pager.html"', count=None)
     # Documents section before the team, listed in the nav; team becomes section 07.
     h = replace(h, '      <a href="#nhom">Nhóm</a>', '      <a href="#ho-so">Hồ sơ</a>\n      <a href="#nhom">Nhóm</a>')
