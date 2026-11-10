@@ -6,6 +6,9 @@ import argparse
 import cv2
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from verifai_core.envfile import load_env_file
+# Same configuration as the app: read ./.env (variables already set in the shell win).
+load_env_file(Path(__file__).resolve().parents[1]/'.env')
 from verifai_core.vlm import VLMError
 from verifai_core.gemini import GeminiVLM
 

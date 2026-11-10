@@ -1,8 +1,301 @@
-# VerifAI MVP v2.1 — 80-case Dataset Workspace + VLM / Evidence / Visual
+# VerifAI: AI Video Quality & Readiness Checker
 
-**Working local web application** upgraded from v1.0. Frontend: standalone `static/index.html`; backend: FastAPI + SQLite + OpenCV; VLM: **Gemini 3.8 Flash via Google API** (optional, cloud inference); OCR/ASR remain optional.
+VerifAI là prototype hỗ trợ kiểm tra chất lượng video quảng cáo do AI tạo **trước khi xuất bản**. Hệ thống đọc chữ trên hình (OCR), nghe lời thoại (ASR), phân tích hình ảnh (OpenCV và Gemini), đối chiếu với dữ liệu chuẩn của sản phẩm (Product Truth) rồi đề xuất **Pass / Needs Review / Regenerate** kèm bằng chứng và mốc thời gian. Người duyệt luôn là người quyết định cuối cùng.
 
-> Scope: evidence-first **review assistance**, not a deepfake detector, not automatic legal compliance, not a production service. A VLM assertion is an unverified candidate until a human confirms it. No product-reference image is stored, so precise visual SKU matching is not implemented.
+Nhóm 06 · Học phần Dự án Trí tuệ nhân tạo · Chương trình Công nghệ và Đổi mới sáng tạo, Viện Đổi mới sáng tạo, UEH.
+
+- Video demo: https://drive.google.com/file/d/18nhrztrHlZcnP9e7tKsnjRsJqovjXirf/view?usp=drive_link
+- Mã nguồn: https://github.com/nguyendinhphuc-tdzy/verifai_mvp
+- Hồ sơ dự án (website tĩnh): thư mục [`site/`](site/), mở trực tiếp `site/index.html` bằng trình duyệt.
+
+> Phạm vi: đây là prototype phục vụ nghiên cứu, chạy trên máy cục bộ. VerifAI không tự phê duyệt hay đăng video, không đưa ra kết luận pháp lý và chưa được doanh nghiệp nào triển khai.
+
+---
+
+## Mục lục
+
+1. [Yêu cầu hệ thống](#1-yêu-cầu-hệ-thống)
+2. [Cài đặt từ file ZIP](#2-cài-đặt-từ-file-zip)
+3. [Chạy ứng dụng](#3-chạy-ứng-dụng)
+4. [Bật đầy đủ các bước phân tích (OCR, ASR, Gemini)](#4-bật-đầy-đủ-các-bước-phân-tích-ocr-asr-gemini)
+5. [Thử phân tích một video](#5-thử-phân-tích-một-video)
+6. [Chạy bộ kiểm thử tự động](#6-chạy-bộ-kiểm-thử-tự-động)
+7. [Các script tiện ích](#7-các-script-tiện-ích)
+8. [Xử lý sự cố thường gặp](#8-xử-lý-sự-cố-thường-gặp)
+9. [Cấu trúc thư mục](#9-cấu-trúc-thư-mục)
+10. [Bảo mật và giới hạn](#10-bảo-mật-và-giới-hạn)
+
+---
+
+## 1. Yêu cầu hệ thống
+
+| Thành phần | Yêu cầu |
+|---|---|
+| Hệ điều hành | Windows 10/11 64-bit (nhóm đã kiểm thử). macOS/Linux chạy được phần cơ bản nhưng nhóm chưa kiểm thử đầy đủ. |
+| Python | **Python 3.11** (khuyến nghị, đã kiểm thử). Các gói OCR (PaddlePaddle 3.2.0) được chọn cho Python 3.11 trên Windows x64. |
+| Dung lượng | Khoảng 260 MB cho môi trường cơ bản. Gói OCR/ASR và mô hình tải về lần đầu cần thêm nhiều dung lượng hơn (vài GB tùy mô hình). |
+| Internet | Cần khi cài thư viện, khi OCR/ASR tải mô hình lần đầu và khi gọi Gemini. |
+| FFmpeg | Không bắt buộc, nên có trong PATH để xử lý một số định dạng video. |
+| API key Gemini | Không bắt buộc. Chỉ cần nếu muốn bật phân tích hình ảnh bằng Gemini (mục 4.2). |
+
+Kiểm tra phiên bản Python:
+
+```powershell
+py -3.11 --version      # Windows có Python Launcher
+python --version        # hoặc lệnh python thông thường
+```
+
+Nếu chưa có Python 3.11, tải tại https://www.python.org/downloads/ và chọn **Add python.exe to PATH** khi cài.
+
+---
+
+## 2. Cài đặt từ file ZIP
+
+Sau khi tải ZIP từ GitHub (nút **Code → Download ZIP**) và giải nén, thư mục thường có tên `verifai_mvp-main`. Mọi lệnh bên dưới chạy **trong thư mục này**.
+
+### Windows (PowerShell)
+
+```powershell
+# 1. Vào thư mục đã giải nén (sửa đường dẫn cho đúng máy của thầy/cô)
+cd "$HOME\Downloads\verifai_mvp-main"
+
+# 2. Tạo và kích hoạt môi trường ảo
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 3. Cài thư viện cơ bản (FastAPI, OpenCV, Gemini SDK)
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+
+# 4. Tạo file cấu hình từ file mẫu, nạp sẵn 8 sản phẩm mẫu cho lần chạy đầu
+Copy-Item .env.example .env
+(Get-Content .env) -replace '^VERIFAI_SEED_DB=.*', 'VERIFAI_SEED_DB=deploy/seed.sql' | Set-Content .env -Encoding utf8
+```
+
+Nếu bước 2 báo lỗi *running scripts is disabled on this system*, chạy lệnh sau rồi kích hoạt lại (chỉ áp dụng cho cửa sổ PowerShell hiện tại):
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+Nếu máy không có lệnh `py`, thay `py -3.11` bằng `python` (với điều kiện `python --version` là 3.11).
+
+### macOS / Linux (bash, chưa được nhóm kiểm thử đầy đủ)
+
+```bash
+cd ~/Downloads/verifai_mvp-main
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+cp .env.example .env
+sed -i.bak 's|^VERIFAI_SEED_DB=.*|VERIFAI_SEED_DB=deploy/seed.sql|' .env
+```
+
+### Về file `.env`
+
+`backend.py` tự đọc file `.env` khi khởi động. Biến đã đặt sẵn trong terminal sẽ được ưu tiên hơn giá trị trong `.env`. File `.env` đã nằm trong `.gitignore`, không đưa lên GitHub.
+
+Dòng `VERIFAI_SEED_DB=deploy/seed.sql` chỉ có tác dụng khi **chưa có cơ sở dữ liệu** (lần chạy đầu). Ứng dụng sẽ tạo `data/verifai.sqlite3` và nạp 8 sản phẩm mẫu:
+
+| SKU | Sản phẩm |
+|---|---|
+| SKU001 | Sữa tắm gội toàn thân |
+| SKU002 | Bình sữa |
+| SKU003 | Tã dán |
+| SKU004 | Sữa bột |
+| SKU005 | Khăn ướt |
+| SKU006 | Kem dưỡng da mặt |
+| SKU007 | Ghế ăn dặm Abiie Beyond Junior Y High Chair |
+| SKU008 | TendeRoo Baby Nappy Care Cream 20g |
+
+Dữ liệu sản phẩm SKU001-SKU006 là dữ liệu giả lập phục vụ kiểm thử, không phải dữ liệu nội bộ của doanh nghiệp.
+
+---
+
+## 3. Chạy ứng dụng
+
+Kích hoạt môi trường ảo (nếu đang mở cửa sổ mới) rồi khởi động server:
+
+```powershell
+.\.venv\Scripts\Activate.ps1                     # macOS/Linux: source .venv/bin/activate
+python -m uvicorn backend:app --host 127.0.0.1 --port 8000
+```
+
+Khi terminal hiện `Application startup complete.`, mở trình duyệt:
+
+| Địa chỉ | Nội dung |
+|---|---|
+| http://127.0.0.1:8000 | Trang chủ giới thiệu VerifAI |
+| http://127.0.0.1:8000/app | Không gian làm việc của reviewer (phân tích và duyệt video) |
+| http://127.0.0.1:8000/one-pager | Product one-pager |
+| http://127.0.0.1:8000/docs | Tài liệu API tự sinh (Swagger) |
+
+Dừng server: nhấn `Ctrl+C` trong terminal.
+
+Kiểm tra nhanh trạng thái các thành phần (mở terminal thứ hai):
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/health | ConvertTo-Json -Depth 4
+# macOS/Linux: curl http://127.0.0.1:8000/api/health
+```
+
+Kết quả cho biết `ocr`, `asr` đã được cài hay chưa và Gemini (`vlm`) đang bật hay tắt. Với cài đặt cơ bản ở mục 2, kết quả mong đợi là `ocr: false`, `asr: false`, `vlm.enabled: false`.
+
+---
+
+## 4. Bật đầy đủ các bước phân tích (OCR, ASR, Gemini)
+
+Ứng dụng chạy được ngay sau mục 2, nhưng khi chỉ có cài đặt cơ bản, mỗi video chỉ được kiểm tra bằng OpenCV và bộ quy tắc trên phần dữ liệu có sẵn. Hệ thống được thiết kế để **không đề xuất Pass khi thiếu nguồn kiểm tra**, nên phần lớn video sẽ nhận **Needs Review** với lý do "nguồn kiểm tra chưa đầy đủ". Đây là hành vi đúng thiết kế, không phải lỗi.
+
+| Thành phần | Vai trò | Cách bật |
+|---|---|---|
+| OpenCV | Tách khung hình, phát hiện thay đổi hình ảnh | Có sẵn sau mục 2 |
+| OCR (PaddleOCR) | Đọc chữ, giá, dung tích trên video | Mục 4.1 |
+| ASR (faster-whisper) | Chuyển lời thoại thành văn bản | Mục 4.1 |
+| Gemini | Phân tích hình ảnh, ngữ cảnh, màu sắc, chữ hiển thị | Mục 4.2 |
+
+### 4.1. OCR và ASR (chạy trên máy, không gửi dữ liệu ra ngoài)
+
+```powershell
+python -m pip install -r requirements-ai.txt
+python -m pip check
+python scripts/check_perception.py
+```
+
+Kết quả mong đợi: `OCR installed: True` và `ASR installed: True`. Khởi động lại server (mục 3) để áp dụng.
+
+Lần phân tích đầu tiên sẽ tải mô hình OCR và Whisper về máy nên có thể chậm vài phút. Có thể tải trước bằng:
+
+```powershell
+python scripts/check_perception.py --live --video "C:\duong\dan\toi\video.mp4"
+```
+
+Mặc định OCR và ASR chạy trên CPU. Với video dài, CPU có thể mất vài phút cho mỗi video; nên thử với video ngắn (dưới 30 giây) trước.
+
+### 4.2. Gemini (phân tích trên cloud của Google)
+
+1. Tạo API key tại Google AI Studio: https://aistudio.google.com/apikey
+2. Mở file `.env` bằng trình soạn thảo, sửa hai dòng:
+
+   ```ini
+   VLM_ENABLED=1
+   GEMINI_API_KEY=dan_api_key_vao_day
+   ```
+
+   Model mặc định trong `.env.example` là `VLM_MODEL=gemini-3.5-flash`.
+3. Kiểm tra kết nối, rồi khởi động lại server:
+
+   ```powershell
+   python scripts/check_vlm.py --text-only
+   ```
+
+   Kết quả mong đợi: `TEXT-ONLY GEMINI CHECK PASSED`.
+
+Lưu ý:
+
+- Khi bật Gemini, khung hình và video được gửi lên dịch vụ của Google. Chỉ dùng video có quyền sử dụng. Ứng dụng chỉ gửi lên Gemini khi người tải lên khai báo quyền sử dụng phù hợp.
+- Việc gọi API Gemini có thể phát sinh chi phí và chịu giới hạn theo gói của tài khoản Google.
+- Nếu Google báo `503 UNAVAILABLE` (model quá tải), ứng dụng vẫn hoàn tất phân tích với OCR/ASR và đánh dấu Gemini là lỗi; video sẽ nhận Needs Review. Có thể thử lại sau vài phút bằng nút **Phân tích lại**.
+- Không đưa API key vào mã nguồn, ảnh chụp màn hình hay commit.
+
+### 4.3. Tăng tốc OCR bằng GPU (không bắt buộc)
+
+Nhóm đã thử OCR trên GPU NVIDIA bằng một môi trường ảo riêng `.venv-gpu` cài `paddlepaddle-gpu`, nhanh hơn CPU nhiều lần. Thiết lập này phụ thuộc phiên bản CUDA/cuDNN của từng máy nên không nằm trong hướng dẫn chính. Biến `OCR_DEVICE` trong `.env` cho phép chọn `cpu` hoặc `gpu:0`.
+
+---
+
+## 5. Thử phân tích một video
+
+1. Mở http://127.0.0.1:8000/app, chọn **Phân tích video** (hoặc nút **+ Phân tích mới**).
+2. Tải lên một video **MP4, MOV, MKV hoặc WEBM**, tối đa **150 MB** và **180 giây** (giới hạn mặc định, chỉnh bằng `MAX_VIDEO_MB` và `MAX_VIDEO_SECONDS` trong `.env`).
+3. Chọn sản phẩm tham chiếu (SKU), khai báo quyền sử dụng video và video có do AI tạo hay không.
+4. Chờ phân tích xong. Kết quả xuất hiện trong **Danh sách duyệt**: đề xuất của AI, danh sách cảnh báo kèm khung hình và mốc thời gian.
+5. Với từng cảnh báo, chọn **Đúng là lỗi** hoặc **Không phải lỗi**, sau đó chọn quyết định cuối: **Chấp thuận**, **Cần kiểm tra** hoặc **Yêu cầu sửa**.
+6. Nút **Xuất bằng chứng** tải về file JSON gồm kết quả AI, bằng chứng và quyết định của reviewer.
+
+Bộ 80 video dùng để đánh giá không nằm trong repository vì dung lượng lớn và quyền sử dụng của video công khai. Có thể dùng bất kỳ video quảng cáo ngắn nào, hoặc xem luồng chạy đầy đủ trong video demo ở đầu tài liệu này.
+
+Mọi dữ liệu (cơ sở dữ liệu, video tải lên, khung hình trích xuất) được lưu trong thư mục `data/` trên máy.
+
+---
+
+## 6. Chạy bộ kiểm thử tự động
+
+Bộ kiểm thử chạy offline, không cần API key, không gọi Gemini và không ghi vào `data/` (test tự bỏ qua file `.env`).
+
+```powershell
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+Kết quả tại thời điểm 10/11/2026 trên bản tải từ GitHub với cài đặt cơ bản: **333 passed**.
+
+---
+
+## 7. Các script tiện ích
+
+Chạy trong môi trường ảo đã kích hoạt, tại thư mục gốc của dự án.
+
+| Lệnh | Công dụng |
+|---|---|
+| `python scripts/check_perception.py` | Kiểm tra OCR/ASR đã cài chưa; thêm `--live --video <file>` để nạp mô hình thật |
+| `python scripts/check_vlm.py --text-only` | Kiểm tra kết nối Gemini bằng một câu hỏi ngắn; bỏ `--text-only` để thử cả phân tích ảnh |
+| `python scripts/run_eval_batch.py --data-dir <thư mục tạm> --out report.json --video "duong\dan\video.mp4=SKU001"` | Chạy một hoặc nhiều video qua toàn bộ pipeline trong thư mục dữ liệu riêng, không ảnh hưởng `data/`; thêm `:public` sau SKU cho video công khai |
+| `python scripts/evaluate_dataset.py --help` | Quy trình đánh giá cả bộ dữ liệu video và xuất bảng tổng hợp (cách dùng ở phụ lục kỹ thuật) |
+| `python scripts/build_vercel_site.py` | Dựng lại website tĩnh trong `site/` từ trang chủ, one-pager và `site_src/ho-so.html` |
+| `python scripts/build_seed_db.py --out deploy/seed.sqlite3` | Xuất dữ liệu sản phẩm từ cơ sở dữ liệu hiện tại thành file seed |
+| `powershell -ExecutionPolicy Bypass -File scripts\start_public_demo.ps1` | Mở bản demo công khai qua Cloudflare Tunnel (cần cài `cloudflared` và đặt `VERIFAI_ACCESS_CODE` ít nhất 8 ký tự trong `.env`); dữ liệu demo lưu riêng ở `data_demo/` |
+
+---
+
+## 8. Xử lý sự cố thường gặp
+
+| Hiện tượng | Cách xử lý |
+|---|---|
+| `running scripts is disabled on this system` khi kích hoạt `.venv` | Chạy `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` rồi kích hoạt lại |
+| `'py' is not recognized` | Dùng `python` thay cho `py -3.11`, sau khi kiểm tra `python --version` là 3.11 |
+| Cổng 8000 đang bận (`address already in use`) | Đổi cổng: `python -m uvicorn backend:app --host 127.0.0.1 --port 8001`, rồi mở http://127.0.0.1:8001 |
+| Cài `requirements-ai.txt` thất bại | Kiểm tra đang dùng Python 3.11 64-bit; các phiên bản PaddlePaddle trong file được chọn cho Python 3.11 |
+| Danh sách sản phẩm trống | `VERIFAI_SEED_DB` chỉ nạp khi chưa có cơ sở dữ liệu. Có thể tạo sản phẩm trong trang **Sản phẩm**, hoặc bắt đầu lại như dòng cuối bảng này |
+| Video nào cũng nhận Needs Review | Kiểm tra `/api/health`: nếu OCR/ASR/Gemini chưa bật thì đây là hành vi đúng thiết kế (mục 4) |
+| Gemini báo `503 UNAVAILABLE` | Model đang quá tải phía Google; thử lại sau vài phút |
+| Lần phân tích đầu tiên rất chậm | OCR/ASR đang tải mô hình về máy; các lần sau nhanh hơn |
+| Muốn xóa toàn bộ dữ liệu và bắt đầu lại | Dừng server rồi xóa `data/verifai.sqlite3` cùng hai thư mục `data/uploads/` và `data/frames/` (thao tác này xóa mọi video và kết quả đã có) |
+
+---
+
+## 9. Cấu trúc thư mục
+
+| Đường dẫn | Nội dung |
+|---|---|
+| `backend.py` | Ứng dụng FastAPI: API, hàng chờ phân tích, luồng xử lý video, lưu kết quả vào SQLite |
+| `verifai_core/` | Các module kiểm tra: OCR thích ứng, đối chiếu giá, claim, thương hiệu, nhãn AI, nhất quán màu sắc và chữ, kết nối Gemini, logic đề xuất |
+| `static/` | Giao diện: trang chủ (`home.html`), không gian reviewer (`index.html`), one-pager |
+| `scripts/` | Script kiểm tra, đánh giá, dựng dữ liệu demo và website |
+| `tests/` | Bộ kiểm thử tự động |
+| `deploy/seed.sql` | 8 sản phẩm mẫu cho lần chạy đầu |
+| `site/`, `site_src/` | Website tĩnh "Hồ sơ dự án" (đưa lên Vercel, không cần backend) |
+| `docs/` | Tài liệu kỹ thuật bổ sung |
+| `ARCHITECTURE.md` | Kiến trúc hệ thống |
+| `.env.example` | File cấu hình mẫu, giải thích từng biến |
+| `requirements*.txt` | Thư viện: cơ bản (`requirements.txt`), OCR/ASR (`requirements-ai.txt`), kiểm thử (`requirements-dev.txt`), phiên bản cố định đã kiểm thử (`requirements-lock.txt`) |
+
+---
+
+## 10. Bảo mật và giới hạn
+
+- Ứng dụng chỉ nhận kết nối từ máy cục bộ (`127.0.0.1`). Truy cập từ xa chỉ mở khi đặt cả `VERIFAI_PUBLIC_MODE=1` và mã truy cập `VERIFAI_ACCESS_CODE`.
+- Không có tài khoản người dùng, phân quyền hay mã hóa dữ liệu; đây là prototype một người dùng, không dùng cho môi trường production.
+- Kết quả đánh giá trên 80 video (02/11/2026): Recall 83,33%, Precision 71,43%, FPR 69,23% theo quy ước gắn cờ, trên nhãn nội bộ của nhóm. Kết quả chưa được kiểm chứng trên tập dữ liệu độc lập.
+- Đề xuất Pass không có nghĩa video chắc chắn đúng; mọi cảnh báo cần người duyệt xác minh trước khi quyết định phát hành.
+
+---
+
+# Phụ lục: ghi chú kỹ thuật chi tiết (tiếng Anh)
+
+Phần dưới đây là nhật ký kỹ thuật qua các sprint, giữ nguyên để tra cứu. Một số mục mô tả cấu hình của phiên bản cũ (ví dụ tên model Gemini hoặc giá trị mặc định đã thay đổi); khi khác với hướng dẫn ở trên, **hướng dẫn ở trên và file `.env.example` là bản hiện hành**.
 
 ## 1. Upgrade an existing v1 installation (preserve your data)
 
@@ -192,7 +485,7 @@ For architecture details and upgrade checklist see [ARCHITECTURE.md](ARCHITECTUR
 
 Review individual library/model licenses before commercial use.
 
-## v2.1 — Sprint-2 Dataset Workspace (80 official evaluation cases)
+## v2.1 - Sprint-2 Dataset Workspace (80 official evaluation cases)
 
 The latest Sprint-2 workbook defines **80 evaluation cases**: `VID_GOC01–06`
 (6 originals), `VID_LOI01–44` (44 controlled-error scenarios) and `PUB001–030`
@@ -210,7 +503,7 @@ files have been downloaded or run through VerifAI**.
 5. Add at least **two independent agreeing annotations** under Dataset. Ground
    truth from one workbook reviewer or a controlled *script plan* is not treated
    as verified real-video ground truth.
-6. Open Evaluation: the **Official evaluation — Actual runs only** panel has
+6. Open Evaluation: the **Official evaluation - Actual runs only** panel has
    no metrics until both real-video results and independently verified labels
    exist. Metrics are based on the latest completed run per case with perception
    coverage; coverage-only and weak visual heuristics are excluded.
@@ -284,7 +577,7 @@ Uvicorn process to recover interrupted jobs; after repeated interruptions,
 affected jobs are marked failed for manual intervention. Public production
 hosting still requires external durable queues and authentication.
 
-## Sprint A1 — Price Parser v3
+## Sprint A1 - Price Parser v3
 
 Vietnamese price extraction/verification now uses a conservative structured
 parser instead of matching every four-digit number. It recognizes VND shorthand,
@@ -296,13 +589,13 @@ Price assessments are stored in canonical evidence metadata and exported as JSON
 Read [Price Verification A1](docs/PRICE_VERIFICATION_A1.md) for formats,
 examples, tests, limitations and safe re-analysis guidance.
 
-## Sprint A2 — Product Truth & Claim Verification (v3-alpha2)
+## Sprint A2 - Product Truth & Claim Verification (v3-alpha2)
 
 Reference products now support source URL/note, explicitly unverified/reviewed status, a revision counter, audit snapshots, and a revision-checked edit route. Restricted phrase detection distinguishes assertions from explicit negation and uncertain quotations, with all outcomes retained in evidence metadata. An asserted candidate is medium-severity and **requires human verification**, never automatic rejection. Old products/dataset importer remain compatible.
 
 See [Product Truth & Claim Verification A2](docs/PRODUCT_TRUTH_CLAIMS_A2.md) for API, UI, tests, audit implications, and limitations.
 
-## Sprint A3 — Cross-modal Verification Engine
+## Sprint A3 - Cross-modal Verification Engine
 
 The review workspace now shows a concise, evidence-linked case-level verification
 result, built from existing A1 price and A2 claim metadata plus conservative VLM
@@ -321,7 +614,7 @@ See [Verification Engine A3](docs/VERIFICATION_ENGINE_A3.md) for the exact
 status semantics, data contract, tests and known limitations.
 
 
-## Sprint B1 — Multimodal Evidence Reliability (merged with Gemini)
+## Sprint B1 - Multimodal Evidence Reliability (merged with Gemini)
 
 The video sampler targets one frame/second on short clips, capped at 60 frames. OCR selection can use `OCR_SAMPLING_MODE=hybrid` (temporal anchors plus changed frames) or `uniform`. The OCR engine still analyzes up to `OCR_MAX_FRAMES=12` frames by default, unless `OCR_ENABLED=0` disables OCR entirely.
 
@@ -391,7 +684,7 @@ Gemini coverage as evidence of compliance.
 
 
 
-## NEW — Six original products only for Excel import
+## NEW - Six original products only for Excel import
 
 The MVP Excel button now uploads **only the six original video product
 references (Sheet `1. Kich ban goc`)** through
@@ -623,7 +916,7 @@ Mức ưu tiên pháp lý tách riêng khỏi mức độ bằng chứng (quyế
 | RULE06 | TEXT-02, TEXT-03, VIS-03 | chính tả tên sản phẩm; Gemini tìm chữ vô nghĩa/biến dạng trên 5 khung (`VLM_TEXT_CHECK`) |
 | RULE07 | VIS-02, VIS-04, VIS-05 | Gemini so màu trên 5 khung; **lật gương**: chữ thương hiệu/nhãn AI chỉ đọc được khi lật ngang khung hình; **vỡ ô/mờ**: độ nét tụt < 10% kèm ô vuông lặp đều (`FRAME_ANOMALY_CHECK`) |
 | RULE08 | AI-LABEL-01 | nhãn "Nội dung được tạo bởi AI" khi video được khai báo do AI tạo |
-| RULE05, 09, 10 | — | chưa triển khai (RULE05 chỉ chú giải; 09/10 cần metadata nền tảng và C2PA) |
+| RULE05, 09, 10 | - | chưa triển khai (RULE05 chỉ chú giải; 09/10 cần metadata nền tảng và C2PA) |
 
 Đã áp dụng RULE02 cho bộ dữ liệu: SKU002 (bình sữa) = bình bú/vú ngậm, SKU004 (sữa bột) = sữa thay thế sữa mẹ 0–6 tháng,
 nên **mọi video của hai SKU này (kể cả video gốc) sẽ ra Needs Review** theo quyết định của PO ngày 04/11/2026.
